@@ -1,0 +1,13 @@
+{
+  "appId": "5f5fface-0ec5-4a56-af79-8ba842f89aec",
+  "appDisplayName": "BCApp",
+  "description": "School Business Continuity App",
+  "environmentId": "91844e9d-b3d7-ef64-b05f-4e1496957450",
+  "buildPath": "dist",
+  "buildEntryPoint": "index.html",
+  "logoPath": "Default",
+  "localAppUrl": "http://localhost:3000/",
+  "region": "prod",
+  "connectionReferences": {},
+  "databaseReferences": {}
+}

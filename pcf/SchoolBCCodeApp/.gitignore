@@ -1,0 +1,6 @@
+.pcfproj.user
+*.log
+node_modules/
+out/
+generated/
+bundle.js

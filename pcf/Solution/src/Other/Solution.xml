@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ImportExportXml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="9.2.24043.193">
+  <SolutionManifest>
+    <UniqueName>MoeSchoolBCSolution</UniqueName>
+    <LocalizedNames>
+      <LocalizedName description="MOE School Business Continuity Solution" languagecode="1033" />
+      <LocalizedName description="حل استمرارية الأعمال المدرسية - وزارة التعليم" languagecode="1025" />
+    </LocalizedNames>
+    <Descriptions>
+      <Description description="Power Apps solution containing the School Business Continuity code component for Saudi MOE" languagecode="1033" />
+      <Description description="حل Power Apps يحتوي على مكون استمرارية الأعمال المدرسية لوزارة التعليم السعودية" languagecode="1025" />
+    </Descriptions>
+    <Version>1.0.1.0</Version>
+    <Managed>0</Managed>
+    <Publisher>
+      <UniqueName>schoolbc</UniqueName>
+      <LocalizedNames>
+        <LocalizedName description="School BC Publisher" languagecode="1033" />
+        <LocalizedName description="ناشر استمرارية الأعمال المدرسية" languagecode="1025" />
+      </LocalizedNames>
+      <EMailAddress></EMailAddress>
+      <SupportingWebsiteUrl></SupportingWebsiteUrl>
+      <CustomizationPrefix>sbc</CustomizationPrefix>
+      <CustomizationOptionValuePrefix>10000</CustomizationOptionValuePrefix>
+      <Descriptions />
+    </Publisher>
+    <RootComponents />
+    <MissingDependencies />
+  </SolutionManifest>
+</ImportExportXml>

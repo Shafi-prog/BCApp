@@ -1,0 +1,26 @@
+{
+  "name": "school-business-continuity-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@fluentui/react": "^8.70.0",
+    "@microsoft/power-apps": "^0.3.21",
+    "@pnp/graph": "^3.0.11",
+    "@pnp/nodejs": "^3.0.11",
+    "@pnp/sp": "^3.0.11",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.14.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^3.1.0",
+    "typescript": "^5.5.2",
+    "vite": "^4.4.9"
+  }
+}

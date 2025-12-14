@@ -1,0 +1,53 @@
+<ImportExportXml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" OrganizationVersion="9.2.25112.163" OrganizationSchemaType="Standard" CRMServerServiceabilityVersion="9.2.25112.00165">
+  <Entities></Entities>
+  <Roles></Roles>
+  <Workflows></Workflows>
+  <FieldSecurityProfiles></FieldSecurityProfiles>
+  <Templates />
+  <EntityMaps />
+  <EntityRelationships />
+  <OrganizationSettings />
+  <optionsets />
+  <CustomControls />
+  <EntityDataProviders />
+  <CanvasApps>
+    <CanvasApp>
+      <Name>cr6eb_schoolbccodeapp_56e8a</Name>
+      <AppVersion>2025-12-14T04:59:44Z</AppVersion>
+      <Status>Ready</Status>
+      <CreatedByClientVersion>0.0.0.0</CreatedByClientVersion>
+      <MinClientVersion>0.0.0.0</MinClientVersion>
+      <Tags>{}</Tags>
+      <IsCdsUpgraded>0</IsCdsUpgraded>
+      <GalleryItemId xsi:nil="true"></GalleryItemId>
+      <BackgroundColor>RGBA(255,255,255,1)</BackgroundColor>
+      <DisplayName>SchoolBCCodeApp</DisplayName>
+      <Description>School Business Continuity Portal</Description>
+      <CommitMessage xsi:nil="true"></CommitMessage>
+      <Publisher xsi:nil="true"></Publisher>
+      <AuthorizationReferences>[]</AuthorizationReferences>
+      <ConnectionReferences>{"9f4811f1-8df8-491d-9d4f-a8b8e26cdb91":{"id":"/providers/Microsoft.PowerApps/apis/shared_sharepointonline","displayName":"SharePoint","iconUri":"https://conn-afd-prod-endpoint-bmc9bqahasf3grgk.b01.azurefd.net/v1.0.1769/1.0.1769.4352/sharepointonline/icon.png","dataSources":["sharepointonline","schoolinfo","bc_teams_members","sbc_incidents_log","sbc_drills_log","school_training_log","coordination_programs_catalog"],"isOnPremiseConnection":false,"bypassConsent":false,"dataSets":{"https://saudimoe.sharepoint.com/sites/em":{"dataSources":{"schoolinfo":{"tableName":"SchoolInfo"},"bc_teams_members":{"tableName":"BC_Teams_Members"},"sbc_incidents_log":{"tableName":"SBC_Incidents_Log"},"sbc_drills_log":{"tableName":"SBC_Drills_Log"},"school_training_log":{"tableName":"School_Training_Log"},"coordination_programs_catalog":{"tableName":"Coordination_Programs_Catalog"}}}},"apiTier":"Standard"}}</ConnectionReferences>
+      <DatabaseReferences>{}</DatabaseReferences>
+      <AppComponents>[]</AppComponents>
+      <AppComponentDependencies>[]</AppComponentDependencies>
+      <CanConsumeAppPass>1</CanConsumeAppPass>
+      <CanvasAppType>4</CanvasAppType>
+      <BypassConsent>0</BypassConsent>
+      <AdminControlBypassConsent>0</AdminControlBypassConsent>
+      <EmbeddedApp xsi:nil="true"></EmbeddedApp>
+      <IntroducedVersion>1.0</IntroducedVersion>
+      <CdsDependencies>{"cdsdependencies":[]}</CdsDependencies>
+      <IsCustomizable>1</IsCustomizable>
+      <CodeAppPackageUris>
+        <CodeAppPackageUri>/CanvasApps/cr6eb_schoolbccodeapp_56e8a_CodeAppPackages/index.html_ContentType_text/html</CodeAppPackageUri>
+        <CodeAppPackageUri>/CanvasApps/cr6eb_schoolbccodeapp_56e8a_CodeAppPackages/assets/index-BTisP10k.js_ContentType_application/javascript</CodeAppPackageUri>
+        <CodeAppPackageUri>/CanvasApps/cr6eb_schoolbccodeapp_56e8a_CodeAppPackages/assets/index-Ctsd2YCs.js_ContentType_application/javascript</CodeAppPackageUri>
+        <CodeAppPackageUri>/CanvasApps/cr6eb_schoolbccodeapp_56e8a_CodeAppPackages/assets/index-PK3G_MmV.css_ContentType_text/css</CodeAppPackageUri>
+        <CodeAppPackageUri>/CanvasApps/cr6eb_schoolbccodeapp_56e8a_CodeAppPackages/assets/schools-B18Ruvgx.js_ContentType_application/javascript</CodeAppPackageUri>
+      </CodeAppPackageUris>
+    </CanvasApp>
+  </CanvasApps>
+  <Languages>
+    <Language>1025</Language>
+  </Languages>
+</ImportExportXml>

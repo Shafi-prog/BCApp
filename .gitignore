@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+pcf/SchoolBCCodeApp/node_modules/
+
+# Build outputs
+dist/
+build/
+*.d.ts
+!src/**/*.d.ts
+
+# Logs
+*.log
+npm-debug.log*
+npm-build.log
+npm-install.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PCF build artifacts
+pcf/SchoolBCCodeApp/obj/
+pcf/exports/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Package lock (optional - uncomment if you want to track it)
+# package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Extracted/temporary data files
+schools_extracted.json
+schools_data.json
+original_main.js

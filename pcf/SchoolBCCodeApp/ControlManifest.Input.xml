@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="MoeBCApp" constructor="BCApp" version="1.0.2" display-name-key="BCApp" description-key="School Business Continuity App" control-type="virtual" >
+    <external-service-usage enabled="true">
+      <domain>https://*.sharepoint.com</domain>
+    </external-service-usage>
+    <property name="siteUrl" display-name-key="SharePoint Site URL" description-key="URL of the SharePoint site" of-type="SingleLine.URL" usage="input" required="false" />
+    <resources>
+      <code path="index.ts" order="1"/>
+      <platform-library name="React" version="16.8.6" />
+      <platform-library name="Fluent" version="8.29.0" />
+    </resources>
+    <feature-usage>
+      <uses-feature name="WebAPI" required="true" />
+    </feature-usage>
+  </control>
+</manifest>
