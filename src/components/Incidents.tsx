@@ -230,7 +230,7 @@ const Incidents: React.FC = () => {
         await SharePointService.updateIncident(editingId, incidentData)
         setMessage({ type: MessageBarType.success, text: 'تم تحديث الحادث بنجاح' })
       } else {
-        await SharePointService.createIncident(incidentData)
+        await SharePointService.createIncident(incidentData, user?.schoolId)
         setMessage({ type: MessageBarType.success, text: 'تم تسجيل الحادث بنجاح' })
       }
       await loadIncidents()

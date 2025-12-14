@@ -306,7 +306,7 @@ const Drills: React.FC = () => {
         await SharePointService.updateDrill(form.Id, drillData)
         setMessage({ type: MessageBarType.success, text: 'تم تحديث التمرين بنجاح' })
       } else {
-        await SharePointService.createDrill(drillData)
+        await SharePointService.createDrill(drillData, user?.schoolId)
         setMessage({ type: MessageBarType.success, text: 'تم تسجيل التمرين بنجاح' })
       }
       await loadDrills()
