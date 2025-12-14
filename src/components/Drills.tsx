@@ -111,6 +111,57 @@ const Drills: React.FC = () => {
         },
       },
       {
+        key: 'attachment',
+        name: 'المرفق',
+        minWidth: 120,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: Drill) => {
+          // Check if has attachment
+          if (item.AttachmentUrl || item.HasAttachments) {
+            return (
+              <div style={{ textAlign: 'center', width: '100%' }}>
+                <a
+                  href={item.AttachmentUrl || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: '#0078d4',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  📎 عرض
+                </a>
+              </div>
+            );
+          }
+          // No attachment - show add link to SharePoint
+          const schoolName = item.SchoolName_Ref || user?.schoolName || '';
+          const sharePointLink = `https://edumadinah.sharepoint.com/sites/BCProgramData/Lists/SBC_Drills_Log/AllItems.aspx?FilterField1=SchoolName_Ref&FilterValue1=${encodeURIComponent(schoolName)}`;
+          return (
+            <div style={{ textAlign: 'center', width: '100%' }}>
+              <a
+                href={sharePointLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: '#008752',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                ➕ إضافة مرفق
+              </a>
+            </div>
+          );
+        },
+      },
+      {
         key: 'actions',
         name: 'الإجراءات',
         minWidth: 140,

@@ -56,6 +56,8 @@ export interface Drill {
   TargetGroup?: string;
   ExecutionDate?: string;
   AttachmentUrl?: string;
+  HasAttachments?: boolean;
+  SharePointLink?: string;
   Created?: string;
 }
 

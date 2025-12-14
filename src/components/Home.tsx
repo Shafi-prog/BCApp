@@ -19,6 +19,11 @@ interface DashboardStats {
   totalSchools?: number
 }
 
+// Target values for 100% completion
+const TARGET_TEAM_MEMBERS = 6
+const TARGET_DRILLS = 4
+const TARGET_TRAININGS = 4
+
 const Home: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -375,41 +380,41 @@ const Home: React.FC = () => {
         <Stack tokens={{ childrenGap: 16 }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span>فريق الأمن والسلامة</span>
-              <span style={{ color: Math.min((stats.teamMembers / 6) * 100, 100) >= 100 ? '#107c10' : '#008752' }}>
-                {Math.min(Math.round((stats.teamMembers / 6) * 100), 100)}%
+              <span>فريق الأمن والسلامة ({stats.teamMembers} من {TARGET_TEAM_MEMBERS})</span>
+              <span style={{ color: Math.min((stats.teamMembers / TARGET_TEAM_MEMBERS) * 100, 100) >= 100 ? '#107c10' : '#008752' }}>
+                {Math.min(Math.round((stats.teamMembers / TARGET_TEAM_MEMBERS) * 100), 100)}%
               </span>
             </div>
             <ProgressIndicator 
-              percentComplete={Math.min(stats.teamMembers / 6, 1)} 
+              percentComplete={Math.min(stats.teamMembers / TARGET_TEAM_MEMBERS, 1)} 
               barHeight={6} 
-              styles={{ progressBar: { backgroundColor: Math.min((stats.teamMembers / 6) * 100, 100) >= 100 ? '#107c10' : '#008752' } }} 
+              styles={{ progressBar: { backgroundColor: Math.min((stats.teamMembers / TARGET_TEAM_MEMBERS) * 100, 100) >= 100 ? '#107c10' : '#008752' } }} 
             />
           </div>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span>التدريبات المطلوبة</span>
-              <span style={{ color: Math.min((stats.trainingsCompleted / 4) * 100, 100) >= 100 ? '#107c10' : '#0078d4' }}>
-                {Math.min(Math.round((stats.trainingsCompleted / 4) * 100), 100)}%
+              <span>التدريبات المطلوبة ({stats.trainingsCompleted} من {TARGET_TRAININGS})</span>
+              <span style={{ color: Math.min((stats.trainingsCompleted / TARGET_TRAININGS) * 100, 100) >= 100 ? '#107c10' : '#0078d4' }}>
+                {Math.min(Math.round((stats.trainingsCompleted / TARGET_TRAININGS) * 100), 100)}%
               </span>
             </div>
             <ProgressIndicator 
-              percentComplete={Math.min(stats.trainingsCompleted / 4, 1)} 
+              percentComplete={Math.min(stats.trainingsCompleted / TARGET_TRAININGS, 1)} 
               barHeight={6} 
-              styles={{ progressBar: { backgroundColor: Math.min((stats.trainingsCompleted / 4) * 100, 100) >= 100 ? '#107c10' : '#0078d4' } }} 
+              styles={{ progressBar: { backgroundColor: Math.min((stats.trainingsCompleted / TARGET_TRAININGS) * 100, 100) >= 100 ? '#107c10' : '#0078d4' } }} 
             />
           </div>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span>التمارين الفرضية</span>
-              <span style={{ color: Math.min((stats.drillsConducted / 4) * 100, 100) >= 100 ? '#107c10' : '#107c10' }}>
-                {Math.min(Math.round((stats.drillsConducted / 4) * 100), 100)}%
+              <span>التمارين الفرضية ({stats.drillsConducted} من {TARGET_DRILLS})</span>
+              <span style={{ color: Math.min((stats.drillsConducted / TARGET_DRILLS) * 100, 100) >= 100 ? '#107c10' : '#107c10' }}>
+                {Math.min(Math.round((stats.drillsConducted / TARGET_DRILLS) * 100), 100)}%
               </span>
             </div>
             <ProgressIndicator 
-              percentComplete={Math.min(stats.drillsConducted / 4, 1)} 
+              percentComplete={Math.min(stats.drillsConducted / TARGET_DRILLS, 1)} 
               barHeight={6} 
-              styles={{ progressBar: { backgroundColor: Math.min((stats.drillsConducted / 4) * 100, 100) >= 100 ? '#107c10' : '#107c10' } }} 
+              styles={{ progressBar: { backgroundColor: Math.min((stats.drillsConducted / TARGET_DRILLS) * 100, 100) >= 100 ? '#107c10' : '#107c10' } }} 
             />
           </div>
           <div style={{ marginTop: 8, padding: 12, backgroundColor: '#f3f2f1', borderRadius: 6 }}>
@@ -419,11 +424,11 @@ const Home: React.FC = () => {
                 fontWeight: 700, 
                 fontSize: '1.2rem',
                 color: (() => {
-                  const total = (Math.min(stats.teamMembers / 6, 1) + Math.min(stats.trainingsCompleted / 4, 1) + Math.min(stats.drillsConducted / 4, 1)) / 3 * 100
+                  const total = (Math.min(stats.teamMembers / TARGET_TEAM_MEMBERS, 1) + Math.min(stats.trainingsCompleted / TARGET_TRAININGS, 1) + Math.min(stats.drillsConducted / TARGET_DRILLS, 1)) / 3 * 100
                   return total >= 100 ? '#107c10' : '#008752'
                 })()
               }}>
-                {Math.round((Math.min(stats.teamMembers / 6, 1) + Math.min(stats.trainingsCompleted / 4, 1) + Math.min(stats.drillsConducted / 4, 1)) / 3 * 100)}%
+                {Math.round((Math.min(stats.teamMembers / TARGET_TEAM_MEMBERS, 1) + Math.min(stats.trainingsCompleted / TARGET_TRAININGS, 1) + Math.min(stats.drillsConducted / TARGET_DRILLS, 1)) / 3 * 100)}%
               </span>
             </div>
           </div>
