@@ -108,6 +108,11 @@ export interface Drill {
   Responsible?: string;        // المسؤول عن المتابعة
   Notes?: string;              // ملاحظات
   AcademicYear?: string;       // السنة الدراسية
+  // تقييم المدرسة لفعالية الخطة والإجراءات
+  PlanEffectivenessRating?: number;       // تقييم فعالية الخطة (1-5)
+  ProceduresEffectivenessRating?: number; // تقييم فعالية الإجراءات (1-5)
+  SchoolFeedback?: string;               // ملاحظات وتعليقات المدرسة
+  ImprovementSuggestions?: string;       // مقترحات التحسين
 }
 
 export interface Incident {
@@ -384,8 +389,11 @@ const alertModelTypeOptions: ChoiceOption[] = [
 ];
 
 const activatedAlternativeOptions: ChoiceOption[] = [
-  { key: "نعم", text: "نعم" },
-  { key: "لا", text: "لا" },
+  { key: "لا يوجد", text: "لا يوجد بديل" },
+  { key: "مدرسة بديلة", text: "مدرسة بديلة (من التشغيل المتبادل)" },
+  { key: "تعليم عن بعد", text: "التحول للتعليم عن بعد" },
+  { key: "نقل مؤقت", text: "نقل مؤقت لمبنى آخر" },
+  { key: "دمج فصول", text: "دمج الفصول" },
 ];
 
 const coordinatedEntitiesOptions: ChoiceOption[] = [

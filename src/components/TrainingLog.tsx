@@ -23,13 +23,20 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, TrainingLog as TrainingLogType, TrainingProgram, TeamMember } from '../services/sharepointService'
 
+// Only valid SharePoint RegistrationType values
 const registrationTypeOptions: IDropdownOption[] = [
   { key: 'طلب تسجيل', text: 'طلب تسجيل' },
   { key: 'توثيق حضور سابق', text: 'توثيق حضور سابق' },
-  { key: 'فردي', text: 'فردي' },
-  { key: 'مجموعة', text: 'مجموعة' },
-  { key: 'فريق كامل', text: 'فريق كامل' },
 ]
+
+// Helper to determine registration type based on date
+const getRegistrationType = (date?: string): string => {
+  if (!date) return 'طلب تسجيل'
+  const programDate = new Date(date)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return programDate < today ? 'توثيق حضور سابق' : 'طلب تسجيل'
+}
 
 const TrainingLog: React.FC = () => {
   const { user } = useAuth()
@@ -63,9 +70,8 @@ const TrainingLog: React.FC = () => {
       key: 'Program_Ref', 
       name: 'البرنامج', 
       fieldName: 'Program_Ref', 
-      minWidth: 100, 
-      maxWidth: 180,
-      flexGrow: 1,
+      minWidth: 140, 
+      flexGrow: 2,
       isResizable: true,
       styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: TrainingLogType) => (
@@ -78,8 +84,9 @@ const TrainingLog: React.FC = () => {
       key: 'RegistrationType', 
       name: 'نوع التسجيل', 
       fieldName: 'RegistrationType', 
-      minWidth: 80, 
+      minWidth: 70, 
       flexGrow: 1,
+      isResizable: true,
       styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: TrainingLogType) => (
         <div style={{ textAlign: 'center', width: '100%' }}>
@@ -91,9 +98,8 @@ const TrainingLog: React.FC = () => {
       key: 'AttendeesNames', 
       name: 'أسماء الحضور', 
       fieldName: 'AttendeesNames', 
-      minWidth: 90, 
-      maxWidth: 180,
-      flexGrow: 1,
+      minWidth: 120, 
+      flexGrow: 2,
       styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: TrainingLogType) => {
         let names = item.AttendeesNames;
@@ -111,8 +117,9 @@ const TrainingLog: React.FC = () => {
       key: 'TrainingDate', 
       name: 'تاريخ التدريب', 
       fieldName: 'TrainingDate', 
-      minWidth: 90, 
+      minWidth: 75, 
       flexGrow: 1,
+      isResizable: true,
       styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: TrainingLogType) => (
         <div style={{ textAlign: 'center', width: '100%' }}>
@@ -123,32 +130,39 @@ const TrainingLog: React.FC = () => {
     {
       key: 'attachment',
       name: 'المرفق',
-      minWidth: 80,
-      flexGrow: 1,
+      minWidth: 60,
+      flexGrow: 0,
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: TrainingLogType) => (
-        <a
-          href={getAttachmentLink(item)}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: '#008752',
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          📎 أضف مرفق
-        </a>
+        <div style={{ textAlign: 'center', width: '100%' }}>
+          <a
+            href={getAttachmentLink(item)}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: '#008752',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            📎 أضف مرفق
+          </a>
+        </div>
       ),
     },
     {
       key: 'actions',
       name: 'الإجراءات',
       fieldName: 'actions',
-      minWidth: 120,
+      minWidth: 75,
+      flexGrow: 0,
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: TrainingLogType) => (
-        <Stack horizontal tokens={{ childrenGap: 8 }}>
+        <Stack horizontal tokens={{ childrenGap: 8 }} horizontalAlign="center">
           <IconButton
             iconProps={{ iconName: 'Edit', styles: { root: { fontSize: 16, fontWeight: 600 } } }}
             onClick={() => onEdit(item)}
@@ -245,7 +259,7 @@ const TrainingLog: React.FC = () => {
     setForm({
       Title: '',
       Program_Ref: '',
-      RegistrationType: 'طلب تسجيل',
+      RegistrationType: '',  // Will be set when program is selected
       AttendeesNames: '',
       TrainingDate: new Date().toISOString().split('T')[0],
     })
@@ -414,7 +428,14 @@ const TrainingLog: React.FC = () => {
               if (!editingId) {
                 const program = programs.find(p => (p.Id?.toString() === option?.key) || (p.Title === option?.key))
                 setSelectedProgram(program || null)
-                setForm({ ...form, Program_Ref: program?.Title || option?.text || '' })
+                // Auto-set registration type based on program date
+                const regType = getRegistrationType(program?.Date)
+                setForm({ 
+                  ...form, 
+                  Program_Ref: program?.Title || option?.text || '',
+                  RegistrationType: regType,
+                  TrainingDate: program?.Date || form.TrainingDate
+                })
               }
             }}
             required
@@ -439,14 +460,23 @@ const TrainingLog: React.FC = () => {
             </div>
           )}
 
-          <Dropdown
-            label="نوع التسجيل *"
-            selectedKey={form.RegistrationType}
-            options={registrationTypeOptions}
-            onChange={(_, option) => setForm({ ...form, RegistrationType: option?.key as string || '' })}
-            required
-            styles={{ root: { marginBottom: 16 } }}
-          />
+          {/* Registration Type - Auto-determined, read-only display */}
+          <div style={{ marginBottom: 16 }}>
+            <Label>نوع التسجيل</Label>
+            <div style={{ 
+              padding: '8px 12px', 
+              backgroundColor: form.RegistrationType === 'توثيق حضور سابق' ? '#fff4ce' : '#e8f4e8',
+              borderRadius: '4px',
+              border: '1px solid ' + (form.RegistrationType === 'توثيق حضور سابق' ? '#ffb900' : '#107c10'),
+              color: form.RegistrationType === 'توثيق حضور سابق' ? '#8a6914' : '#107c10',
+              fontWeight: 600
+            }}>
+              {form.RegistrationType || 'يتم تحديده عند اختيار البرنامج'}
+            </div>
+            <Text variant="small" style={{ color: '#666', marginTop: 4, display: 'block' }}>
+              يتم تحديد نوع التسجيل تلقائياً بناءً على تاريخ البرنامج
+            </Text>
+          </div>
 
           {/* Attendee Selection */}
           <Label required>اختيار الحضور من فريق الأمن والسلامة *</Label>
@@ -486,18 +516,11 @@ const TrainingLog: React.FC = () => {
           )}
 
           <TextField
-            label="تاريخ التدريب"
-            type="date"
-            value={form.TrainingDate || ''}
-            onChange={(_, v) => setForm({ ...form, TrainingDate: v || '' })}
-            styles={{ root: { marginBottom: 16 } }}
-          />
-
-          <TextField
             label="ملاحظات"
             value={form.Title || ''}
             onChange={(_, v) => setForm({ ...form, Title: v || '' })}
             placeholder="أدخل ملاحظات إضافية (اختياري)"
+            styles={{ root: { marginBottom: 16 } }}
           />
 
           {/* Attachment info */}

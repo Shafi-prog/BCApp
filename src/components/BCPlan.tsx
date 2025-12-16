@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Stack, Icon, MessageBar, MessageBarType } from '@fluentui/react'
 import { useAuth } from '../context/AuthContext'
+import { SharePointService, Drill } from '../services/sharepointService'
 
 interface SharedBCPlan {
   title: string
@@ -9,26 +10,71 @@ interface SharedBCPlan {
   scenarios: { id: number; title: string; description: string; actions: string[] }[]
   contacts: { name: string; role: string; phone: string }[]
   alternativeSchools: { schoolName: string; alternativeSchool: string }[]
-  drillPlan: { quarter: number; drillType: string; targetDate: string; startDate?: string; endDate?: string }[]
+  drillPlan: { quarter: number; drillType: string; targetDate: string; startDate?: string; endDate?: string; hypothesis?: string; specificEvent?: string; targetGroup?: string }[]
   isPublished: boolean
+}
+
+interface YearlyDrillPlan {
+  id: number
+  title: string
+  hypothesis: string
+  specificEvent: string
+  targetGroup: string
+  startDate: string
+  endDate: string
+  status: string
 }
 
 const BCPlan: React.FC = () => {
   const { user } = useAuth()
   const [sharedBCPlan, setSharedBCPlan] = useState<SharedBCPlan | null>(null)
+  const [yearlyPlan, setYearlyPlan] = useState<YearlyDrillPlan[]>([])
+  const [executedDrills, setExecutedDrills] = useState<Drill[]>([])
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // Load shared BC Plan from localStorage
-    const savedPlan = localStorage.getItem('bc_shared_plan')
-    if (savedPlan) {
-      try {
-        const plan = JSON.parse(savedPlan) as SharedBCPlan
-        setSharedBCPlan(plan)
-      } catch (e) {
-        console.error('Error loading BC Plan:', e)
+    loadData()
+  }, [user])
+
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      // Load shared BC Plan from localStorage
+      const savedPlan = localStorage.getItem('bc_shared_plan')
+      if (savedPlan) {
+        try {
+          const plan = JSON.parse(savedPlan) as SharedBCPlan
+          setSharedBCPlan(plan)
+        } catch (e) {
+          console.error('Error loading BC Plan:', e)
+        }
       }
+
+      // Load yearly drill plans from SharePoint
+      const plans = await SharePointService.getAdminDrillPlans()
+      setYearlyPlan(plans.map(p => ({
+        id: p.Id || 0,
+        title: p.Title,
+        hypothesis: p.DrillHypothesis || '',
+        specificEvent: p.SpecificEvent || '',
+        targetGroup: p.TargetGroup || '',
+        startDate: p.StartDate || '',
+        endDate: p.EndDate || '',
+        status: p.PlanStatus || 'مخطط',
+      })))
+
+      // Load executed drills for this school
+      const schoolName = user?.schoolName
+      if (schoolName) {
+        const drills = await SharePointService.getDrills(schoolName)
+        setExecutedDrills(drills.filter(d => !d.IsAdminPlan))
+      }
+    } catch (e) {
+      console.error('Error loading data:', e)
+    } finally {
+      setLoading(false)
     }
-  }, [])
+  }
 
   if (!sharedBCPlan) {
     return (
@@ -164,7 +210,7 @@ const BCPlan: React.FC = () => {
         </div>
       </div>
 
-      {/* Drill Plan Section - Link to Drills page */}
+      {/* Drill Plan Section - Redirect to Drills page */}
       <div className="card" style={{ padding: 20, marginBottom: 24 }}>
         <h2 style={{ 
           color: '#107c10', 
@@ -178,40 +224,54 @@ const BCPlan: React.FC = () => {
           <Icon iconName="Calendar" style={{ fontSize: 24 }} />
           خطة التمارين السنوية
         </h2>
-        
+
+        <MessageBar messageBarType={MessageBarType.info} styles={{ root: { marginBottom: 16 } }}>
+          يمكنك الاطلاع على خطة التمارين السنوية وتنفيذها من صفحة سجل التمارين الفرضية
+        </MessageBar>
+
+        {/* Progress Summary */}
         <div style={{ 
-          backgroundColor: '#e8f5e9', 
-          borderRadius: 12, 
-          padding: 24,
-          textAlign: 'center',
-          border: '2px solid #4caf50'
+          backgroundColor: '#f0f9ff', 
+          padding: 16, 
+          borderRadius: 8, 
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12
         }}>
-          <Icon iconName="TaskList" style={{ fontSize: 48, color: '#107c10', marginBottom: 16 }} />
-          <p style={{ fontSize: '1.1rem', color: '#333', marginBottom: 16 }}>
-            تم نقل خطة التمارين السنوية إلى صفحة "سجل التمارين الفرضية"
-          </p>
-          <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: 20 }}>
-            يمكنك من هناك عرض التمارين المتاحة وتنفيذها مباشرة
-          </p>
-          <a 
-            href="#/drills" 
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              backgroundColor: '#107c10',
-              color: '#fff',
-              padding: '12px 24px',
-              borderRadius: 8,
-              textDecoration: 'none',
-              fontWeight: 600,
-              fontSize: '1rem'
-            }}
-          >
-            <Icon iconName="Play" />
-            الذهاب لسجل التمارين الفرضية
-          </a>
+          <div>
+            <span style={{ fontSize: '1.8rem', fontWeight: 700, color: executedDrills.length >= 4 ? '#107c10' : '#0078d4' }}>
+              {executedDrills.length} / {yearlyPlan.length || 4}
+            </span>
+            <span style={{ marginRight: 8, color: '#666' }}>تمارين منفذة</span>
+          </div>
+          {executedDrills.length >= 4 && (
+            <span style={{ backgroundColor: '#107c10', color: '#fff', padding: '8px 16px', borderRadius: 20, fontWeight: 600 }}>
+              ✅ أكملت المدرسة الخطة السنوية
+            </span>
+          )}
         </div>
+        
+        <a 
+          href="#/drills" 
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            backgroundColor: '#107c10',
+            color: '#fff',
+            padding: '12px 24px',
+            borderRadius: 8,
+            textDecoration: 'none',
+            fontWeight: 600,
+            fontSize: '1rem',
+          }}
+        >
+          <Icon iconName="TaskList" />
+          الذهاب لسجل التمارين الفرضية
+        </a>
       </div>
 
       {/* Emergency Contacts Section */}

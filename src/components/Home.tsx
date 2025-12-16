@@ -378,9 +378,8 @@ const Home: React.FC = () => {
       name: 'المدرسة', 
       fieldName: 'schoolName', 
       minWidth: 150, 
-      maxWidth: 250,
       isResizable: true,
-      flexGrow: 1,
+      flexGrow: 2,
       isSorted: sortColumn === 'schoolName',
       isSortedDescending: sortColumn === 'schoolName' && !sortAscending,
       onColumnClick,
@@ -1256,32 +1255,37 @@ const Home: React.FC = () => {
         
         {/* Summary stats */}
         <div style={{ marginTop: 16, padding: 16, backgroundColor: '#f3f2f1', borderRadius: 8 }}>
-          <Stack horizontal tokens={{ childrenGap: 100 }} horizontalAlign="center">
-            <div style={{ textAlign: 'center' }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(4, 1fr)', 
+            gap: '24px',
+            width: '100%'
+          }}>
+            <div style={{ textAlign: 'center', padding: '8px 12px', minWidth: 0 }}>
               <Text variant="xxLarge" style={{ color: '#008752', fontWeight: 700, display: 'block' }}>
                 {stats.schoolsWithTeams}
               </Text>
-              <Text variant="small" style={{ color: '#666' }}>مدارس لديها فرق</Text>
+              <Text variant="small" style={{ color: '#666', display: 'block', lineHeight: '1.4', whiteSpace: 'normal', wordWrap: 'break-word' }}>مدارس لديها فرق</Text>
             </div>
-            <div style={{ textAlign: 'center' }}>
+            <div style={{ textAlign: 'center', padding: '8px 12px', minWidth: 0 }}>
               <Text variant="xxLarge" style={{ color: '#0078d4', fontWeight: 700, display: 'block' }}>
                 {stats.schoolsWithDrills}
               </Text>
-              <Text variant="small" style={{ color: '#666' }}>مدارس نفذت تمارين</Text>
+              <Text variant="small" style={{ color: '#666', display: 'block', lineHeight: '1.4', whiteSpace: 'normal', wordWrap: 'break-word' }}>مدارس نفذت تمارين</Text>
             </div>
-            <div style={{ textAlign: 'center' }}>
+            <div style={{ textAlign: 'center', padding: '8px 12px', minWidth: 0 }}>
               <Text variant="xxLarge" style={{ color: '#107c10', fontWeight: 700, display: 'block' }}>
                 {stats.schoolsWithTraining}
               </Text>
-              <Text variant="small" style={{ color: '#666' }}>مدارس لديها تدريبات</Text>
+              <Text variant="small" style={{ color: '#666', display: 'block', lineHeight: '1.4', whiteSpace: 'normal', wordWrap: 'break-word' }}>مدارس لديها تدريبات</Text>
             </div>
-            <div style={{ textAlign: 'center' }}>
+            <div style={{ textAlign: 'center', padding: '8px 12px', minWidth: 0 }}>
               <Text variant="xxLarge" style={{ color: '#d83b01', fontWeight: 700, display: 'block' }}>
                 {Math.round(schoolProgress.filter(p => p.readinessPercent >= 100).length / (schoolProgress.length || 1) * 100)}%
               </Text>
-              <Text variant="small" style={{ color: '#666' }}>نسبة المدارس الجاهزة</Text>
+              <Text variant="small" style={{ color: '#666', display: 'block', lineHeight: '1.4', whiteSpace: 'normal', wordWrap: 'break-word' }}>نسبة المدارس الجاهزة</Text>
             </div>
-          </Stack>
+          </div>
         </div>
       </div>
     </div>

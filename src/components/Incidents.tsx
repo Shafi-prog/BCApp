@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   DetailsList,
   DetailsListLayoutMode,
@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, Incident } from '../services/sharepointService'
 import { SBC_Incidents_LogService } from '../generated/services/SBC_Incidents_LogService'
+import { mutualOperationPlan } from '../data/mutualOperation'
 
 // Full risk level list grouped by incident category
 const allRiskLevels = [
@@ -115,6 +116,14 @@ const Incidents: React.FC = () => {
   const [actionTakenOptions, setActionTakenOptions] = useState<IDropdownOption[]>([])
   const [altLocationOptions, setAltLocationOptions] = useState<IDropdownOption[]>([])
   const [schoolOptions, setSchoolOptions] = useState<IDropdownOption[]>([])
+  const [mutualSchoolOptions, setMutualSchoolOptions] = useState<IDropdownOption[]>([])
+  
+  // Get alternative schools from mutual operation plan based on current school
+  const alternativeSchools = useMemo(() => {
+    if (!user?.school) return []
+    const schoolData = mutualOperationPlan.find(s => s.schoolName === user.school)
+    return schoolData?.alternatives || []
+  }, [user?.school])
   
   const [form, setForm] = useState<Partial<Incident>>({
     Title: '',
@@ -234,31 +243,72 @@ const Incidents: React.FC = () => {
   }
 
   const columns: IColumn[] = [
-    { key: 'Title', name: 'العنوان', fieldName: 'Title', minWidth: 80 },
-    { key: 'IncidentNumber', name: 'رقم البلاغ', fieldName: 'IncidentNumber', minWidth: 70 },
-    { key: 'IncidentCategory', name: 'التصنيف', fieldName: 'IncidentCategory', minWidth: 70 },
+    { 
+      key: 'Title', 
+      name: 'العنوان', 
+      fieldName: 'Title', 
+      minWidth: 140, 
+      flexGrow: 2, 
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: Incident) => (
+        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.Title}</div>
+      ),
+    },
+    { 
+      key: 'IncidentNumber', 
+      name: 'رقم البلاغ', 
+      fieldName: 'IncidentNumber', 
+      minWidth: 70, 
+      flexGrow: 1, 
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: Incident) => (
+        <div style={{ textAlign: 'center', width: '100%' }}>{item.IncidentNumber}</div>
+      ),
+    },
+    { 
+      key: 'IncidentCategory', 
+      name: 'التصنيف', 
+      fieldName: 'IncidentCategory', 
+      minWidth: 80, 
+      flexGrow: 1, 
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: Incident) => (
+        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.IncidentCategory}</div>
+      ),
+    },
     { 
       key: 'RiskLevel', 
       name: 'مستوى الخطر', 
       fieldName: 'RiskLevel', 
-      minWidth: 80,
+      minWidth: 70,
+      flexGrow: 1,
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: Incident) => (
-        <span style={{ 
-          padding: '2px 8px', 
-          borderRadius: 4, 
-          backgroundColor: getRiskLevelColor(item.RiskLevel || ''),
-          color: 'white',
-          fontSize: 11 
-        }}>
-          {item.RiskLevel}
-        </span>
+        <div style={{ textAlign: 'center', width: '100%' }}>
+          <span style={{ 
+            padding: '2px 8px', 
+            borderRadius: 4, 
+            backgroundColor: getRiskLevelColor(item.RiskLevel || ''),
+            color: 'white',
+            fontSize: 11 
+          }}>
+            {item.RiskLevel}
+          </span>
+        </div>
       )
     },
     { 
       key: 'AlertModelType', 
       name: 'المؤشر', 
       fieldName: 'AlertModelType', 
-      minWidth: 70,
+      minWidth: 60,
+      flexGrow: 1,
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: Incident) => {
         const alertType = item.AlertModelType || ''
         let bgColor = '#666'
@@ -266,28 +316,53 @@ const Incidents: React.FC = () => {
         else if (alertType.includes('أصفر')) bgColor = '#ff9800'
         else if (alertType.includes('أحمر')) bgColor = '#d83b01'
         return (
-          <span style={{ 
-            padding: '2px 8px', 
-            borderRadius: 4, 
-            backgroundColor: bgColor,
-            color: 'white',
-            fontSize: 11 
-          }}>
-            {alertType.split(' ')[0]}
-          </span>
+          <div style={{ textAlign: 'center', width: '100%' }}>
+            <span style={{ 
+              padding: '2px 8px', 
+              borderRadius: 4, 
+              backgroundColor: bgColor,
+              color: 'white',
+              fontSize: 11 
+            }}>
+              {alertType.split(' ')[0]}
+            </span>
+          </div>
         )
       }
     },
-    { key: 'ActivatedAlternative', name: 'البديل', fieldName: 'ActivatedAlternative', minWidth: 70 },
-    { key: 'Created', name: 'التاريخ', fieldName: 'Created', minWidth: 80 },
+    { 
+      key: 'ActivatedAlternative', 
+      name: 'البديل', 
+      fieldName: 'ActivatedAlternative', 
+      minWidth: 100, 
+      flexGrow: 1, 
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: Incident) => (
+        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.ActivatedAlternative}</div>
+      ),
+    },
+    { 
+      key: 'Created', 
+      name: 'التاريخ', 
+      fieldName: 'Created', 
+      minWidth: 75, 
+      flexGrow: 1, 
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: Incident) => (
+        <div style={{ textAlign: 'center', width: '100%' }}>{item.Created ? new Date(item.Created).toLocaleDateString('ar-SA') : '-'}</div>
+      ),
+    },
     {
       key: 'actions',
       name: 'الإجراءات',
       fieldName: 'actions',
-      minWidth: 80,
-      maxWidth: 100,
+      minWidth: 75,
+      flexGrow: 0,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: Incident) => (
-        <Stack horizontal tokens={{ childrenGap: 8 }}>
+        <Stack horizontal tokens={{ childrenGap: 8 }} horizontalAlign="center">
           <IconButton
             iconProps={{ iconName: 'Edit', styles: { root: { fontSize: 16, fontWeight: 600 } } }}
             onClick={() => onEdit(item)}
@@ -530,9 +605,9 @@ const Incidents: React.FC = () => {
             styles={{ root: { marginTop: 12 } }}
           />
           
-          {/* 3. ActivatedAlternative - البديل */}
+          {/* 3. ActivatedAlternative - البديل المفعل */}
           <Dropdown
-            label="البديل"
+            label="البديل المفعل"
             selectedKey={form.ActivatedAlternative}
             options={activatedAlternativeOptions}
             onChange={(_, option) => {
@@ -545,7 +620,69 @@ const Incidents: React.FC = () => {
               }
             }}
             styles={{ root: { marginTop: 12 } }}
+            placeholder="اختر البديل المفعل"
           />
+          
+          {/* Show alternative school dropdown when "مدرسة بديلة" is selected */}
+          {form.ActivatedAlternative === 'مدرسة بديلة' && (
+            <div style={{ 
+              backgroundColor: '#f0f9ff', 
+              padding: 16, 
+              borderRadius: 8, 
+              marginTop: 12,
+              border: '1px solid #0078d4' 
+            }}>
+              <h4 style={{ margin: '0 0 12px 0', color: '#0078d4' }}>🏫 المدارس البديلة من خطة التشغيل المتبادل</h4>
+              {alternativeSchools.length > 0 ? (
+                <>
+                  <Dropdown
+                    label="اختر المدرسة البديلة"
+                    selectedKey={form.AltLocation}
+                    options={alternativeSchools.map((alt, idx) => ({
+                      key: alt.schoolName,
+                      text: `${idx + 1}. ${alt.schoolName} (${alt.sector}) - ${alt.distanceKm} كم`,
+                      data: alt
+                    }))}
+                    onChange={(_, option) => setForm({ ...form, AltLocation: option?.key as string || '' })}
+                    placeholder="اختر المدرسة البديلة"
+                    styles={{ root: { marginBottom: 12 } }}
+                  />
+                  {form.AltLocation && (
+                    <div style={{ 
+                      backgroundColor: '#e8f5e9', 
+                      padding: 12, 
+                      borderRadius: 8,
+                      fontSize: '0.9rem'
+                    }}>
+                      {(() => {
+                        const selectedSchool = alternativeSchools.find(s => s.schoolName === form.AltLocation)
+                        return selectedSchool ? (
+                          <>
+                            <div><strong>📍 القطاع:</strong> {selectedSchool.sector}</div>
+                            <div><strong>📏 المسافة:</strong> {selectedSchool.distanceKm} كم</div>
+                            <div><strong>👤 مدير/ة المدرسة:</strong> {selectedSchool.principalName}</div>
+                            <div><strong>📞 رقم الهاتف:</strong> {selectedSchool.principalPhone}</div>
+                          </>
+                        ) : null
+                      })()}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ padding: 12, textAlign: 'center', color: '#666' }}>
+                  ⚠️ لا توجد مدارس بديلة محددة لهذه المدرسة في خطة التشغيل المتبادل
+                  <Dropdown
+                    label="أو اختر من قائمة المدارس"
+                    selectedKey={form.AltLocation}
+                    options={schoolOptions}
+                    onChange={(_, option) => setForm({ ...form, AltLocation: option?.key as string || '' })}
+                    placeholder="اختر المدرسة البديلة"
+                    styles={{ root: { marginTop: 12 } }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
           
           {/* 4. RiskLevel - مستوى الخطر */}
           <Dropdown
@@ -627,28 +764,16 @@ const Incidents: React.FC = () => {
             required
           />
           
-          {/* 10. ActionTaken - البديل المفعل */}
+          {/* 10. ActionTaken - الإجراء المتخذ */}
           <Dropdown
-            label="البديل المفعل"
+            label="الإجراء المتخذ"
             selectedKey={form.ActionTaken}
             options={actionTakenOptions}
             onChange={(_, option) => setForm({ ...form, ActionTaken: option?.key as string || '' })}
             styles={{ root: { marginTop: 12 } }}
           />
           
-          {/* 11. AltLocation - المدرسة البديلة (conditional) */}
-          {form.ActivatedAlternative === 'مدرسة بديلة' && (
-            <Dropdown
-              label="المدرسة البديلة"
-              selectedKey={form.AltLocation}
-              options={schoolOptions}
-              onChange={(_, option) => setForm({ ...form, AltLocation: option?.key as string || '' })}
-              styles={{ root: { marginTop: 12 } }}
-              placeholder="اختر المدرسة البديلة"
-            />
-          )}
-          
-          {/* 12. CommunicationDone - التواصل مع أولياء الأمور */}
+          {/* 11. CommunicationDone - التواصل مع أولياء الأمور */}
           <Toggle
             label="التواصل مع أولياء الأمور"
             checked={form.CommunicationDone || false}
@@ -656,7 +781,7 @@ const Incidents: React.FC = () => {
             styles={{ root: { marginTop: 12 } }}
           />
           
-          {/* 13. ClosureTime - وقت استعادة الخدمة */}
+          {/* 12. ClosureTime - وقت استعادة الخدمة */}
           <TextField
             label="تاريخ استعادة الخدمة"
             type="date"
@@ -665,7 +790,7 @@ const Incidents: React.FC = () => {
             styles={{ root: { marginTop: 12 } }}
           />
           
-          {/* 14. Challenges - التحديات */}
+          {/* 13. Challenges - التحديات */}
           <TextField
             label="التحديات"
             value={form.Challenges || ''}

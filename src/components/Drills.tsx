@@ -66,7 +66,8 @@ const Drills: React.FC = () => {
         key: 'SchoolName_Ref',
         name: 'المدرسة',
         fieldName: 'SchoolName_Ref',
-        minWidth: 80,
+        minWidth: 120,
+        flexGrow: 2,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
@@ -81,6 +82,7 @@ const Drills: React.FC = () => {
         name: 'الفرضية',
         fieldName: 'DrillHypothesis',
         minWidth: 80,
+        flexGrow: 1,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
@@ -89,13 +91,14 @@ const Drills: React.FC = () => {
       },
       {
         key: 'SpecificEvent',
-        name: 'تفاصيل الفرضية',
+        name: 'وصف الحدث المحدد *',
         fieldName: 'SpecificEvent',
-        minWidth: 100,
+        minWidth: 180,
+        flexGrow: 3,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem', color: '#666' }}>
+          <div style={{ textAlign: 'right', width: '100%', whiteSpace: 'pre-wrap', wordWrap: 'break-word', fontSize: '0.85rem', color: '#333', lineHeight: '1.5', padding: '4px 0' }}>
             {item.SpecificEvent || '-'}
           </div>
         ),
@@ -104,7 +107,8 @@ const Drills: React.FC = () => {
         key: 'TargetGroup',
         name: 'الفئة المستهدفة',
         fieldName: 'TargetGroup',
-        minWidth: 80,
+        minWidth: 90,
+        flexGrow: 1,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
@@ -115,7 +119,8 @@ const Drills: React.FC = () => {
         key: 'ExecutionDate',
         name: 'تاريخ التنفيذ',
         fieldName: 'ExecutionDate',
-        minWidth: 80,
+        minWidth: 75,
+        flexGrow: 1,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => {
@@ -124,10 +129,66 @@ const Drills: React.FC = () => {
           return <div style={{ textAlign: 'center', width: '100%' }}>{date.toLocaleDateString('ar-SA')}</div>;
         },
       },
+      // أعمدة التقييم - تظهر للأدمن فقط
+      ...(user?.type === 'admin' ? [{
+        key: 'PlanRating',
+        name: 'تقييم الخطة',
+        minWidth: 70,
+        flexGrow: 0,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: Drill) => {
+          const rating = item.PlanEffectivenessRating
+          if (!rating) return <div style={{ textAlign: 'center', color: '#999' }}>-</div>
+          const colors = ['#d83b01', '#ff8c00', '#ffb900', '#107c10', '#0078d4']
+          return (
+            <div style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
+              <span style={{ 
+                backgroundColor: colors[rating - 1], 
+                color: '#fff', 
+                padding: '2px 8px', 
+                borderRadius: 12, 
+                fontSize: '0.8rem',
+                fontWeight: 600 
+              }}>
+                {rating}/5
+              </span>
+            </div>
+          )
+        },
+      },
+      {
+        key: 'ProceduresRating',
+        name: 'تقييم الإجراءات',
+        minWidth: 70,
+        flexGrow: 0,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: Drill) => {
+          const rating = item.ProceduresEffectivenessRating
+          if (!rating) return <div style={{ textAlign: 'center', color: '#999' }}>-</div>
+          const colors = ['#d83b01', '#ff8c00', '#ffb900', '#107c10', '#0078d4']
+          return (
+            <div style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
+              <span style={{ 
+                backgroundColor: colors[rating - 1], 
+                color: '#fff', 
+                padding: '2px 8px', 
+                borderRadius: 12, 
+                fontSize: '0.8rem',
+                fontWeight: 600 
+              }}>
+                {rating}/5
+              </span>
+            </div>
+          )
+        },
+      }] : []),
       {
         key: 'attachment',
         name: 'المرفق',
-        minWidth: 70,
+        minWidth: 65,
+        flexGrow: 0,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => {
@@ -180,7 +241,7 @@ const Drills: React.FC = () => {
         key: 'actions',
         name: 'الإجراءات',
         minWidth: 80,
-        maxWidth: 100,
+        flexGrow: 0,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
           <Stack horizontal tokens={{ childrenGap: 8 }} horizontalAlign="center">
@@ -570,16 +631,6 @@ const Drills: React.FC = () => {
         </div>
       )}
 
-      <Stack horizontal horizontalAlign="start" style={{ marginBottom: 16 }}>
-        <PrimaryButton 
-          text="تسجيل تمرين فرضي جديد" 
-          iconProps={{ iconName: 'CirclePlus' }} 
-          onClick={onOpen} 
-          disabled={loading}
-          styles={{ root: { backgroundColor: '#008752', borderColor: '#008752' } }}
-        />
-      </Stack>
-
       <div className="card" style={{ backgroundColor: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
         <DetailsList
           items={drills}
@@ -597,7 +648,7 @@ const Drills: React.FC = () => {
       <Panel
         isOpen={panelOpen}
         onDismiss={onClose}
-        headerText={isEditing ? 'تعديل التمرين' : isFromPlan ? 'تنفيذ تمرين من الخطة السنوية' : 'تسجيل تمرين فرضي جديد'}
+        headerText={isEditing ? 'تعديل التمرين' : 'تنفيذ تمرين فرضي من الخطة السنوية'}
         type={PanelType.medium}
         isFooterAtBottom={true}
         onRenderFooterContent={() => (
@@ -653,18 +704,27 @@ const Drills: React.FC = () => {
           />
 
           <TextField
-            label={isFromPlan ? "وصف الحدث المحدد (من الإدارة)" : "وصف الحدث المحدد (اختياري)"}
+            label={isFromPlan ? "وصف الحدث المحدد (من الإدارة) *" : "وصف الحدث المحدد (اختياري)"}
             value={form.SpecificEvent || ''}
             onChange={(_, v) => setForm({ ...form, SpecificEvent: v || '' })}
             styles={{ 
               root: { marginTop: 16 },
-              ...(isFromPlan ? { field: { backgroundColor: '#f3f2f1' } } : {})
+              field: { 
+                backgroundColor: isFromPlan ? '#e8f4fd' : undefined,
+                minHeight: isFromPlan ? 100 : undefined,
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',
+                lineHeight: '1.6',
+                padding: isFromPlan ? '12px' : undefined,
+                fontSize: isFromPlan ? '0.95rem' : undefined
+              }
             }}
             placeholder={isFromPlan ? '' : "وصف الحدث المحدد - يمكن للمدرسة كتابته"}
             multiline
-            rows={3}
+            rows={isFromPlan ? 5 : 3}
             readOnly={isFromPlan}
-            disabled={isFromPlan}
+            disabled={false}
+            description={isFromPlan ? "هذا الوصف محدد من الإدارة - للقراءة فقط" : undefined}
           />
 
           <div style={{ marginTop: 16 }}>
@@ -708,12 +768,114 @@ const Drills: React.FC = () => {
             required
             styles={{ root: { marginTop: 16 } }}
             min={isFromPlan && currentPlan?.startDate ? currentPlan.startDate : undefined}
-            max={isFromPlan && currentPlan?.endDate ? currentPlan.endDate : new Date().toISOString().split('T')[0]}
+            max={new Date().toISOString().split('T')[0]}
             description={isFromPlan && currentPlan?.startDate && currentPlan?.endDate 
-              ? `اختر تاريخ بين ${new Date(currentPlan.startDate).toLocaleDateString('ar-SA')} و ${new Date(currentPlan.endDate).toLocaleDateString('ar-SA')}`
-              : "يمكن اختيار تاريخ سابق فقط"
+              ? `اختر تاريخ بين ${new Date(currentPlan.startDate).toLocaleDateString('ar-SA')} و اليوم (${new Date().toLocaleDateString('ar-SA')})`
+              : `لا يمكن اختيار تاريخ مستقبلي - الحد الأقصى: ${new Date().toLocaleDateString('ar-SA')}`
             }
           />
+
+          {/* قسم تقييم فعالية الخطة والإجراءات */}
+          <div style={{ marginTop: 24, padding: 16, backgroundColor: '#fff8e1', borderRadius: 8, border: '1px solid #ffcc80' }}>
+            <h4 style={{ color: '#ef6c00', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              📊 تقييم فعالية الخطة والإجراءات
+            </h4>
+            <p style={{ color: '#666', fontSize: '0.85rem', marginBottom: 16 }}>
+              يرجى تقييم مدى فعالية الخطة والإجراءات المطبقة خلال التمرين (1 = ضعيف، 5 = ممتاز)
+            </p>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>
+                  تقييم فعالية الخطة *
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[1, 2, 3, 4, 5].map(rating => (
+                    <button
+                      key={rating}
+                      type="button"
+                      onClick={() => setForm({ ...form, PlanEffectivenessRating: rating })}
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: '50%',
+                        border: form.PlanEffectivenessRating === rating ? '3px solid #0078d4' : '2px solid #ddd',
+                        backgroundColor: form.PlanEffectivenessRating === rating ? '#0078d4' : '#fff',
+                        color: form.PlanEffectivenessRating === rating ? '#fff' : '#333',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {rating}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#666', marginTop: 4 }}>
+                  {form.PlanEffectivenessRating === 1 && '⚠️ ضعيف - يحتاج تحسين جذري'}
+                  {form.PlanEffectivenessRating === 2 && '📉 دون المتوقع'}
+                  {form.PlanEffectivenessRating === 3 && '📊 متوسط - مقبول'}
+                  {form.PlanEffectivenessRating === 4 && '📈 جيد جداً'}
+                  {form.PlanEffectivenessRating === 5 && '⭐ ممتاز'}
+                </div>
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>
+                  تقييم فعالية الإجراءات *
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[1, 2, 3, 4, 5].map(rating => (
+                    <button
+                      key={rating}
+                      type="button"
+                      onClick={() => setForm({ ...form, ProceduresEffectivenessRating: rating })}
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: '50%',
+                        border: form.ProceduresEffectivenessRating === rating ? '3px solid #107c10' : '2px solid #ddd',
+                        backgroundColor: form.ProceduresEffectivenessRating === rating ? '#107c10' : '#fff',
+                        color: form.ProceduresEffectivenessRating === rating ? '#fff' : '#333',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {rating}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#666', marginTop: 4 }}>
+                  {form.ProceduresEffectivenessRating === 1 && '⚠️ ضعيف - يحتاج تحسين جذري'}
+                  {form.ProceduresEffectivenessRating === 2 && '📉 دون المتوقع'}
+                  {form.ProceduresEffectivenessRating === 3 && '📊 متوسط - مقبول'}
+                  {form.ProceduresEffectivenessRating === 4 && '📈 جيد جداً'}
+                  {form.ProceduresEffectivenessRating === 5 && '⭐ ممتاز'}
+                </div>
+              </div>
+            </div>
+            
+            <TextField
+              label="ملاحظات وتعليقات المدرسة"
+              value={form.SchoolFeedback || ''}
+              onChange={(_, v) => setForm({ ...form, SchoolFeedback: v || '' })}
+              multiline
+              rows={2}
+              styles={{ root: { marginTop: 16 } }}
+              placeholder="أضف ملاحظاتك حول تنفيذ التمرين..."
+            />
+            
+            <TextField
+              label="مقترحات التحسين"
+              value={form.ImprovementSuggestions || ''}
+              onChange={(_, v) => setForm({ ...form, ImprovementSuggestions: v || '' })}
+              multiline
+              rows={2}
+              styles={{ root: { marginTop: 12 } }}
+              placeholder="ما هي مقترحاتك لتحسين الخطة والإجراءات؟"
+            />
+          </div>
         </div>
       </Panel>
     </div>

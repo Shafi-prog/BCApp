@@ -50,6 +50,25 @@ main,
   padding: 16px;
   box-shadow: 0 6px 18px rgba(16, 124, 16, 0.06);
   margin-bottom: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Fix table width to use full available space */
+.card .ms-DetailsList {
+  width: 100% !important;
+}
+
+.card .ms-DetailsHeader {
+  width: 100% !important;
+}
+
+.card .ms-DetailsList-contentWrapper {
+  width: 100% !important;
+}
+
+.card .ms-DetailsRow {
+  width: 100% !important;
 }
 
 .header {
@@ -197,69 +216,188 @@ main,
   }
 }
 
-/* Center-align DetailsList cells */
-.ms-DetailsRow-cell {
-  text-align: center !important;
-  justify-content: center !important;
+/* ========================================
+   COMPREHENSIVE TABLE STYLING - ALL TABLES
+   ======================================== */
+
+/* Base DetailsList container */
+.ms-DetailsList {
+  direction: rtl;
+  width: 100% !important;
+  min-width: 100% !important;
+  font-size: 13px !important;
+}
+
+.ms-DetailsList-contentWrapper {
+  overflow-x: auto !important;
+  width: 100% !important;
+}
+
+/* Header styling */
+.ms-DetailsHeader {
+  padding-right: 0 !important;
   display: flex !important;
-  align-items: center !important;
+  width: 100% !important;
+  background-color: #f8f9fa !important;
+  border-bottom: 2px solid #008752 !important;
+  min-height: 48px !important;
 }
 
 .ms-DetailsHeader-cell {
   text-align: center !important;
   justify-content: center !important;
+  padding: 12px 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  font-weight: 600 !important;
+  color: #323130 !important;
+  background-color: #f8f9fa !important;
+  border-left: 1px solid #e8e8e8 !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+.ms-DetailsHeader-cell:last-child {
+  border-left: none !important;
+}
+
+.ms-DetailsHeader-cellWrapper {
+  width: 100% !important;
 }
 
 .ms-DetailsHeader-cellTitle {
   justify-content: center !important;
-}
-
-/* Fix table column widths - equal distribution */
-.ms-DetailsList {
-  direction: rtl;
-  table-layout: fixed !important;
+  text-align: center !important;
   width: 100% !important;
+  display: flex !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  line-height: 1.4 !important;
+  font-size: 13px !important;
 }
 
-.ms-DetailsList-contentWrapper {
-  overflow-x: auto !important;
+.ms-DetailsHeader-cellName {
+  text-align: center !important;
+  width: 100% !important;
+  display: block !important;
+  white-space: normal !important;
+  line-height: 1.4 !important;
 }
 
-/* Equal column widths when flexGrow is same */
-.ms-DetailsHeader-cell,
+/* Row styling */
+.ms-DetailsRow {
+  width: 100% !important;
+  text-align: center;
+  display: flex !important;
+  min-height: 52px !important;
+  border-bottom: 1px solid #f0f0f0 !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.ms-DetailsRow:hover {
+  background-color: #f5f9f5 !important;
+}
+
+.ms-DetailsRow-fields {
+  display: flex !important;
+  width: 100% !important;
+  align-items: stretch !important;
+}
+
+/* Cell styling - CRITICAL for proper content display */
 .ms-DetailsRow-cell {
-  flex: 1 1 0 !important;
-  min-width: 80px !important;
-  max-width: none !important;
+  text-align: center !important;
+  justify-content: center !important;
+  padding: 10px 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  line-height: 1.5 !important;
+  font-size: 13px !important;
+  color: #323130 !important;
+  border-left: 1px solid #f5f5f5 !important;
+  min-height: 48px !important;
 }
 
-/* Prevent specific columns from being too wide */
+.ms-DetailsRow-cell:last-child {
+  border-left: none !important;
+}
+
+/* Cell content wrapper for proper text display */
+.ms-DetailsRow-cell > div,
+.ms-DetailsRow-cell > span {
+  width: 100% !important;
+  text-align: center !important;
+  line-height: 1.5 !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* Actions column - fixed width */
 .ms-DetailsHeader-cell[data-item-key="actions"],
-.ms-DetailsRow-cell[data-automation-key="actions"] {
-  flex: 0 0 100px !important;
-  max-width: 100px !important;
+.ms-DetailsRow-cell[data-automation-key="actions"],
+.ms-DetailsHeader-cell[data-item-key="الإجراءات"],
+.ms-DetailsRow-cell[data-automation-key="الإجراءات"] {
+  min-width: 100px !important;
+  max-width: 120px !important;
+  flex-shrink: 0 !important;
 }
 
 .ms-DetailsHeader-cell[data-item-key="adminActions"],
 .ms-DetailsRow-cell[data-automation-key="adminActions"] {
-  flex: 0 0 90px !important;
-  max-width: 90px !important;
+  min-width: 90px !important;
+  max-width: 100px !important;
+  flex-shrink: 0 !important;
 }
 
-.ms-DetailsRow {
-  text-align: center;
+/* Attachment column */
+.ms-DetailsHeader-cell[data-item-key="attachment"],
+.ms-DetailsRow-cell[data-automation-key="attachment"],
+.ms-DetailsHeader-cell[data-item-key="المرفق"],
+.ms-DetailsRow-cell[data-automation-key="المرفق"],
+.ms-DetailsHeader-cell[data-item-key="المرفقات"],
+.ms-DetailsRow-cell[data-automation-key="المرفقات"] {
+  min-width: 80px !important;
+  max-width: 100px !important;
+  flex-shrink: 0 !important;
 }
 
-/* Card center alignment */
-.card .ms-DetailsRow-cell,
-.card .ms-DetailsHeader-cell {
-  text-align: center !important;
+/* Card container table improvements */
+.card .ms-DetailsList {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid #e8e8e8 !important;
 }
 
-/* Action buttons visibility */
+.card .ms-DetailsHeader {
+  background-color: #f8f9fa !important;
+}
+
+/* Alternating row colors for readability */
+.card .ms-DetailsRow:nth-child(even) {
+  background-color: #fafbfc !important;
+}
+
+.card .ms-DetailsRow:nth-child(odd) {
+  background-color: #ffffff !important;
+}
+
+.card .ms-DetailsRow:hover {
+  background-color: #e8f5e9 !important;
+}
+
+/* Action buttons - larger and more visible */
 .ms-Button--icon {
-  min-width: 32px !important;
-  min-height: 32px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  width: 36px !important;
+  height: 36px !important;
+  margin: 2px !important;
 }
 
 .ms-Button--icon .ms-Icon {
@@ -267,17 +405,19 @@ main,
   font-weight: 600 !important;
 }
 
-/* Edit button */
+/* Edit button styling */
 .ms-Button--icon[title="تعديل"],
 .ms-Button--icon[aria-label="تعديل"] {
   background-color: #e6f2ff !important;
   color: #0078d4 !important;
-  border-radius: 4px !important;
+  border-radius: 6px !important;
+  border: 1px solid #0078d4 !important;
 }
 
 .ms-Button--icon[title="تعديل"]:hover,
 .ms-Button--icon[aria-label="تعديل"]:hover {
   background-color: #cce4ff !important;
+  transform: scale(1.05) !important;
 }
 
 .ms-Button--icon[title="تعديل"] .ms-Icon,
@@ -285,23 +425,120 @@ main,
   color: #0078d4 !important;
 }
 
-/* Delete button */
+/* Delete button styling */
 .ms-Button--icon[title="حذف"],
 .ms-Button--icon[aria-label="حذف"] {
   background-color: #fce8e6 !important;
   color: #d83b01 !important;
-  border-radius: 4px !important;
+  border-radius: 6px !important;
+  border: 1px solid #d83b01 !important;
 }
 
 .ms-Button--icon[title="حذف"]:hover,
 .ms-Button--icon[aria-label="حذف"]:hover {
   background-color: #f5d0cc !important;
+  transform: scale(1.05) !important;
 }
 
 .ms-Button--icon[title="حذف"] .ms-Icon,
 .ms-Button--icon[aria-label="حذف"] .ms-Icon {
   color: #d83b01 !important;
 }
+
+/* Status badges in tables */
+.ms-DetailsRow-cell .status-badge,
+.ms-DetailsRow-cell span[style*="padding"][style*="borderRadius"] {
+  display: inline-block !important;
+  padding: 4px 12px !important;
+  border-radius: 16px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+}
+
+/* Multi-line text in cells */
+.cell-multiline {
+  white-space: pre-line !important;
+  text-align: center !important;
+  line-height: 1.6 !important;
+}
+
+/* Date cells */
+.cell-date {
+  font-family: 'Segoe UI', Tahoma, sans-serif !important;
+  font-variant-numeric: tabular-nums !important;
+  direction: ltr !important;
+  unicode-bidi: embed !important;
+}
+
+/* Table responsive wrapper */
+.table-responsive-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile table adjustments */
+@media (max-width: 768px) {
+  .ms-DetailsList {
+    font-size: 12px !important;
+  }
+  
+  .ms-DetailsHeader-cell,
+  .ms-DetailsRow-cell {
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+  }
+  
+  .ms-DetailsRow {
+    min-height: 44px !important;
+  }
+  
+  .ms-DetailsHeader-cellTitle,
+  .ms-DetailsHeader-cellName {
+    font-size: 11px !important;
+  }
+  
+  .ms-Button--icon {
+    min-width: 32px !important;
+    min-height: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+  }
+  
+  .ms-Button--icon .ms-Icon {
+    font-size: 14px !important;
+  }
+}
+
+/* Tablet adjustments */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .ms-DetailsHeader-cell,
+  .ms-DetailsRow-cell {
+    padding: 10px 6px !important;
+  }
+}
+
+/* Empty state styling */
+.table-empty-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: #666;
+}
+
+.table-empty-state .ms-Icon {
+  font-size: 48px;
+  color: #999;
+  margin-bottom: 16px;
+}
+
+/* Loading state */
+.table-loading {
+  padding: 40px 20px;
+  text-align: center;
+}
+
+/* ======================================== */
 
 @media print {
   .side-nav,

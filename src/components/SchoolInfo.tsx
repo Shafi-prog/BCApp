@@ -190,32 +190,101 @@ const SchoolInfo: React.FC = () => {
 
   // Admin columns for school list
   const schoolColumns: IColumn[] = [
-    { key: 'SchoolName', name: 'اسم المدرسة', fieldName: 'SchoolName', minWidth: 120, maxWidth: 200, flexGrow: 1, isResizable: true },
-    { key: 'SchoolID', name: 'الرقم الإحصائي', fieldName: 'SchoolID', minWidth: 80, maxWidth: 120, flexGrow: 1 },
-    { key: 'Level', name: 'المرحلة', fieldName: 'Level', minWidth: 70, maxWidth: 120, flexGrow: 1 },
-    { key: 'SchoolGender', name: 'النوع', fieldName: 'SchoolGender', minWidth: 50, maxWidth: 80, flexGrow: 1 },
-    { key: 'PrincipalName', name: 'مدير/ة المدرسة', fieldName: 'PrincipalName', minWidth: 100, maxWidth: 180, flexGrow: 1 },
-    { key: 'SectorDescription', name: 'القطاع', fieldName: 'SectorDescription', minWidth: 80, maxWidth: 150, flexGrow: 1 },
+    { 
+      key: 'SchoolName', 
+      name: 'اسم المدرسة', 
+      fieldName: 'SchoolName', 
+      minWidth: 150, 
+      flexGrow: 2, 
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: SchoolInfoType) => (
+        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.SchoolName}</div>
+      ),
+    },
+    { 
+      key: 'SchoolID', 
+      name: 'الرقم الإحصائي', 
+      fieldName: 'SchoolID', 
+      minWidth: 80, 
+      flexGrow: 1, 
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: SchoolInfoType) => (
+        <div style={{ textAlign: 'center', width: '100%' }}>{item.SchoolID}</div>
+      ),
+    },
+    { 
+      key: 'Level', 
+      name: 'المرحلة', 
+      fieldName: 'Level', 
+      minWidth: 70, 
+      flexGrow: 1, 
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: SchoolInfoType) => (
+        <div style={{ textAlign: 'center', width: '100%' }}>{item.Level}</div>
+      ),
+    },
+    { 
+      key: 'SchoolGender', 
+      name: 'النوع', 
+      fieldName: 'SchoolGender', 
+      minWidth: 45, 
+      flexGrow: 1, 
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: SchoolInfoType) => (
+        <div style={{ textAlign: 'center', width: '100%' }}>{item.SchoolGender}</div>
+      ),
+    },
+    { 
+      key: 'PrincipalName', 
+      name: 'مدير/ة المدرسة', 
+      fieldName: 'PrincipalName', 
+      minWidth: 110, 
+      flexGrow: 2, 
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: SchoolInfoType) => (
+        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.PrincipalName}</div>
+      ),
+    },
+    { 
+      key: 'SectorDescription', 
+      name: 'القطاع', 
+      fieldName: 'SectorDescription', 
+      minWidth: 70, 
+      flexGrow: 1, 
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: SchoolInfoType) => (
+        <div style={{ textAlign: 'center', width: '100%' }}>{item.SectorDescription}</div>
+      ),
+    },
     {
       key: 'view',
       name: 'عرض',
-      minWidth: 60,
-      flexGrow: 1,
+      minWidth: 50,
+      flexGrow: 0,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: SchoolInfoType) => (
-        <button
-          onClick={() => setSelectedSchool(item)}
-          style={{
-            padding: '4px 12px',
-            backgroundColor: '#008752',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '12px',
-          }}
-        >
-          عرض
-        </button>
+        <div style={{ textAlign: 'center', width: '100%' }}>
+          <button
+            onClick={() => setSelectedSchool(item)}
+            style={{
+              padding: '4px 12px',
+              backgroundColor: '#008752',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px',
+            }}
+          >
+            عرض
+          </button>
+        </div>
       )
     }
   ]

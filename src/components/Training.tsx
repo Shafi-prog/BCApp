@@ -488,7 +488,8 @@ const Training: React.FC = () => {
         key: 'Title', 
         name: 'البرنامج', 
         fieldName: 'Title', 
-        minWidth: 100,
+        minWidth: 140,
+        flexGrow: 2,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingProgram) => (
@@ -501,7 +502,8 @@ const Training: React.FC = () => {
         key: 'ProviderEntity', 
         name: 'الجهة', 
         fieldName: 'ProviderEntity', 
-        minWidth: 80,
+        minWidth: 90,
+        flexGrow: 1,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingProgram) => (
@@ -512,7 +514,8 @@ const Training: React.FC = () => {
         key: 'ActivityType', 
         name: 'النوع', 
         fieldName: 'ActivityType', 
-        minWidth: 60,
+        minWidth: 55,
+        flexGrow: 1,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingProgram) => (
@@ -523,7 +526,8 @@ const Training: React.FC = () => {
         key: 'TargetAudience', 
         name: 'الفئة', 
         fieldName: 'TargetAudience', 
-        minWidth: 70,
+        minWidth: 60,
+        flexGrow: 1,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingProgram) => (
@@ -534,7 +538,8 @@ const Training: React.FC = () => {
         key: 'Date', 
         name: 'التاريخ', 
         fieldName: 'Date', 
-        minWidth: 80,
+        minWidth: 75,
+        flexGrow: 1,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingProgram) => (
@@ -547,7 +552,8 @@ const Training: React.FC = () => {
         key: 'ExecutionMode', 
         name: 'التنفيذ', 
         fieldName: 'ExecutionMode', 
-        minWidth: 60,
+        minWidth: 55,
+        flexGrow: 1,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingProgram) => (
@@ -564,6 +570,7 @@ const Training: React.FC = () => {
           name: 'الحالة', 
           fieldName: 'CoordinationStatus', 
           minWidth: 60,
+          flexGrow: 1,
           isResizable: true,
           styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
           onRender: (item: TrainingProgram) => {
@@ -577,8 +584,8 @@ const Training: React.FC = () => {
         { 
           key: 'adminActions', 
           name: 'الإجراءات', 
-          minWidth: 70,
-          maxWidth: 90,
+          minWidth: 80,
+          flexGrow: 0,
           styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
           onRender: (item: TrainingProgram) => (
             <Stack horizontal tokens={{ childrenGap: 4 }} style={{ justifyContent: 'center', width: '100%' }}>
@@ -605,8 +612,8 @@ const Training: React.FC = () => {
       cols.push({ 
         key: 'actions', 
         name: 'التسجيل', 
-        minWidth: 80,
-        maxWidth: 100,
+        minWidth: 90,
+        flexGrow: 0,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingProgram) => {
           const isRegistered = trainingLog.some(log => log.Program_RefId === item.Id)
@@ -648,8 +655,7 @@ const Training: React.FC = () => {
         name: 'المدرسة', 
         fieldName: 'SchoolName_Ref', 
         minWidth: 100, 
-        maxWidth: 180,
-        flexGrow: 1,
+        flexGrow: 2,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingLog) => (
@@ -664,8 +670,7 @@ const Training: React.FC = () => {
         name: 'البرنامج', 
         fieldName: 'Program_Ref', 
         minWidth: 100, 
-        maxWidth: 180,
-        flexGrow: 1,
+        flexGrow: 2,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingLog) => (
@@ -679,7 +684,6 @@ const Training: React.FC = () => {
         name: 'نوع التسجيل', 
         fieldName: 'RegistrationType', 
         minWidth: 70, 
-        maxWidth: 100,
         flexGrow: 1,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
@@ -692,8 +696,7 @@ const Training: React.FC = () => {
         name: 'الحضور', 
         fieldName: 'AttendeesNames', 
         minWidth: 100, 
-        maxWidth: 180,
-        flexGrow: 1,
+        flexGrow: 2,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingLog) => {
@@ -713,7 +716,6 @@ const Training: React.FC = () => {
         name: 'تاريخ التدريب', 
         fieldName: 'TrainingDate', 
         minWidth: 80, 
-        maxWidth: 110,
         flexGrow: 1,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
@@ -727,7 +729,6 @@ const Training: React.FC = () => {
         key: 'actions', 
         name: 'الإجراءات', 
         minWidth: 70,
-        maxWidth: 90,
         flexGrow: 0,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingLog) => (

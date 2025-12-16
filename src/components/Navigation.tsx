@@ -126,7 +126,8 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
             {
               links: [
                 { name: 'الرئيسية ومعلومات المدرسة', url: '#/', key: '/', icon: 'Home' },
-                { name: 'خطة استمرارية التعليم', url: '#/bcplan', key: '/bcplan', icon: 'Shield' },
+                // BC Plan only visible to schools, admin accesses through Admin Panel
+                ...(user?.type !== 'admin' ? [{ name: 'خطة استمرارية التعليم', url: '#/bcplan', key: '/bcplan', icon: 'Shield' }] : []),
                 { name: 'فريق الأمن والسلامة', url: '#/team', key: '/team', icon: 'Group' },
                 { name: 'بوابة التدريب', url: '#/training', key: '/training', icon: 'ReadingMode' },
                 { name: 'سجل التدريبات', url: '#/training-log', key: '/training-log', icon: 'ClipboardList' },

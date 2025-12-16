@@ -92,8 +92,7 @@ const Team: React.FC = () => {
         name: 'المدرسة',
         fieldName: 'SchoolName_Ref',
         minWidth: 100,
-        maxWidth: 180,
-        flexGrow: 1,
+        flexGrow: 2,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TeamMember) => (
@@ -103,53 +102,114 @@ const Team: React.FC = () => {
     }
 
     cols.push(
-      { key: 'Title', name: 'الاسم', fieldName: 'Title', minWidth: 80, maxWidth: 150, flexGrow: 1 },
-      { key: 'JobRole', name: 'الوظيفة', fieldName: 'JobRole', minWidth: 80, maxWidth: 150, flexGrow: 1 },
-      { key: 'MembershipType', name: 'نوع العضوية', fieldName: 'MembershipType', minWidth: 70, maxWidth: 120, flexGrow: 1 },
-      { key: 'MemberEmail', name: 'البريد الإلكتروني', fieldName: 'MemberEmail', minWidth: 90, maxWidth: 180, flexGrow: 1 },
-      { key: 'MemberMobile', name: 'الجوال', fieldName: 'MemberMobile', minWidth: 80, maxWidth: 120, flexGrow: 1 },
+      { 
+        key: 'Title', 
+        name: 'الاسم', 
+        fieldName: 'Title', 
+        minWidth: 110, 
+        flexGrow: 1, 
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TeamMember) => (
+          <div style={{ textAlign: 'center', width: '100%' }}>{item.Title}</div>
+        ),
+      },
+      { 
+        key: 'JobRole', 
+        name: 'الوظيفة', 
+        fieldName: 'JobRole', 
+        minWidth: 90, 
+        flexGrow: 1, 
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TeamMember) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.JobRole}</div>
+        ),
+      },
+      { 
+        key: 'MembershipType', 
+        name: 'نوع العضوية', 
+        fieldName: 'MembershipType', 
+        minWidth: 70, 
+        flexGrow: 1, 
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TeamMember) => (
+          <div style={{ textAlign: 'center', width: '100%' }}>{item.MembershipType}</div>
+        ),
+      },
+      { 
+        key: 'MemberEmail', 
+        name: 'البريد الإلكتروني', 
+        fieldName: 'MemberEmail', 
+        minWidth: 140, 
+        flexGrow: 2, 
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TeamMember) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.MemberEmail}</div>
+        ),
+      },
+      { 
+        key: 'MemberMobile', 
+        name: 'الجوال', 
+        fieldName: 'MemberMobile', 
+        minWidth: 85, 
+        flexGrow: 1, 
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TeamMember) => (
+          <div style={{ textAlign: 'center', width: '100%' }}>{item.MemberMobile}</div>
+        ),
+      },
       {
         key: 'attachment',
         name: 'المرفقات',
-        minWidth: 80,
-        flexGrow: 1,
+        minWidth: 65,
+        flexGrow: 0,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TeamMember) => {
           // Use DispForm.aspx?ID=X to open exact item in SharePoint
           const itemLink = `https://saudimoe.sharepoint.com/sites/em/Lists/BC_Teams_Members/DispForm.aspx?ID=${item.Id}`
           
           if (item.HasAttachments) {
             return (
+              <div style={{ textAlign: 'center', width: '100%' }}>
+                <a
+                  href={itemLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: '#0078d4',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  📎 عرض
+                </a>
+              </div>
+            )
+          }
+          return (
+            <div style={{ textAlign: 'center', width: '100%' }}>
               <a
                 href={itemLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  color: '#0078d4',
+                  color: '#008752',
                   textDecoration: 'none',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 4,
                 }}
               >
-                📎 عرض
+                ➕ أضف مرفق
               </a>
-            )
-          }
-          return (
-            <a
-              href={itemLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                color: '#008752',
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-              }}
-            >
-              ➕ أضف مرفق
-            </a>
+            </div>
           )
         },
       },
@@ -157,10 +217,12 @@ const Team: React.FC = () => {
         key: 'actions',
         name: 'الإجراءات',
         fieldName: 'actions',
-        minWidth: 80,
-        flexGrow: 1,
+        minWidth: 75,
+        flexGrow: 0,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TeamMember) => (
-          <Stack horizontal tokens={{ childrenGap: 8 }}>
+          <Stack horizontal tokens={{ childrenGap: 8 }} horizontalAlign="center">
             <IconButton
               iconProps={{ iconName: 'Edit', styles: { root: { fontSize: 16, fontWeight: 600 } } }}
               onClick={() => onEdit(item)}
