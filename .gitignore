@@ -44,3 +44,10 @@ pcf/exports/
 schools_extracted.json
 schools_data.json
 original_main.js
+
+# Utility scripts and temporary files
+read_excel_tasks.py
+tables.png
+
+# OneDrive folder (personal files)
+OneDrive/
