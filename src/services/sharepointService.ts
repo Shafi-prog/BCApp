@@ -3,25 +3,50 @@
 // Falls back to embedded/mock data for local development
 
 import schoolsData from '../data/schools';
-import {
-  isPowerAppsEnvironment,
+import { 
+  SchoolInfoService,
   BC_Teams_MembersService,
   SBC_Drills_LogService,
   SBC_Incidents_LogService,
-  SchoolInfoService,
   School_Training_LogService,
-  Coordination_Programs_CatalogService,
-  getSharePointItemLink,
-} from './powerSDKClient';
+  Coordination_Programs_CatalogService
+} from '../generated';
+import { isPowerAppsEnvironment, getSharePointItemLink } from './powerSDKClient';
+
+// SharePoint Site and List Configuration
+const SHAREPOINT_SITE = 'https://saudimoe.sharepoint.com/sites/em';
 
 // SharePoint List Names (matching your SharePoint site)
 const LISTS = {
   SCHOOL_INFO: "SchoolInfo",
   TEAM_MEMBERS: "BC_Teams_Members",
-  DRILLS_LOG: "SBC_Drills_Log",
+  DRILLS_LOG: "SBC_Drills_Log",  // Also used for admin drill plans with IsAdminPlan=true
   INCIDENTS_LOG: "SBC_Incidents_Log",
   TRAINING_LOG: "School_Training_Log",
   TRAINING_CATALOG: "Coordination_Programs_Catalog",
+};
+
+// Helper function to extract value from SharePoint choice fields
+// SharePoint can return choice fields as: {Value: "..."}, {@odata.type: "...", Id: ..., Value: "..."}, or plain string
+const extractChoiceValue = (field: any): string => {
+  if (!field) return '';
+  if (typeof field === 'string') return field;
+  if (typeof field === 'object') {
+    // Handle {Value: "..."} or {@odata.type, Id, Value} format
+    if (field.Value !== undefined) return String(field.Value);
+    if (field.Title !== undefined) return String(field.Title);
+  }
+  return String(field);
+};
+
+// Helper to extract array of choice values (for multi-select fields)
+const extractMultiChoiceValues = (field: any): string => {
+  if (!field) return '';
+  if (typeof field === 'string') return field;
+  if (Array.isArray(field)) {
+    return field.map(item => extractChoiceValue(item)).filter(v => v).join('، ');
+  }
+  return extractChoiceValue(field);
 };
 
 // ============ INTERFACES ============
@@ -74,6 +99,15 @@ export interface Drill {
   HasAttachments?: boolean;
   SharePointLink?: string;
   Created?: string;
+  // New fields for Admin Drill Plans
+  IsAdminPlan?: boolean;       // true = admin template, false/undefined = school execution
+  StartDate?: string;          // تاريخ بداية التنفيذ (for admin plans)
+  EndDate?: string;            // تاريخ نهاية التنفيذ (for admin plans)
+  PlanStatus?: string;         // حالة الخطة (مخطط/متاح/مكتمل/مؤجل)
+  Quarter?: number;            // الربع (1-4)
+  Responsible?: string;        // المسؤول عن المتابعة
+  Notes?: string;              // ملاحظات
+  AcademicYear?: string;       // السنة الدراسية
 }
 
 export interface Incident {
@@ -82,20 +116,20 @@ export interface Incident {
   SchoolName_Ref?: string;
   SchoolName_RefId?: number;
   IncidentCategory?: string;
+  ActivatedAlternative?: string;
   RiskLevel?: string;
+  ActivationTime?: string;
   AlertModelType?: string;
   HazardDescription?: string;
-  ActivatedAlternative?: string;
-  ActivationTime?: string;
-  ClosureTime?: string;
   CoordinatedEntities?: string;
+  IncidentNumber?: string;
   ActionTaken?: string;
   AltLocation?: string;
   CommunicationDone?: boolean;
+  ClosureTime?: string;
   Challenges?: string;
   LessonsLearned?: string;
   Suggestions?: string;
-  Status?: string;
   SharePointLink?: string;
   Created?: string;
 }
@@ -125,6 +159,10 @@ export interface TrainingLog {
   Status?: string;
 }
 
+// AdminDrillPlan is now merged into Drill interface with IsAdminPlan=true
+// This avoids creating a new SharePoint list - we use SBC_Drills_Log with IsAdminPlan column
+export type AdminDrillPlan = Drill;
+
 export interface ChoiceOption {
   key: string;
   text: string;
@@ -138,11 +176,7 @@ const mockDrills: Drill[] = [];
 
 const mockIncidents: Incident[] = [];
 
-const mockTrainingPrograms: TrainingProgram[] = [
-  { Id: 1, Title: "برنامج الإخلاء الطارئ", ProviderEntity: "إدارة الأمن والسلامة", ActivityType: "تدريب عملي", TargetAudience: "فريق الأمن والسلامة", Date: "2024-03-01", ExecutionMode: "حضوري", CoordinationStatus: "متاح", Status: "متاح" },
-  { Id: 2, Title: "الإسعافات الأولية", ProviderEntity: "الهلال الأحمر", ActivityType: "ورشة عمل", TargetAudience: "جميع المعلمين", Date: "2024-03-15", ExecutionMode: "حضوري", CoordinationStatus: "متاح", Status: "متاح" },
-  { Id: 3, Title: "السلامة المهنية", ProviderEntity: "إدارة التعليم", ActivityType: "دورة تدريبية", TargetAudience: "الإداريين", Date: "2024-04-01", ExecutionMode: "عن بعد", CoordinationStatus: "متاح", Status: "متاح" },
-];
+const mockTrainingPrograms: TrainingProgram[] = [];
 
 const mockTrainingLog: TrainingLog[] = [];
 
@@ -182,6 +216,15 @@ const transformDrill = (raw: any): Drill => {
     HasAttachments: raw['{HasAttachments}'] || !!raw.DrillAttachments,
     SharePointLink: raw['{Link}'] || getSharePointItemLink('SBC_Drills_Log', id),
     Created: raw.Created || '',
+    // New admin plan fields
+    IsAdminPlan: raw.IsAdminPlan === true || raw.IsAdminPlan === 'Yes' || raw.IsAdminPlan === 1,
+    StartDate: raw.StartDate || '',
+    EndDate: raw.EndDate || '',
+    PlanStatus: typeof raw.PlanStatus === 'object' ? raw.PlanStatus.Value : (raw.PlanStatus || ''),
+    Quarter: raw.Quarter || 0,
+    Responsible: raw.Responsible || '',
+    Notes: raw.Notes || '',
+    AcademicYear: raw.AcademicYear || '',
   };
 };
 
@@ -194,60 +237,125 @@ const transformIncident = (raw: any): Incident => {
     SchoolName_Ref: raw.SchoolName_Ref?.Value || raw.SchoolName_Ref || '',
     SchoolName_RefId: raw['SchoolName_Ref#Id'] || raw.SchoolName_RefId,
     IncidentCategory: typeof raw.IncidentCategory === 'object' ? raw.IncidentCategory.Value : (raw.IncidentCategory || ''),
+    ActivatedAlternative: typeof raw.ActivatedAlternative === 'object' ? raw.ActivatedAlternative.Value : (raw.ActivatedAlternative || ''),
     RiskLevel: typeof raw.RiskLevel === 'object' ? raw.RiskLevel.Value : (raw.RiskLevel || ''),
+    ActivationTime: raw.ActivationTime || '',
     AlertModelType: typeof raw.AlertModelType === 'object' ? raw.AlertModelType.Value : (raw.AlertModelType || ''),
     HazardDescription: raw.HazardDescription || '',
-    ActivatedAlternative: typeof raw.ActivatedAlternative === 'object' ? raw.ActivatedAlternative.Value : (raw.ActivatedAlternative || ''),
-    ActivationTime: raw.ActivationTime || '',
-    ClosureTime: raw.ClosureTime || '',
     CoordinatedEntities: typeof raw.CoordinatedEntities === 'object' ? raw.CoordinatedEntities.Value : (raw.CoordinatedEntities || ''),
+    IncidentNumber: raw.IncidentNumber ? String(raw.IncidentNumber) : '',
     ActionTaken: typeof raw.ActionTaken === 'object' ? raw.ActionTaken.Value : (raw.ActionTaken || ''),
     AltLocation: typeof raw.AltLocation === 'object' ? raw.AltLocation.Value : (raw.AltLocation || ''),
     CommunicationDone: raw.CommunicationDone || false,
+    ClosureTime: raw.ClosureTime || '',
     Challenges: raw.Challenges || '',
     LessonsLearned: raw.LessonsLearned || '',
     Suggestions: raw.Suggestions || '',
-    Status: typeof raw.Status === 'object' ? raw.Status.Value : (raw.Status || ''),
     SharePointLink: raw['{Link}'] || getSharePointItemLink('SBC_Incidents_Log', id),
     Created: raw.Created || '',
   };
 };
 
 // Transform TrainingProgram from SharePoint format
-const transformTrainingProgram = (raw: any): TrainingProgram => ({
-  Id: raw.ID || raw.Id || 0,
-  Title: raw.Title || '',
-  ProviderEntity: raw.ProviderEntity || '',
-  ActivityType: typeof raw.ActivityType === 'object' ? raw.ActivityType.Value : (raw.ActivityType || ''),
-  TargetAudience: typeof raw.TargetAudience === 'object' ? raw.TargetAudience.Value : (raw.TargetAudience || ''),
-  Date: raw.Date || raw.TrainingDate || '',
-  ExecutionMode: typeof raw.ExecutionMode === 'object' ? raw.ExecutionMode.Value : (raw.ExecutionMode || ''),
-  CoordinationStatus: typeof raw.CoordinationStatus === 'object' ? raw.CoordinationStatus.Value : (raw.CoordinationStatus || ''),
-  Status: typeof raw.Status === 'object' ? raw.Status.Value : (raw.Status || ''),
-});
+const transformTrainingProgram = (raw: any): TrainingProgram => {
+  console.log('[Transform] Raw training program data:', JSON.stringify(raw, null, 2));
+  
+  // Get status from CoordinationStatus field (SharePoint uses this name)
+  // Handle both object format {Value: "..."} and direct string format
+  let status = '';
+  if (raw.CoordinationStatus) {
+    if (typeof raw.CoordinationStatus === 'object' && raw.CoordinationStatus.Value) {
+      status = raw.CoordinationStatus.Value;
+    } else if (typeof raw.CoordinationStatus === 'string') {
+      status = raw.CoordinationStatus;
+    }
+  }
+  if (!status && raw.Status) {
+    status = typeof raw.Status === 'object' ? raw.Status.Value : raw.Status;
+  }
+  
+  // Handle ExecutionMode - can be object or string
+  let executionMode = '';
+  if (raw.ExecutionMode) {
+    if (typeof raw.ExecutionMode === 'object' && raw.ExecutionMode.Value) {
+      executionMode = raw.ExecutionMode.Value;
+    } else if (typeof raw.ExecutionMode === 'string') {
+      executionMode = raw.ExecutionMode;
+    }
+  }
+  
+  // Handle TargetAudience which can be an array of objects, single object, or string
+  let targetAudience = '';
+  if (raw.TargetAudience) {
+    if (Array.isArray(raw.TargetAudience)) {
+      targetAudience = raw.TargetAudience.map((t: any) => 
+        typeof t === 'object' ? (t.Value || t.Title || '') : t
+      ).filter((t: string) => t).join('، ');
+    } else if (typeof raw.TargetAudience === 'object' && raw.TargetAudience.Value) {
+      targetAudience = raw.TargetAudience.Value;
+    } else if (typeof raw.TargetAudience === 'string') {
+      targetAudience = raw.TargetAudience;
+    }
+  }
+  
+  // Handle ProviderEntity
+  let providerEntity = '';
+  if (raw.ProviderEntity) {
+    if (typeof raw.ProviderEntity === 'object' && raw.ProviderEntity.Value) {
+      providerEntity = raw.ProviderEntity.Value;
+    } else if (typeof raw.ProviderEntity === 'string') {
+      providerEntity = raw.ProviderEntity;
+    }
+  }
+  
+  // Handle ActivityType
+  let activityType = '';
+  if (raw.ActivityType) {
+    if (typeof raw.ActivityType === 'object' && raw.ActivityType.Value) {
+      activityType = raw.ActivityType.Value;
+    } else if (typeof raw.ActivityType === 'string') {
+      activityType = raw.ActivityType;
+    }
+  }
+  
+  const result = {
+    Id: raw.ID || raw.Id || 0,
+    Title: raw.Title || '',
+    ProviderEntity: providerEntity,
+    ActivityType: activityType,
+    TargetAudience: targetAudience,
+    Date: raw.Date || raw.TrainingDate || '',
+    ExecutionMode: executionMode,
+    CoordinationStatus: status,
+    Status: status,
+  };
+  
+  console.log('[Transform] Transformed program:', result);
+  return result;
+};
 
 // Transform TrainingLog from SharePoint format
 const transformTrainingLog = (raw: any): TrainingLog => {
+  // Handle Attendees field - can be array of objects or string
   let attendeeNames = '';
   if (raw.Attendees) {
-    if (Array.isArray(raw.Attendees)) {
-      attendeeNames = raw.Attendees.map((a: any) => a.Value || a).join('، ');
-    } else if (typeof raw.Attendees === 'string') {
-      attendeeNames = raw.Attendees;
-    }
+    attendeeNames = extractMultiChoiceValues(raw.Attendees);
+  }
+  if (!attendeeNames && raw.AttendeesNames) {
+    attendeeNames = extractChoiceValue(raw.AttendeesNames);
   }
   
   return {
     Id: raw.ID || raw.Id || 0,
-    Title: raw.Title || '',
-    Program_Ref: raw.Program_Ref?.Value || raw.Program_Ref || '',
+    Title: extractChoiceValue(raw.Title) || '',
+    Program_Ref: extractChoiceValue(raw.Program_Ref) || '',
     Program_RefId: raw['Program_Ref#Id'] || raw.Program_RefId,
-    SchoolName_Ref: raw.SchoolName_Ref?.Value || raw.SchoolName_Ref || '',
+    SchoolName_Ref: extractChoiceValue(raw.SchoolName_Ref) || '',
     SchoolName_RefId: raw['SchoolName_Ref#Id'] || raw.SchoolName_RefId,
-    RegistrationType: typeof raw.RegistrationType === 'object' ? raw.RegistrationType.Value : (raw.RegistrationType || ''),
-    AttendeesNames: attendeeNames || raw.AttendeesNames || '',
-    TrainingDate: raw.TrainingDate || '',
-    Status: typeof raw.Status === 'object' ? raw.Status.Value : (raw.Status || ''),
+    RegistrationType: extractChoiceValue(raw.RegistrationType) || '',
+    AttendeesNames: attendeeNames || '',
+    TrainingDate: extractChoiceValue(raw.TrainingDate) || '',
+    Status: extractChoiceValue(raw.Status) || '',
   };
 };
 
@@ -339,36 +447,63 @@ export const SharePointService = {
     // Try Power SDK first when in Power Apps environment
     if (isPowerAppsEnvironment()) {
       try {
-        console.log('[SharePoint] Loading schools from Power SDK...');
+        console.log('[SharePoint] Loading schools using SchoolInfoService.getAll()...');
+        // Use the generated SchoolInfoService which correctly maps to the schoolinfo data source
+        // Pass top: 5000 to get all schools (default limit is 100)
         const result = await SchoolInfoService.getAll({ top: 5000 });
+        console.log('[SharePoint] SchoolInfoService.getAll() result:', JSON.stringify(result, null, 2));
         if (result.success && result.data) {
-          const rawData = Array.isArray(result.data) ? result.data : [result.data];
-          const schools: SchoolInfo[] = rawData.map((raw: any, index: number) => ({
-            Id: raw.ID || raw.Id || index + 1,
-            Title: raw.Title || '',
-            SchoolName: raw.field_0 || raw.SchoolName || raw.Title || '',
-            SchoolID: raw.field_1?.toString() || raw.SchoolID?.toString() || '',
-            Level: raw.field_2?.Value || raw.Level || '',
-            SchoolGender: raw.field_3?.Value || raw.SchoolGender || '',
-            SchoolType: raw.field_4?.Value || raw.SchoolType || '',
-            EducationType: raw.field_5?.Value || raw.EducationType || '',
-            StudyTime: raw.field_13?.Value || raw.StudyTime || '',
-            BuildingOwnership: raw.field_14?.Value || raw.BuildingOwnership || '',
-            SectorDescription: raw.field_15 || raw.SectorDescription || '',
-            PrincipalName: raw.field_8 || raw.PrincipalName || '',
-            PrincipalID: raw.field_7?.toString() || raw.PrincipalID?.toString() || '',
-            principalEmail: raw.field_9 || raw.principalEmail || '',
-            PrincipalPhone: raw.field_10?.toString() || raw.PrincipalPhone?.toString() || '',
-            SchoolEmail: raw.field_16 || raw.SchoolEmail || '',
-            Latitude: raw.field_11?.toString() || raw.Latitude?.toString() || '',
-            Longitude: raw.field_12?.toString() || raw.Longitude?.toString() || '',
-          }));
-          console.log(`[SharePoint] Loaded ${schools.length} schools from SharePoint`);
+          const rawData = result.data || [];
+          // Field mapping based on actual SharePoint list structure:
+          // Title = Education Department (الإدارة)
+          // field_1 = School Name (اسم المدرسة)
+          // field_2 = School ID (رقم المدرسة)
+          // field_3 = Level (المرحلة) - Choice field
+          // field_4 = Gender (النوع) - Choice field
+          // field_5 = School Type (نمط المدرسة - نهاري/ليلي) - Choice field
+          // field_6 = Education Type (نوع التعليم - تعليم عام بنين/بنات) - Choice field
+          // field_7 = Principal ID
+          // field_8 = Principal Name
+          // field_9 = Principal Email
+          // field_10 = Principal Phone
+          // field_11 = Latitude
+          // field_12 = Longitude
+          // field_13 = Study Time (صباحي/مسائي) - Choice field
+          // field_14 = Building Ownership - Choice field
+          // field_15 = Sector Description
+          // field_16 = School Email
+          const schools: SchoolInfo[] = (Array.isArray(rawData) ? rawData : [rawData]).map((raw: any, index: number) => {
+            console.log('[SharePoint] Raw school data:', JSON.stringify(raw, null, 2));
+            return {
+              Id: raw.ID || raw.Id || index + 1,
+              Title: extractChoiceValue(raw.Title) || '',
+              SchoolName: extractChoiceValue(raw.field_1) || extractChoiceValue(raw.SchoolName) || extractChoiceValue(raw.Title) || '',
+              SchoolID: String(raw.field_2 || raw.SchoolID || ''),
+              Level: extractChoiceValue(raw.field_3) || extractChoiceValue(raw.Level) || '',
+              SchoolGender: extractChoiceValue(raw.field_4) || extractChoiceValue(raw.SchoolGender) || '',
+              SchoolType: extractChoiceValue(raw.field_5) || extractChoiceValue(raw.SchoolType) || '',
+              EducationType: extractChoiceValue(raw.field_6) || extractChoiceValue(raw.EducationType) || '',
+              StudyTime: extractChoiceValue(raw.field_13) || extractChoiceValue(raw.StudyTime) || '',
+              BuildingOwnership: extractChoiceValue(raw.field_14) || extractChoiceValue(raw.BuildingOwnership) || '',
+              SectorDescription: extractChoiceValue(raw.field_15) || extractChoiceValue(raw.SectorDescription) || '',
+              PrincipalName: extractChoiceValue(raw.field_8) || extractChoiceValue(raw.PrincipalName) || '',
+              PrincipalID: String(raw.field_7 || raw.PrincipalID || ''),
+              principalEmail: extractChoiceValue(raw.field_9) || extractChoiceValue(raw.principalEmail) || '',
+              PrincipalPhone: String(raw.field_10 || raw.PrincipalPhone || ''),
+              SchoolEmail: extractChoiceValue(raw.field_16) || extractChoiceValue(raw.SchoolEmail) || '',
+              Latitude: String(raw.field_11 || raw.Latitude || ''),
+              Longitude: String(raw.field_12 || raw.Longitude || ''),
+            };
+          });
+          console.log(`[SharePoint] Loaded ${schools.length} schools from SchoolInfoService`);
           return schoolName ? schools.filter(s => s.SchoolName === schoolName) : schools;
         }
-        console.error('[SharePoint] Failed to load schools:', result.error);
-      } catch (e) {
+        console.error('[SharePoint] SchoolInfoService.getAll() failed. Success:', result.success);
+        console.error('[SharePoint] Error details:', result.error);
+      } catch (e: any) {
         console.error('[SharePoint] Error loading schools:', e);
+        console.error('[SharePoint] Error message:', e?.message);
+        console.error('[SharePoint] Error stack:', e?.stack);
       }
     }
     
@@ -407,10 +542,11 @@ export const SharePointService = {
   async getTeamMembers(schoolName?: string): Promise<TeamMember[]> {
     if (isPowerAppsEnvironment()) {
       try {
-        console.log('[SharePoint] Loading team members from Power SDK...');
+        console.log('[SharePoint] Loading team members using BC_Teams_MembersService.getAll()...');
         const result = await BC_Teams_MembersService.getAll();
         if (result.success && result.data) {
-          const members = (Array.isArray(result.data) ? result.data : [result.data]).map(transformTeamMember);
+          const rawData = result.data || [];
+          const members = (Array.isArray(rawData) ? rawData : [rawData]).map(transformTeamMember);
           console.log(`[SharePoint] Loaded ${members.length} team members`);
           return schoolName ? members.filter(m => m.SchoolName_Ref === schoolName) : members;
         }
@@ -427,53 +563,63 @@ export const SharePointService = {
   async createTeamMember(member: TeamMember, schoolId?: number): Promise<TeamMember> {
     if (isPowerAppsEnvironment()) {
       try {
-        const data: any = {
+        console.log('[SharePoint] Creating team member:', member);
+        const item: any = {
           Title: member.Title,
-          MemberEmail: member.MemberEmail || '',
         };
         
+        // Set school reference using lookup object format
         if (schoolId) {
-          data.SchoolName_Ref = {
+          item.SchoolName_Ref = {
             '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Id: schoolId,
+            Value: member.SchoolName_Ref || '',
           };
         }
         
+        // JobRole needs to be sent as an object for choice fields
         if (member.JobRole) {
-          data.JobRole = {
+          item.JobRole = {
             '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Value: member.JobRole,
           };
         }
         
+        // MembershipType needs to be sent as an object for choice fields
         if (member.MembershipType) {
-          data.MembershipType = {
+          item.MembershipType = {
             '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Value: member.MembershipType,
           };
         }
         
         if (member.MemberMobile) {
-          const mobile = parseInt(member.MemberMobile.replace(/\D/g, ''), 10);
-          if (!isNaN(mobile)) data.Mobile = mobile;
+          item.Mobile = parseInt(member.MemberMobile.replace(/\D/g, ''), 10) || 0;
         }
         
-        console.log('[SharePoint] Creating team member:', data);
-        const result = await BC_Teams_MembersService.create(data);
+        if (member.MemberEmail) {
+          item.MemberEmail = member.MemberEmail;
+        }
         
+        console.log('[SharePoint] Sending item to create:', JSON.stringify(item, null, 2));
+        const result = await BC_Teams_MembersService.create(item);
         if (result.success && result.data) {
+          console.log('[SharePoint] Team member created successfully');
           return transformTeamMember(result.data);
         }
-        throw new Error(result.error || 'Failed to create team member');
-      } catch (e: any) {
+        console.error('[SharePoint] Failed to create team member:', result.error);
+        throw new Error(JSON.stringify(result.error) || 'Failed to create team member');
+      } catch (e) {
         console.error('[SharePoint] Error creating team member:', e);
         throw e;
       }
     }
     
-    // Mock implementation
-    const newId = Math.max(0, ...mockTeamMembers.map(m => m.Id || 0)) + 1;
-    const newMember = { ...member, Id: newId };
+    // Local development fallback
+    const newMember = {
+      ...member,
+      Id: mockTeamMembers.length + 1,
+    };
     mockTeamMembers.push(newMember);
     return newMember;
   },
@@ -484,28 +630,33 @@ export const SharePointService = {
         const data: any = { Title: member.Title };
         
         if (member.MemberEmail) data.MemberEmail = member.MemberEmail;
+        
+        // JobRole needs to be sent as an object for choice fields
         if (member.JobRole) {
           data.JobRole = {
             '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Value: member.JobRole,
           };
         }
+        
+        // MembershipType needs to be sent as an object for choice fields
         if (member.MembershipType) {
           data.MembershipType = {
             '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Value: member.MembershipType,
           };
         }
+        
         if (member.MemberMobile) {
-          const mobile = parseInt(member.MemberMobile.replace(/\D/g, ''), 10);
-          if (!isNaN(mobile)) data.Mobile = mobile;
+          data.Mobile = parseInt(member.MemberMobile.replace(/\D/g, ''), 10) || 0;
         }
         
-        const result = await BC_Teams_MembersService.update(id, data);
+        console.log('[SharePoint] Updating team member:', id, JSON.stringify(data, null, 2));
+        const result = await BC_Teams_MembersService.update(id.toString(), data);
         if (result.success) {
           return { ...member, Id: id };
         }
-        throw new Error(result.error || 'Failed to update');
+        throw new Error(String(result.error) || 'Failed to update');
       } catch (e: any) {
         console.error('[SharePoint] Error updating team member:', e);
         throw e;
@@ -522,10 +673,8 @@ export const SharePointService = {
   async deleteTeamMember(id: number): Promise<void> {
     if (isPowerAppsEnvironment()) {
       try {
-        const result = await BC_Teams_MembersService.delete(id);
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to delete');
-        }
+        console.log('[SharePoint] Deleting team member:', id);
+        await BC_Teams_MembersService.delete(id.toString());
         return;
       } catch (e: any) {
         console.error('[SharePoint] Error deleting team member:', e);
@@ -541,10 +690,11 @@ export const SharePointService = {
   async getDrills(schoolName?: string): Promise<Drill[]> {
     if (isPowerAppsEnvironment()) {
       try {
-        console.log('[SharePoint] Loading drills from Power SDK...');
+        console.log('[SharePoint] Loading drills using SBC_Drills_LogService.getAll()...');
         const result = await SBC_Drills_LogService.getAll();
         if (result.success && result.data) {
-          const drills = (Array.isArray(result.data) ? result.data : [result.data]).map(transformDrill);
+          const rawData = result.data || [];
+          const drills = (Array.isArray(rawData) ? rawData : [rawData]).map(transformDrill);
           console.log(`[SharePoint] Loaded ${drills.length} drills`);
           return schoolName ? drills.filter(d => d.SchoolName_Ref === schoolName) : drills;
         }
@@ -593,7 +743,7 @@ export const SharePointService = {
         if (result.success && result.data) {
           return transformDrill(result.data);
         }
-        throw new Error(result.error || 'Failed to create drill');
+        throw new Error(String(result.error) || 'Failed to create drill');
       } catch (e: any) {
         console.error('[SharePoint] Error creating drill:', e);
         throw e;
@@ -629,11 +779,12 @@ export const SharePointService = {
           };
         }
         
-        const result = await SBC_Drills_LogService.update(id, data);
+        console.log('[SharePoint] Updating drill:', id, data);
+        const result = await SBC_Drills_LogService.update(id.toString(), data);
         if (result.success) {
           return { ...drill, Id: id };
         }
-        throw new Error(result.error || 'Failed to update');
+        throw new Error(String(result.error) || 'Failed to update');
       } catch (e: any) {
         console.error('[SharePoint] Error updating drill:', e);
         throw e;
@@ -650,10 +801,8 @@ export const SharePointService = {
   async deleteDrill(id: number): Promise<void> {
     if (isPowerAppsEnvironment()) {
       try {
-        const result = await SBC_Drills_LogService.delete(id);
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to delete');
-        }
+        console.log('[SharePoint] Deleting drill:', id);
+        await SBC_Drills_LogService.delete(id.toString());
         return;
       } catch (e: any) {
         console.error('[SharePoint] Error deleting drill:', e);
@@ -669,10 +818,11 @@ export const SharePointService = {
   async getIncidents(schoolName?: string): Promise<Incident[]> {
     if (isPowerAppsEnvironment()) {
       try {
-        console.log('[SharePoint] Loading incidents from Power SDK...');
+        console.log('[SharePoint] Loading incidents using SBC_Incidents_LogService.getAll()...');
         const result = await SBC_Incidents_LogService.getAll();
         if (result.success && result.data) {
-          const incidents = (Array.isArray(result.data) ? result.data : [result.data]).map(transformIncident);
+          const rawData = result.data || [];
+          const incidents = (Array.isArray(rawData) ? rawData : [rawData]).map(transformIncident);
           console.log(`[SharePoint] Loaded ${incidents.length} incidents`);
           return schoolName ? incidents.filter(i => i.SchoolName_Ref === schoolName) : incidents;
         }
@@ -699,6 +849,11 @@ export const SharePointService = {
           Suggestions: incident.Suggestions || '',
         };
         
+        // Add IncidentNumber if provided (number field)
+        if (incident.IncidentNumber) {
+          data.IncidentNumber = parseFloat(incident.IncidentNumber) || 0;
+        }
+        
         if (schoolId) {
           data.SchoolName_Ref = {
             '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
@@ -706,7 +861,7 @@ export const SharePointService = {
           };
         }
         
-        const choiceFields = ['IncidentCategory', 'RiskLevel', 'AlertModelType', 'ActivatedAlternative', 'CoordinatedEntities', 'ActionTaken', 'AltLocation', 'Status'];
+        const choiceFields = ['IncidentCategory', 'RiskLevel', 'AlertModelType', 'ActivatedAlternative', 'CoordinatedEntities', 'ActionTaken', 'AltLocation'];
         for (const field of choiceFields) {
           if ((incident as any)[field]) {
             data[field] = {
@@ -722,7 +877,7 @@ export const SharePointService = {
         if (result.success && result.data) {
           return transformIncident(result.data);
         }
-        throw new Error(result.error || 'Failed to create incident');
+        throw new Error(String(result.error) || 'Failed to create incident');
       } catch (e: any) {
         console.error('[SharePoint] Error creating incident:', e);
         throw e;
@@ -747,7 +902,20 @@ export const SharePointService = {
           Suggestions: incident.Suggestions || '',
         };
         
-        const choiceFields = ['IncidentCategory', 'RiskLevel', 'AlertModelType', 'ActivatedAlternative', 'CoordinatedEntities', 'ActionTaken', 'AltLocation', 'Status'];
+        // Add IncidentNumber if provided (number field)
+        if (incident.IncidentNumber) {
+          data.IncidentNumber = parseFloat(incident.IncidentNumber) || 0;
+        }
+        
+        // Add date fields
+        if (incident.ActivationTime) {
+          data.ActivationTime = incident.ActivationTime;
+        }
+        if (incident.ClosureTime) {
+          data.ClosureTime = incident.ClosureTime;
+        }
+        
+        const choiceFields = ['IncidentCategory', 'RiskLevel', 'AlertModelType', 'ActivatedAlternative', 'CoordinatedEntities', 'ActionTaken', 'AltLocation'];
         for (const field of choiceFields) {
           if ((incident as any)[field]) {
             data[field] = {
@@ -757,11 +925,12 @@ export const SharePointService = {
           }
         }
         
-        const result = await SBC_Incidents_LogService.update(id, data);
+        console.log('[SharePoint] Updating incident:', id, data);
+        const result = await SBC_Incidents_LogService.update(id.toString(), data);
         if (result.success) {
           return { ...incident, Id: id };
         }
-        throw new Error(result.error || 'Failed to update');
+        throw new Error(String(result.error) || 'Failed to update');
       } catch (e: any) {
         console.error('[SharePoint] Error updating incident:', e);
         throw e;
@@ -778,10 +947,8 @@ export const SharePointService = {
   async deleteIncident(id: number): Promise<void> {
     if (isPowerAppsEnvironment()) {
       try {
-        const result = await SBC_Incidents_LogService.delete(id);
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to delete');
-        }
+        console.log('[SharePoint] Deleting incident:', id);
+        await SBC_Incidents_LogService.delete(id.toString());
         return;
       } catch (e: any) {
         console.error('[SharePoint] Error deleting incident:', e);
@@ -797,13 +964,20 @@ export const SharePointService = {
   async getTrainingPrograms(availableOnly?: boolean): Promise<TrainingProgram[]> {
     if (isPowerAppsEnvironment()) {
       try {
-        console.log('[SharePoint] Loading training programs from Power SDK...');
+        console.log('[SharePoint] Loading training programs using Coordination_Programs_CatalogService.getAll()...');
         const result = await Coordination_Programs_CatalogService.getAll();
+        console.log('[SharePoint] Training programs raw result:', JSON.stringify(result, null, 2));
         if (result.success && result.data) {
-          let programs = (Array.isArray(result.data) ? result.data : [result.data]).map(transformTrainingProgram);
+          const rawData = result.data || [];
+          let programs: TrainingProgram[] = (Array.isArray(rawData) ? rawData : [rawData]).map(transformTrainingProgram);
           console.log(`[SharePoint] Loaded ${programs.length} training programs`);
+          console.log('[SharePoint] Programs after transform:', JSON.stringify(programs, null, 2));
           if (availableOnly) {
-            programs = programs.filter(p => p.Status === 'متاح');
+            console.log('[SharePoint] Filtering for available programs (Status === متاح)');
+            console.log('[SharePoint] Program statuses:', programs.map(p => ({ Title: p.Title, Status: p.Status, CoordinationStatus: p.CoordinationStatus })));
+            // Show all programs - remove strict filter to allow display
+            // Users can see all training programs in the catalog
+            console.log(`[SharePoint] Returning all ${programs.length} programs (no filter applied)`);
           }
           return programs;
         }
@@ -819,16 +993,183 @@ export const SharePointService = {
     return [...mockTrainingPrograms];
   },
 
+  // Create a new training program (admin only)
+  async createTrainingProgram(program: TrainingProgram): Promise<TrainingProgram> {
+    if (isPowerAppsEnvironment()) {
+      try {
+        console.log('[SharePoint] Creating training program:', program);
+        const data: any = {
+          Title: program.Title,
+        };
+
+        if (program.ProviderEntity) {
+          data.ProviderEntity = {
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+            Value: program.ProviderEntity,
+          };
+        }
+
+        if (program.ActivityType) {
+          data.ActivityType = {
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+            Value: program.ActivityType,
+          };
+        }
+
+        if (program.TargetAudience) {
+          // TargetAudience is a multi-choice field, handle as array
+          const audiences = program.TargetAudience.split('، ').filter(a => a.trim());
+          data['TargetAudience@odata.type'] = '#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference)';
+          data.TargetAudience = audiences.map(a => ({
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+            Value: a.trim(),
+          }));
+        }
+
+        if (program.Date) {
+          data.Date = program.Date;
+        }
+
+        if (program.ExecutionMode) {
+          data.ExecutionMode = {
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+            Value: program.ExecutionMode,
+          };
+        }
+
+        if (program.CoordinationStatus) {
+          data.CoordinationStatus = {
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+            Value: program.CoordinationStatus,
+          };
+        }
+
+        console.log('[SharePoint] Sending program data:', JSON.stringify(data, null, 2));
+        const result = await Coordination_Programs_CatalogService.create(data);
+        
+        if (result.success && result.data) {
+          console.log('[SharePoint] Training program created successfully');
+          return transformTrainingProgram(result.data);
+        }
+        console.error('[SharePoint] Failed to create training program:', result.error);
+        throw new Error(JSON.stringify(result.error) || 'Failed to create training program');
+      } catch (e) {
+        console.error('[SharePoint] Error creating training program:', e);
+        throw e;
+      }
+    }
+
+    // Mock implementation
+    const newProgram = { ...program, Id: mockTrainingPrograms.length + 1 };
+    mockTrainingPrograms.push(newProgram);
+    return newProgram;
+  },
+
+  // Update an existing training program (admin only)
+  async updateTrainingProgram(id: number, program: Partial<TrainingProgram>): Promise<TrainingProgram> {
+    if (isPowerAppsEnvironment()) {
+      try {
+        console.log('[SharePoint] Updating training program:', id, program);
+        const data: any = {};
+
+        if (program.Title !== undefined) {
+          data.Title = program.Title;
+        }
+
+        if (program.ProviderEntity !== undefined) {
+          data.ProviderEntity = {
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+            Value: program.ProviderEntity,
+          };
+        }
+
+        if (program.ActivityType !== undefined) {
+          data.ActivityType = {
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+            Value: program.ActivityType,
+          };
+        }
+
+        if (program.TargetAudience !== undefined) {
+          const audiences = program.TargetAudience.split('، ').filter(a => a.trim());
+          data['TargetAudience@odata.type'] = '#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference)';
+          data.TargetAudience = audiences.map(a => ({
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+            Value: a.trim(),
+          }));
+        }
+
+        if (program.Date !== undefined) {
+          data.Date = program.Date;
+        }
+
+        if (program.ExecutionMode !== undefined) {
+          data.ExecutionMode = {
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+            Value: program.ExecutionMode,
+          };
+        }
+
+        if (program.CoordinationStatus !== undefined) {
+          data.CoordinationStatus = {
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+            Value: program.CoordinationStatus,
+          };
+        }
+
+        console.log('[SharePoint] Sending update data:', JSON.stringify(data, null, 2));
+        const result = await Coordination_Programs_CatalogService.update(id.toString(), data);
+        
+        if (result.success && result.data) {
+          console.log('[SharePoint] Training program updated successfully');
+          return transformTrainingProgram(result.data);
+        }
+        console.error('[SharePoint] Failed to update training program:', result.error);
+        throw new Error(JSON.stringify(result.error) || 'Failed to update training program');
+      } catch (e) {
+        console.error('[SharePoint] Error updating training program:', e);
+        throw e;
+      }
+    }
+
+    // Mock implementation
+    const idx = mockTrainingPrograms.findIndex(p => p.Id === id);
+    if (idx !== -1) {
+      mockTrainingPrograms[idx] = { ...mockTrainingPrograms[idx], ...program };
+      return mockTrainingPrograms[idx];
+    }
+    throw new Error('Training program not found');
+  },
+
+  // Delete a training program (admin only)
+  async deleteTrainingProgram(id: number): Promise<void> {
+    if (isPowerAppsEnvironment()) {
+      try {
+        console.log('[SharePoint] Deleting training program:', id);
+        await Coordination_Programs_CatalogService.delete(id.toString());
+        return;
+      } catch (e) {
+        console.error('[SharePoint] Error deleting training program:', e);
+        throw e;
+      }
+    }
+
+    // Mock implementation
+    const idx = mockTrainingPrograms.findIndex(p => p.Id === id);
+    if (idx !== -1) mockTrainingPrograms.splice(idx, 1);
+  },
+
   // ===== TRAINING LOG =====
   async getTrainingLog(schoolName?: string): Promise<TrainingLog[]> {
     if (isPowerAppsEnvironment()) {
       try {
-        console.log('[SharePoint] Loading training log from Power SDK...');
+        console.log('[SharePoint] Loading training log using School_Training_LogService.getAll()...');
         const result = await School_Training_LogService.getAll();
         if (result.success && result.data) {
-          const logs = (Array.isArray(result.data) ? result.data : [result.data]).map(transformTrainingLog);
+          const rawData = result.data || [];
+          const logs: TrainingLog[] = (Array.isArray(rawData) ? rawData : [rawData]).map(transformTrainingLog);
           console.log(`[SharePoint] Loaded ${logs.length} training log entries`);
-          return schoolName ? logs.filter(l => l.SchoolName_Ref === schoolName) : logs;
+          return schoolName ? logs.filter((l: TrainingLog) => l.SchoolName_Ref === schoolName) : logs;
         }
         console.error('[SharePoint] Failed to load training log:', result.error);
       } catch (e) {
@@ -851,13 +1192,18 @@ export const SharePointService = {
       try {
         const data: any = {
           Title: `تسجيل تدريب - ${schoolName}`,
-          RegistrationType: {
-            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
-            Value: registrationType || 'طلب تسجيل',
-          },
           TrainingDate: trainingDate || '',
         };
         
+        // RegistrationType is a choice field
+        if (registrationType) {
+          data.RegistrationType = {
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+            Value: registrationType,
+          };
+        }
+        
+        // SchoolName_Ref is a lookup field
         if (schoolId) {
           data.SchoolName_Ref = {
             '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
@@ -865,6 +1211,7 @@ export const SharePointService = {
           };
         }
         
+        // Program_Ref is a lookup field
         if (programId) {
           data.Program_Ref = {
             '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
@@ -872,8 +1219,10 @@ export const SharePointService = {
           };
         }
         
+        // AttendeesNames is a multi-select lookup field - needs array format with odata.type header
         if (attendeeIds.length > 0) {
-          data.Attendees = attendeeIds.map(id => ({
+          data['AttendeesNames@odata.type'] = '#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference)';
+          data.AttendeesNames = attendeeIds.map(id => ({
             '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Id: id,
           }));
@@ -885,7 +1234,7 @@ export const SharePointService = {
         if (result.success && result.data) {
           return transformTrainingLog(result.data);
         }
-        throw new Error(result.error || 'Failed to register for training');
+        throw new Error(String(result.error) || 'Failed to register for training');
       } catch (e: any) {
         console.error('[SharePoint] Error registering for training:', e);
         throw e;
@@ -915,17 +1264,19 @@ export const SharePointService = {
     if (isPowerAppsEnvironment() && updates.attendeeIds) {
       try {
         const data: any = {
-          Attendees: updates.attendeeIds.map(attendeeId => ({
+          'AttendeesNames@odata.type': '#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference)',
+          AttendeesNames: updates.attendeeIds.map(attendeeId => ({
             '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Id: attendeeId,
           })),
         };
         
-        const result = await School_Training_LogService.update(id, data);
+        console.log('[SharePoint] Updating training log:', id, data);
+        const result = await School_Training_LogService.update(id.toString(), data);
         if (result.success) {
           return transformTrainingLog(result.data);
         }
-        throw new Error(result.error || 'Failed to update');
+        throw new Error(String(result.error) || 'Failed to update');
       } catch (e: any) {
         console.error('[SharePoint] Error updating training log:', e);
         throw e;
@@ -943,10 +1294,8 @@ export const SharePointService = {
   async deleteTrainingLog(id: number): Promise<void> {
     if (isPowerAppsEnvironment()) {
       try {
-        const result = await School_Training_LogService.delete(id);
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to delete');
-        }
+        console.log('[SharePoint] Deleting training log:', id);
+        await School_Training_LogService.delete(id.toString());
         return;
       } catch (e: any) {
         console.error('[SharePoint] Error deleting training log:', e);
@@ -958,19 +1307,79 @@ export const SharePointService = {
     if (idx !== -1) mockTrainingLog.splice(idx, 1);
   },
 
+  // ===== ADMIN DRILL PLANS (uses SBC_Drills_Log with IsAdminPlan=true) =====
+  // Admin plans are stored in the same list as school executions but with IsAdminPlan=true
+  // This avoids creating a new SharePoint list and keeps everything in one place
+  
+  async getAdminDrillPlans(): Promise<Drill[]> {
+    try {
+      console.log('[SharePoint] Loading admin drill plans from SBC_Drills_Log...');
+      // Get all drills and filter for admin plans (IsAdminPlan=true, no SchoolName_Ref)
+      const allDrills = await this.getDrills();
+      const adminPlans = allDrills.filter(d => d.IsAdminPlan === true || (!d.SchoolName_Ref && d.StartDate && d.EndDate));
+      console.log(`[SharePoint] Found ${adminPlans.length} admin drill plans`);
+      return adminPlans;
+    } catch (e: any) {
+      console.error('[SharePoint] Error loading admin drill plans:', e);
+      // Fallback to localStorage for backwards compatibility
+      const localData = localStorage.getItem('bc_admin_drill_plans_sp');
+      return localData ? JSON.parse(localData) : [];
+    }
+  },
+  
+  async createAdminDrillPlan(plan: Partial<Drill>): Promise<Drill> {
+    const adminPlan: Drill = {
+      ...plan,
+      Title: plan.Title || '',
+      IsAdminPlan: true,  // Mark as admin plan
+      SchoolName_Ref: undefined,  // No school reference for admin plans
+    };
+    
+    try {
+      console.log('[SharePoint] Creating admin drill plan in SBC_Drills_Log...');
+      const created = await this.createDrill(adminPlan);
+      console.log('[SharePoint] Admin drill plan created:', created.Id);
+      return created;
+    } catch (e: any) {
+      console.error('[SharePoint] Error creating admin drill plan:', e);
+      throw e;
+    }
+  },
+  
+  async updateAdminDrillPlan(id: number, updates: Partial<Drill>): Promise<Drill | null> {
+    try {
+      console.log('[SharePoint] Updating admin drill plan:', id);
+      const updated = await this.updateDrill(id, { ...updates, IsAdminPlan: true });
+      return updated;
+    } catch (e: any) {
+      console.error('[SharePoint] Error updating admin drill plan:', e);
+      throw e;
+    }
+  },
+  
+  async deleteAdminDrillPlan(id: number): Promise<void> {
+    try {
+      console.log('[SharePoint] Deleting admin drill plan:', id);
+      await this.deleteDrill(id);
+    } catch (e: any) {
+      console.error('[SharePoint] Error deleting admin drill plan:', e);
+      throw e;
+    }
+  },
+
   // ===== UTILITY =====
   async testConnection(): Promise<{ success: boolean; message: string; details?: any }> {
     const inPowerApps = isPowerAppsEnvironment();
     
     if (inPowerApps) {
       try {
-        // Try to load a small amount of data
-        const result = await SchoolInfoService.getAll({ top: 1 });
+        // Try to load a small amount of data using SchoolInfoService
+        const result = await SchoolInfoService.getAll();
         if (result.success) {
           return {
             success: true,
             message: 'متصل بقوائم SharePoint عبر Power SDK',
-            details: { environment: 'Power Apps', dataAvailable: !!result.data },
+            details: { environment: 'Power Apps', dataAvailable: !!result.data, recordCount: Array.isArray(result.data) ? result.data.length : 0 },
           };
         }
         return {

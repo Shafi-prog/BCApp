@@ -81,57 +81,127 @@ const Team: React.FC = () => {
     setForm({ ...form, JobRole: jobRole, MembershipType: membershipType })
   }
 
-  const columns: IColumn[] = [
-    { key: 'Title', name: 'الاسم', fieldName: 'Title', minWidth: 150, maxWidth: 200 },
-    { key: 'JobRole', name: 'الوظيفة', fieldName: 'JobRole', minWidth: 120 },
-    { key: 'MembershipType', name: 'نوع العضوية', fieldName: 'MembershipType', minWidth: 100 },
-    { key: 'MemberEmail', name: 'البريد الإلكتروني', fieldName: 'MemberEmail', minWidth: 150 },
-    { key: 'MemberMobile', name: 'الجوال', fieldName: 'MemberMobile', minWidth: 100 },
-    {
-      key: 'actions',
-      name: 'الإجراءات',
-      fieldName: 'actions',
-      minWidth: 100,
-      onRender: (item: TeamMember) => (
-        <Stack horizontal tokens={{ childrenGap: 8 }}>
-          <IconButton
-            iconProps={{ iconName: 'Edit', styles: { root: { fontSize: 16, fontWeight: 600 } } }}
-            onClick={() => onEdit(item)}
-            title="تعديل"
-            ariaLabel="تعديل"
-            styles={{ 
-              root: { 
-                color: '#0078d4',
-                backgroundColor: '#e6f2ff',
-                borderRadius: 4,
-                width: 32,
-                height: 32,
-              },
-              rootHovered: { backgroundColor: '#cce4ff' },
-              icon: { color: '#0078d4', fontSize: 16 }
-            }}
-          />
-          <IconButton
-            iconProps={{ iconName: 'Delete', styles: { root: { fontSize: 16, fontWeight: 600 } } }}
-            onClick={() => onDelete(item.Id!)}
-            title="حذف"
-            ariaLabel="حذف"
-            styles={{ 
-              root: { 
-                color: '#d83b01',
-                backgroundColor: '#fce8e6',
-                borderRadius: 4,
-                width: 32,
-                height: 32,
-              },
-              rootHovered: { backgroundColor: '#f5d0cc' },
-              icon: { color: '#d83b01', fontSize: 16 }
-            }}
-          />
-        </Stack>
-      ),
-    },
-  ]
+  // Get columns - include SchoolName for admin
+  const getColumns = (): IColumn[] => {
+    const cols: IColumn[] = []
+    
+    // Admin sees school name column first
+    if (user?.type === 'admin') {
+      cols.push({
+        key: 'SchoolName_Ref',
+        name: 'المدرسة',
+        fieldName: 'SchoolName_Ref',
+        minWidth: 100,
+        maxWidth: 180,
+        flexGrow: 1,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TeamMember) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.SchoolName_Ref || '-'}</div>
+        ),
+      })
+    }
+
+    cols.push(
+      { key: 'Title', name: 'الاسم', fieldName: 'Title', minWidth: 80, maxWidth: 150, flexGrow: 1 },
+      { key: 'JobRole', name: 'الوظيفة', fieldName: 'JobRole', minWidth: 80, maxWidth: 150, flexGrow: 1 },
+      { key: 'MembershipType', name: 'نوع العضوية', fieldName: 'MembershipType', minWidth: 70, maxWidth: 120, flexGrow: 1 },
+      { key: 'MemberEmail', name: 'البريد الإلكتروني', fieldName: 'MemberEmail', minWidth: 90, maxWidth: 180, flexGrow: 1 },
+      { key: 'MemberMobile', name: 'الجوال', fieldName: 'MemberMobile', minWidth: 80, maxWidth: 120, flexGrow: 1 },
+      {
+        key: 'attachment',
+        name: 'المرفقات',
+        minWidth: 80,
+        flexGrow: 1,
+        onRender: (item: TeamMember) => {
+          // Use DispForm.aspx?ID=X to open exact item in SharePoint
+          const itemLink = `https://saudimoe.sharepoint.com/sites/em/Lists/BC_Teams_Members/DispForm.aspx?ID=${item.Id}`
+          
+          if (item.HasAttachments) {
+            return (
+              <a
+                href={itemLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: '#0078d4',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                📎 عرض
+              </a>
+            )
+          }
+          return (
+            <a
+              href={itemLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: '#008752',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              ➕ أضف مرفق
+            </a>
+          )
+        },
+      },
+      {
+        key: 'actions',
+        name: 'الإجراءات',
+        fieldName: 'actions',
+        minWidth: 80,
+        flexGrow: 1,
+        onRender: (item: TeamMember) => (
+          <Stack horizontal tokens={{ childrenGap: 8 }}>
+            <IconButton
+              iconProps={{ iconName: 'Edit', styles: { root: { fontSize: 16, fontWeight: 600 } } }}
+              onClick={() => onEdit(item)}
+              title="تعديل"
+              ariaLabel="تعديل"
+              styles={{ 
+                root: { 
+                  color: '#0078d4',
+                  backgroundColor: '#e6f2ff',
+                  borderRadius: 4,
+                  width: 32,
+                  height: 32,
+                },
+                rootHovered: { backgroundColor: '#cce4ff' },
+                icon: { color: '#0078d4', fontSize: 16 }
+              }}
+            />
+            <IconButton
+              iconProps={{ iconName: 'Delete', styles: { root: { fontSize: 16, fontWeight: 600 } } }}
+              onClick={() => onDelete(item.Id!)}
+              title="حذف"
+              ariaLabel="حذف"
+              styles={{ 
+                root: { 
+                  color: '#d83b01',
+                  backgroundColor: '#fce8e6',
+                  borderRadius: 4,
+                  width: 32,
+                  height: 32,
+                },
+                rootHovered: { backgroundColor: '#f5d0cc' },
+                icon: { color: '#d83b01', fontSize: 16 }
+              }}
+            />
+          </Stack>
+        ),
+      }
+    )
+
+    return cols
+  }
 
   const loadTeamMembers = async () => {
     setLoading(true)
@@ -244,7 +314,7 @@ const Team: React.FC = () => {
       {user?.schoolName && (
         <div style={{ backgroundColor: '#008752', borderRadius: '8px', padding: '16px 24px', color: '#fff', marginBottom: 16 }}>
           <Text variant="large" style={{ color: '#fff', fontWeight: 600 }}>
-            حياكم الله - {user.schoolName}
+            أهلاً - {user.schoolName}
           </Text>
         </div>
       )}
@@ -264,14 +334,14 @@ const Team: React.FC = () => {
 
       {loading && <Spinner label="جاري التحميل..." />}
 
-      <Stack horizontal horizontalAlign="end" style={{ marginBottom: 16 }}>
+      <Stack horizontal horizontalAlign="start" style={{ marginBottom: 16 }}>
         <PrimaryButton text="إضافة عضو جديد" iconProps={{ iconName: 'AddFriend' }} onClick={onOpen} disabled={loading} />
       </Stack>
 
       <div className="card">
         <DetailsList 
           items={items} 
-          columns={columns}
+          columns={getColumns()}
           layoutMode={DetailsListLayoutMode.justified}
           selectionMode={SelectionMode.none}
         />

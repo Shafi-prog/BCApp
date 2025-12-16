@@ -42,6 +42,7 @@ const Drills: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [isFromPlan, setIsFromPlan] = useState(false)
   const [message, setMessage] = useState<{ type: MessageBarType; text: string } | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [showCustomInput, setShowCustomInput] = useState(false)
@@ -65,11 +66,11 @@ const Drills: React.FC = () => {
         key: 'SchoolName_Ref',
         name: 'المدرسة',
         fieldName: 'SchoolName_Ref',
-        minWidth: 180,
+        minWidth: 80,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
-          <div style={{ textAlign: 'center', width: '100%' }}>{item.SchoolName_Ref}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem' }}>{item.SchoolName_Ref}</div>
         ),
       });
     }
@@ -79,29 +80,42 @@ const Drills: React.FC = () => {
         key: 'DrillHypothesis',
         name: 'الفرضية',
         fieldName: 'DrillHypothesis',
-        minWidth: 280,
+        minWidth: 80,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
-          <div style={{ textAlign: 'center', width: '100%' }}>{item.DrillHypothesis}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem' }}>{item.DrillHypothesis}</div>
+        ),
+      },
+      {
+        key: 'SpecificEvent',
+        name: 'تفاصيل الفرضية',
+        fieldName: 'SpecificEvent',
+        minWidth: 100,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: Drill) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem', color: '#666' }}>
+            {item.SpecificEvent || '-'}
+          </div>
         ),
       },
       {
         key: 'TargetGroup',
         name: 'الفئة المستهدفة',
         fieldName: 'TargetGroup',
-        minWidth: 180,
+        minWidth: 80,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
-          <div style={{ textAlign: 'center', width: '100%' }}>{item.TargetGroup}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem' }}>{item.TargetGroup}</div>
         ),
       },
       {
         key: 'ExecutionDate',
         name: 'تاريخ التنفيذ',
         fieldName: 'ExecutionDate',
-        minWidth: 120,
+        minWidth: 80,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => {
@@ -113,16 +127,19 @@ const Drills: React.FC = () => {
       {
         key: 'attachment',
         name: 'المرفق',
-        minWidth: 120,
+        minWidth: 70,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => {
+          // Use DispForm.aspx?ID=X to open exact item in SharePoint
+          const itemLink = `https://saudimoe.sharepoint.com/sites/em/Lists/SBC_Drills_Log/DispForm.aspx?ID=${item.Id}`;
+          
           // Check if has attachment
           if (item.AttachmentUrl || item.HasAttachments) {
             return (
               <div style={{ textAlign: 'center', width: '100%' }}>
                 <a
-                  href={item.AttachmentUrl || '#'}
+                  href={itemLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
@@ -138,13 +155,11 @@ const Drills: React.FC = () => {
               </div>
             );
           }
-          // No attachment - show add link to SharePoint
-          const schoolName = item.SchoolName_Ref || user?.schoolName || '';
-          const sharePointLink = `https://edumadinah.sharepoint.com/sites/BCProgramData/Lists/SBC_Drills_Log/AllItems.aspx?FilterField1=SchoolName_Ref&FilterValue1=${encodeURIComponent(schoolName)}`;
+          // No attachment - show add link to exact item
           return (
             <div style={{ textAlign: 'center', width: '100%' }}>
               <a
-                href={sharePointLink}
+                href={itemLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -164,42 +179,45 @@ const Drills: React.FC = () => {
       {
         key: 'actions',
         name: 'الإجراءات',
-        minWidth: 140,
+        minWidth: 80,
+        maxWidth: 100,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
           <Stack horizontal tokens={{ childrenGap: 8 }} horizontalAlign="center">
-            <button
+            <IconButton
+              iconProps={{ iconName: 'Edit', styles: { root: { fontSize: 16, fontWeight: 600 } } }}
               onClick={() => onEdit(item)}
               title="تعديل"
-              style={{
-                padding: '4px 12px',
-                backgroundColor: '#0078d4',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: 600,
+              ariaLabel="تعديل"
+              styles={{ 
+                root: { 
+                  color: '#0078d4',
+                  backgroundColor: '#e6f2ff',
+                  borderRadius: 4,
+                  width: 32,
+                  height: 32,
+                },
+                rootHovered: { backgroundColor: '#cce4ff' },
+                icon: { color: '#0078d4', fontSize: 16 }
               }}
-            >
-              ✏️ تعديل
-            </button>
-            <button
+            />
+            <IconButton
+              iconProps={{ iconName: 'Delete', styles: { root: { fontSize: 16, fontWeight: 600 } } }}
               onClick={() => onDelete(item.Id || 0)}
               title="حذف"
-              style={{
-                padding: '4px 12px',
-                backgroundColor: '#d13438',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: 600,
+              ariaLabel="حذف"
+              styles={{ 
+                root: { 
+                  color: '#d83b01',
+                  backgroundColor: '#fce8e6',
+                  borderRadius: 4,
+                  width: 32,
+                  height: 32,
+                },
+                rootHovered: { backgroundColor: '#f5d0cc' },
+                icon: { color: '#d83b01', fontSize: 16 }
               }}
-            >
-              🗑️ حذف
-            </button>
+            />
           </Stack>
         ),
       }
@@ -208,16 +226,48 @@ const Drills: React.FC = () => {
     return cols;
   };
 
+  // Load yearly drill plan from SharePoint service (secure storage)
+  const [yearlyPlan, setYearlyPlan] = useState<any[]>([])
+  
   useEffect(() => {
     loadDrills()
+    loadYearlyPlan()
   }, [user])
+
+  const loadYearlyPlan = async () => {
+    try {
+      // Load from SharePoint service (secure)
+      const plans = await SharePointService.getAdminDrillPlans()
+      setYearlyPlan(plans.map(p => ({
+        id: p.Id,
+        title: p.Title,
+        hypothesis: p.DrillHypothesis || '',
+        specificEvent: p.SpecificEvent || '',
+        targetGroup: p.TargetGroup || '',
+        startDate: p.StartDate || '',
+        endDate: p.EndDate || '',
+        status: p.PlanStatus || '',
+        responsible: p.Responsible || '',
+        notes: p.Notes || '',
+      })))
+    } catch (e) {
+      console.error('Error loading yearly plan:', e)
+      // Fallback to localStorage for backwards compatibility
+      const savedPlan = localStorage.getItem('bc_test_plans')
+      if (savedPlan) {
+        setYearlyPlan(JSON.parse(savedPlan))
+      }
+    }
+  }
 
   const loadDrills = async () => {
     setLoading(true)
     try {
       const schoolName = user?.type === 'admin' ? undefined : user?.schoolName
-      const data = await SharePointService.getDrills(schoolName)
-      setDrills(data)
+      // Get only school executions (not admin plans)
+      const allData = await SharePointService.getDrills(schoolName)
+      const schoolDrills = allData.filter(d => !d.IsAdminPlan)
+      setDrills(schoolDrills)
     } catch (e) {
       setMessage({ type: MessageBarType.error, text: `فشل تحميل التمارين: ${e}` })
     } finally {
@@ -239,6 +289,31 @@ const Drills: React.FC = () => {
     setCustomTargetGroup('')
     setTargetGroupOptions([...defaultTargetGroupOptions])
     setIsEditing(false)
+    setIsFromPlan(false)
+    setPanelOpen(true)
+    setErrorMessage('')
+  }
+
+  // Store current plan being executed for date validation
+  const [currentPlan, setCurrentPlan] = useState<any>(null)
+
+  // Open from admin's plan - pre-fill all admin-defined fields
+  const onOpenFromPlan = (plan: any) => {
+    setForm({
+      Title: plan.title || '',
+      ExecutionDate: '',
+      DrillHypothesis: plan.hypothesis || '',
+      SpecificEvent: plan.specificEvent || '',  // Admin defined
+      TargetGroup: plan.targetGroup || plan.responsible || '',  // Admin defined
+      AttachmentUrl: '',
+      SchoolName_Ref: user?.schoolName || '',
+    })
+    setCurrentPlan(plan)  // Store for date validation
+    setShowCustomInput(false)
+    setCustomTargetGroup('')
+    setTargetGroupOptions([...defaultTargetGroupOptions])
+    setIsEditing(false)
+    setIsFromPlan(true)
     setPanelOpen(true)
     setErrorMessage('')
   }
@@ -286,6 +361,18 @@ const Drills: React.FC = () => {
     if (!form.ExecutionDate) {
       setErrorMessage('يرجى اختيار تاريخ التنفيذ')
       return false
+    }
+    
+    // Validate date is within admin's allowed range for plan-based drills
+    if (isFromPlan && currentPlan && currentPlan.startDate && currentPlan.endDate) {
+      const execDate = new Date(form.ExecutionDate)
+      const startDate = new Date(currentPlan.startDate)
+      const endDate = new Date(currentPlan.endDate)
+      
+      if (execDate < startDate || execDate > endDate) {
+        setErrorMessage(`يجب أن يكون تاريخ التنفيذ بين ${startDate.toLocaleDateString('ar-SA')} و ${endDate.toLocaleDateString('ar-SA')}`)
+        return false
+      }
     }
     return true
   }
@@ -335,6 +422,13 @@ const Drills: React.FC = () => {
 
   return (
     <div style={{ padding: 24 }}>
+      {user?.schoolName && (
+        <div style={{ backgroundColor: '#008752', borderRadius: '8px', padding: '16px 24px', color: '#fff', marginBottom: 16 }}>
+          <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+            أهلاً - {user.schoolName}
+          </span>
+        </div>
+      )}
       <h1 className="page-title" style={{ color: '#008752' }}>سجل التمارين الفرضية</h1>
       
       {message && (
@@ -345,9 +439,140 @@ const Drills: React.FC = () => {
 
       {loading && <Spinner label="جاري التحميل..." />}
 
-      <Stack horizontal horizontalAlign="end" style={{ marginBottom: 16 }}>
+      {/* Yearly Drill Plan for Schools - Admin defined */}
+      {yearlyPlan.length > 0 && (
+        <div className="card" style={{ marginBottom: 20, padding: 16, backgroundColor: '#f0f9ff', border: '1px solid #0078d4', borderRadius: 8 }}>
+          <h3 style={{ color: '#0078d4', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>📋</span> خطة التمارين السنوية المعتمدة من الإدارة
+          </h3>
+          <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: 16 }}>
+            اختر من التمارين المحددة من قبل الإدارة وقم بتنفيذها وتسجيل تاريخ التنفيذ
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: drills.length >= 4 ? '#107c10' : '#0078d4' }}>
+              {drills.length} / {yearlyPlan.length}
+            </span>
+            <span style={{ color: drills.length >= yearlyPlan.length ? '#107c10' : '#666' }}>
+              {drills.length >= yearlyPlan.length ? '✅ أكملت المدرسة الخطة السنوية' : `متبقي ${yearlyPlan.length - drills.length} تمرين`}
+            </span>
+          </div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {yearlyPlan.map((plan: any, idx: number) => {
+              // Check if this drill was already executed by the school
+              const executed = drills.find(d => 
+                d.Title === plan.title || 
+                d.DrillHypothesis === plan.hypothesis
+              )
+              
+              // Check availability based on date range
+              const today = new Date()
+              today.setHours(0, 0, 0, 0)
+              const startDate = plan.startDate ? new Date(plan.startDate) : null
+              const endDate = plan.endDate ? new Date(plan.endDate) : null
+              
+              let availabilityStatus: 'not-started' | 'available' | 'expired' = 'available'
+              if (startDate && today < startDate) {
+                availabilityStatus = 'not-started'
+              } else if (endDate && today > endDate) {
+                availabilityStatus = 'expired'
+              }
+              
+              return (
+                <div key={idx} style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 12, 
+                  padding: '12px 16px', 
+                  backgroundColor: executed ? '#e8f5e9' : availabilityStatus === 'available' ? '#fff' : '#f5f5f5', 
+                  borderRadius: 8, 
+                  border: executed ? '2px solid #4caf50' : availabilityStatus === 'available' ? '1px solid #0078d4' : '1px solid #e1dfdd',
+                  opacity: availabilityStatus === 'expired' && !executed ? 0.7 : 1
+                }}>
+                  <span style={{ 
+                    backgroundColor: executed ? '#4caf50' : availabilityStatus === 'available' ? '#0078d4' : '#999', 
+                    color: '#fff',
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 600,
+                    fontSize: '0.9rem'
+                  }}>
+                    {executed ? '✓' : idx + 1}
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, color: '#333' }}>{plan.title}</div>
+                    <div style={{ fontSize: '0.85rem', color: '#666' }}>{plan.hypothesis}</div>
+                    <div style={{ fontSize: '0.8rem', color: '#888', marginTop: 4 }}>
+                      الفئة: {plan.targetGroup || plan.responsible || 'غير محدد'}
+                    </div>
+                    {/* Show date range availability */}
+                    {(startDate || endDate) && (
+                      <div style={{ 
+                        fontSize: '0.8rem', 
+                        marginTop: 4,
+                        padding: '4px 8px',
+                        borderRadius: 4,
+                        backgroundColor: availabilityStatus === 'available' ? '#e6f7e6' : availabilityStatus === 'not-started' ? '#fff8e1' : '#ffebee',
+                        color: availabilityStatus === 'available' ? '#107c10' : availabilityStatus === 'not-started' ? '#ff8f00' : '#d83b01',
+                        display: 'inline-block'
+                      }}>
+                        {availabilityStatus === 'available' && '📅 متاح للتنفيذ حتى: ' + (endDate?.toLocaleDateString('ar-SA') || '')}
+                        {availabilityStatus === 'not-started' && '⏳ يبدأ في: ' + (startDate?.toLocaleDateString('ar-SA') || '')}
+                        {availabilityStatus === 'expired' && '⚠️ انتهت فترة التنفيذ'}
+                      </div>
+                    )}
+                  </div>
+                  {executed ? (
+                    <span style={{ 
+                      padding: '4px 12px', 
+                      borderRadius: 16, 
+                      fontSize: '0.8rem',
+                      backgroundColor: '#4caf50',
+                      color: '#fff'
+                    }}>
+                      ✅ تم التنفيذ
+                    </span>
+                  ) : availabilityStatus === 'available' ? (
+                    <PrimaryButton 
+                      text="تنفيذ التمرين" 
+                      iconProps={{ iconName: 'Play' }}
+                      onClick={() => onOpenFromPlan(plan)}
+                      styles={{ root: { backgroundColor: '#107c10' } }}
+                    />
+                  ) : availabilityStatus === 'not-started' ? (
+                    <span style={{ 
+                      padding: '4px 12px', 
+                      borderRadius: 16, 
+                      fontSize: '0.8rem',
+                      backgroundColor: '#ff8f00',
+                      color: '#fff'
+                    }}>
+                      ⏳ لم يحن موعده
+                    </span>
+                  ) : (
+                    <span style={{ 
+                      padding: '4px 12px', 
+                      borderRadius: 16, 
+                      fontSize: '0.8rem',
+                      backgroundColor: '#d83b01',
+                      color: '#fff'
+                    }}>
+                      ⚠️ انتهى
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      <Stack horizontal horizontalAlign="start" style={{ marginBottom: 16 }}>
         <PrimaryButton 
-          text="تسجيل تمرين جديد" 
+          text="تسجيل تمرين فرضي جديد" 
           iconProps={{ iconName: 'CirclePlus' }} 
           onClick={onOpen} 
           disabled={loading}
@@ -372,7 +597,7 @@ const Drills: React.FC = () => {
       <Panel
         isOpen={panelOpen}
         onDismiss={onClose}
-        headerText={isEditing ? 'تعديل التمرين' : 'تسجيل تمرين جديد'}
+        headerText={isEditing ? 'تعديل التمرين' : isFromPlan ? 'تنفيذ تمرين من الخطة السنوية' : 'تسجيل تمرين فرضي جديد'}
         type={PanelType.medium}
         isFooterAtBottom={true}
         onRenderFooterContent={() => (
@@ -394,12 +619,26 @@ const Drills: React.FC = () => {
             </MessageBar>
           )}
 
+          {isFromPlan && (
+            <MessageBar messageBarType={MessageBarType.info} styles={{ root: { marginBottom: 16 } }}>
+              هذا التمرين محدد من قبل الإدارة. يمكنك فقط تحديد تاريخ التنفيذ ضمن الفترة المتاحة.
+              {currentPlan?.startDate && currentPlan?.endDate && (
+                <div style={{ marginTop: 8, fontWeight: 600 }}>
+                  📅 فترة التنفيذ المتاحة: من {new Date(currentPlan.startDate).toLocaleDateString('ar-SA')} إلى {new Date(currentPlan.endDate).toLocaleDateString('ar-SA')}
+                </div>
+              )}
+            </MessageBar>
+          )}
+
           <TextField
             label="عنوان التمرين *"
             value={form.Title || ''}
             onChange={(_, v) => setForm({ ...form, Title: v || '' })}
             required
             placeholder="أدخل عنوان التمرين"
+            readOnly={isFromPlan}
+            disabled={isFromPlan}
+            styles={isFromPlan ? { root: { backgroundColor: '#f3f2f1' } } : undefined}
           />
 
           <Dropdown
@@ -410,14 +649,22 @@ const Drills: React.FC = () => {
             required
             styles={{ root: { marginTop: 16 } }}
             placeholder="اختر فرضية التمرين"
+            disabled={isFromPlan}
           />
 
           <TextField
-            label="الحدث المحدد"
+            label={isFromPlan ? "وصف الحدث المحدد (من الإدارة)" : "وصف الحدث المحدد (اختياري)"}
             value={form.SpecificEvent || ''}
             onChange={(_, v) => setForm({ ...form, SpecificEvent: v || '' })}
-            styles={{ root: { marginTop: 16 } }}
-            placeholder="وصف الحدث المحدد (اختياري)"
+            styles={{ 
+              root: { marginTop: 16 },
+              ...(isFromPlan ? { field: { backgroundColor: '#f3f2f1' } } : {})
+            }}
+            placeholder={isFromPlan ? '' : "وصف الحدث المحدد - يمكن للمدرسة كتابته"}
+            multiline
+            rows={3}
+            readOnly={isFromPlan}
+            disabled={isFromPlan}
           />
 
           <div style={{ marginTop: 16 }}>
@@ -428,16 +675,17 @@ const Drills: React.FC = () => {
               onChange={(_, option) => setForm({ ...form, TargetGroup: option?.key as string || '' })}
               required
               placeholder="اختر الفئة المستهدفة"
+              disabled={isFromPlan}
             />
             
-            {/* Add custom option button */}
-            {!showCustomInput ? (
+            {/* Add custom option button - only if not from plan */}
+            {!isFromPlan && !showCustomInput ? (
               <DefaultButton
                 text="+ إضافة فئة جديدة"
                 onClick={() => setShowCustomInput(true)}
                 styles={{ root: { marginTop: 8, fontSize: 12 } }}
               />
-            ) : (
+            ) : !isFromPlan && showCustomInput ? (
               <Stack horizontal tokens={{ childrenGap: 8 }} style={{ marginTop: 8 }}>
                 <TextField
                   value={customTargetGroup}
@@ -449,7 +697,7 @@ const Drills: React.FC = () => {
                 <PrimaryButton text="إضافة" onClick={addCustomTargetGroup} disabled={!customTargetGroup.trim()} />
                 <DefaultButton text="إلغاء" onClick={() => { setShowCustomInput(false); setCustomTargetGroup(''); }} />
               </Stack>
-            )}
+            ) : null}
           </div>
 
           <TextField
@@ -459,6 +707,12 @@ const Drills: React.FC = () => {
             onChange={(_, v) => setForm({ ...form, ExecutionDate: v || '' })}
             required
             styles={{ root: { marginTop: 16 } }}
+            min={isFromPlan && currentPlan?.startDate ? currentPlan.startDate : undefined}
+            max={isFromPlan && currentPlan?.endDate ? currentPlan.endDate : new Date().toISOString().split('T')[0]}
+            description={isFromPlan && currentPlan?.startDate && currentPlan?.endDate 
+              ? `اختر تاريخ بين ${new Date(currentPlan.startDate).toLocaleDateString('ar-SA')} و ${new Date(currentPlan.endDate).toLocaleDateString('ar-SA')}`
+              : "يمكن اختيار تاريخ سابق فقط"
+            }
           />
         </div>
       </Panel>

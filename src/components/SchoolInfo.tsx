@@ -4,6 +4,15 @@ import {
   Text,
   Spinner,
   Icon,
+  DetailsList,
+  DetailsListLayoutMode,
+  SelectionMode,
+  IColumn,
+  SearchBox,
+  DefaultButton,
+  PrimaryButton,
+  Dropdown,
+  IDropdownOption,
 } from '@fluentui/react'
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, SchoolInfo as SchoolInfoType } from '../services/sharepointService'
@@ -76,21 +85,96 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({ title, icon }) => (
 
 const SchoolInfo: React.FC = () => {
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfoType | null>(null)
+  const [allSchools, setAllSchools] = useState<SchoolInfoType[]>([])
+  const [filteredSchools, setFilteredSchools] = useState<SchoolInfoType[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedSchool, setSelectedSchool] = useState<SchoolInfoType | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [dataFilter, setDataFilter] = useState<string>('')
   const { user } = useAuth()
+
+  const isAdmin = user?.type === 'admin'
+
+  // Filter options for admin
+  const filterOptions: IDropdownOption[] = [
+    { key: '', text: 'جميع المدارس' },
+    { key: 'noTeam', text: 'مدارس بدون فريق' },
+    { key: 'noDrills', text: 'مدارس بدون تمارين' },
+    { key: 'noTraining', text: 'مدارس بدون تدريب' },
+  ]
 
   useEffect(() => {
     loadSchoolInfo()
   }, [user])
+
+  useEffect(() => {
+    applyFilters()
+  }, [searchQuery, allSchools, dataFilter])
+
+  const applyFilters = async () => {
+    let filtered = allSchools
+
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(s => 
+        s.SchoolName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.SchoolID?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.PrincipalName?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    }
+
+    // Apply data filter
+    if (dataFilter && isAdmin) {
+      try {
+        if (dataFilter === 'noTeam') {
+          const teams = await SharePointService.getTeamMembers()
+          const schoolsWithTeams = new Set(teams.map(t => t.SchoolName_Ref))
+          filtered = filtered.filter(s => !schoolsWithTeams.has(s.SchoolName))
+        } else if (dataFilter === 'noDrills') {
+          const drills = await SharePointService.getDrills()
+          const schoolsWithDrills = new Set(drills.map(d => d.SchoolName_Ref))
+          filtered = filtered.filter(s => !schoolsWithDrills.has(s.SchoolName))
+        } else if (dataFilter === 'noTraining') {
+          const trainings = await SharePointService.getTrainingLogs()
+          const schoolsWithTraining = new Set(trainings.map(t => t.SchoolName_Ref))
+          filtered = filtered.filter(s => !schoolsWithTraining.has(s.SchoolName))
+        }
+      } catch (e) {
+        console.error('Error applying filter:', e)
+      }
+    }
+
+    setFilteredSchools(filtered)
+  }
+
+  const exportToPDF = () => {
+    // Create a simple text-based PDF export
+    const schoolNames = filteredSchools.map((s, i) => `${i + 1}. ${s.SchoolName} - ${s.SchoolID}`).join('\n')
+    const content = `قائمة المدارس\n\nعدد المدارس: ${filteredSchools.length}\n\n${schoolNames}`
+    
+    // Create a downloadable text file (PDF libraries can be added later)
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `schools-${new Date().toISOString().split('T')[0]}.txt`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
 
   const loadSchoolInfo = async () => {
     try {
       setLoading(true)
       setError('')
       const data = await SharePointService.getSchoolInfo()
-
-      if (user?.type === 'school' && user.schoolName) {
+      
+      if (isAdmin) {
+        setAllSchools(data || [])
+        setFilteredSchools(data || [])
+      } else if (user?.schoolName) {
         const school = data?.find(s => s.SchoolName === user.schoolName)
         setSchoolInfo(school || null)
       } else if (data && data.length > 0) {
@@ -103,6 +187,38 @@ const SchoolInfo: React.FC = () => {
       setLoading(false)
     }
   }
+
+  // Admin columns for school list
+  const schoolColumns: IColumn[] = [
+    { key: 'SchoolName', name: 'اسم المدرسة', fieldName: 'SchoolName', minWidth: 120, maxWidth: 200, flexGrow: 1, isResizable: true },
+    { key: 'SchoolID', name: 'الرقم الإحصائي', fieldName: 'SchoolID', minWidth: 80, maxWidth: 120, flexGrow: 1 },
+    { key: 'Level', name: 'المرحلة', fieldName: 'Level', minWidth: 70, maxWidth: 120, flexGrow: 1 },
+    { key: 'SchoolGender', name: 'النوع', fieldName: 'SchoolGender', minWidth: 50, maxWidth: 80, flexGrow: 1 },
+    { key: 'PrincipalName', name: 'مدير/ة المدرسة', fieldName: 'PrincipalName', minWidth: 100, maxWidth: 180, flexGrow: 1 },
+    { key: 'SectorDescription', name: 'القطاع', fieldName: 'SectorDescription', minWidth: 80, maxWidth: 150, flexGrow: 1 },
+    {
+      key: 'view',
+      name: 'عرض',
+      minWidth: 60,
+      flexGrow: 1,
+      onRender: (item: SchoolInfoType) => (
+        <button
+          onClick={() => setSelectedSchool(item)}
+          style={{
+            padding: '4px 12px',
+            backgroundColor: '#008752',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '12px',
+          }}
+        >
+          عرض
+        </button>
+      )
+    }
+  ]
 
   const getMapUrl = (lat?: string, lng?: string) => {
     if (!lat || !lng) return '#'
@@ -127,6 +243,105 @@ const SchoolInfo: React.FC = () => {
     )
   }
 
+  // Determine which school info to display (selected school for admin, or user's school)
+  const displaySchool = isAdmin ? selectedSchool : schoolInfo
+
+  // Admin view with school list
+  if (isAdmin) {
+    return (
+      <div style={{ padding: '32px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+        <Stack tokens={{ childrenGap: 24 }}>
+          {/* Header */}
+          <div
+            style={{
+              backgroundColor: '#008752',
+              borderRadius: '12px',
+              padding: '24px',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                borderRadius: '50%',
+                padding: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon iconName="Org" style={{ fontSize: '32px', color: '#fff' }} />
+            </div>
+            <div>
+              <Text variant="xxLarge" style={{ color: '#fff', fontWeight: 700, display: 'block' }}>
+                دليل المدارس
+              </Text>
+              <Text variant="medium" style={{ color: 'rgba(255,255,255,0.9)' }}>
+                عدد المدارس: {allSchools.length} مدرسة
+              </Text>
+            </div>
+          </div>
+
+          {/* Search and List */}
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+            <Stack horizontal tokens={{ childrenGap: 12 }} style={{ marginBottom: 16, flexWrap: 'wrap' }}>
+              <SearchBox
+                placeholder="ابحث عن مدرسة بالاسم أو الرقم الإحصائي أو اسم المدير/ة..."
+                value={searchQuery}
+                onChange={(_, newValue) => setSearchQuery(newValue || '')}
+                styles={{ root: { flex: 1, minWidth: 300 } }}
+              />
+              <Dropdown
+                placeholder="تصفية المدارس حسب البيانات"
+                options={filterOptions}
+                selectedKey={dataFilter}
+                onChange={(_, option) => setDataFilter(option?.key as string || '')}
+                styles={{ root: { width: 250 } }}
+              />
+              <PrimaryButton
+                text="تصدير PDF"
+                iconProps={{ iconName: 'PDF' }}
+                onClick={exportToPDF}
+                disabled={filteredSchools.length === 0}
+                styles={{ root: { backgroundColor: '#d13438', borderColor: '#d13438' } }}
+              />
+            </Stack>
+            
+            <Text variant="medium" style={{ color: '#666', marginBottom: 12, display: 'block' }}>
+              عرض {filteredSchools.length} من {allSchools.length} مدرسة
+            </Text>
+            
+            <div style={{ maxHeight: 400, overflowY: 'auto', width: '100%' }}>
+              <DetailsList
+                items={filteredSchools}
+                columns={schoolColumns}
+                layoutMode={DetailsListLayoutMode.justified}
+                selectionMode={SelectionMode.none}
+                compact
+                styles={{ root: { width: '100%' } }}
+              />
+            </div>
+            
+            {filteredSchools.length === 0 && (
+              <div style={{ padding: 20, textAlign: 'center', color: '#666' }}>
+                لا توجد نتائج للبحث
+              </div>
+            )}
+          </div>
+
+          {/* Selected School Details */}
+          {selectedSchool && (
+            <SchoolDetailView school={selectedSchool} onClose={() => setSelectedSchool(null)} />
+          )}
+        </Stack>
+      </div>
+    )
+  }
+
+  // Non-admin: show school info directly
   if (!schoolInfo) {
     return (
       <div style={{ padding: '32px' }}>
@@ -288,6 +503,80 @@ const SchoolInfo: React.FC = () => {
           )}
         </div>
       </Stack>
+    </div>
+  )
+}
+
+// School Detail View Component for Admin
+interface SchoolDetailViewProps {
+  school: SchoolInfoType
+  onClose: () => void
+}
+
+const SchoolDetailView: React.FC<SchoolDetailViewProps> = ({ school, onClose }) => {
+  const getMapUrl = (lat?: string, lng?: string) => {
+    if (!lat || !lng) return '#'
+    return `https://www.google.com/maps?q=${lat},${lng}`
+  }
+
+  return (
+    <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: '2px solid #008752' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Text variant="xLarge" style={{ fontWeight: 600, color: '#008752' }}>
+          {school.SchoolName}
+        </Text>
+        <button
+          onClick={onClose}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: '#f3f2f1',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+          }}
+        >
+          إغلاق
+        </button>
+      </div>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '12px' }}>
+        <InfoCard icon="NumberSymbol" label="الرقم الإحصائي" value={school.SchoolID} color="#8764b8" />
+        <InfoCard icon="Education" label="المرحلة" value={school.Level} color="#00a36c" />
+        <InfoCard icon="People" label="النوع" value={school.SchoolGender} color="#d83b01" />
+        <InfoCard icon="BuildingMultiple" label="نمط المدرسة" value={school.SchoolType} color="#107c10" />
+        <InfoCard icon="Library" label="نوع التعليم" value={school.EducationType} color="#038387" />
+        <InfoCard icon="Contact" label="مدير/ة المدرسة" value={school.PrincipalName} color="#008752" />
+        <InfoCard icon="Mail" label="بريد المدير/ة" value={school.principalEmail} color="#0078d4" />
+        <InfoCard icon="Phone" label="هاتف المدير/ة" value={school.PrincipalPhone} color="#107c10" />
+        <InfoCard icon="MapPin" label="القطاع" value={school.SectorDescription} color="#004e8c" />
+        <InfoCard icon="Clock" label="وقت الدراسة" value={school.StudyTime} color="#ca5010" />
+        <InfoCard icon="Home" label="ملكية المبنى" value={school.BuildingOwnership} color="#5c2d91" />
+        <InfoCard icon="Mail" label="بريد المدرسة" value={school.SchoolEmail} color="#0078d4" />
+      </div>
+      
+      {school.Latitude && school.Longitude && (
+        <div style={{ marginTop: 16 }}>
+          <a
+            href={getMapUrl(school.Latitude, school.Longitude)}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              backgroundColor: '#0078d4',
+              color: '#fff',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              textDecoration: 'none',
+              fontSize: '13px',
+            }}
+          >
+            <Icon iconName="MapPin" />
+            عرض الموقع
+          </a>
+        </div>
+      )}
     </div>
   )
 }

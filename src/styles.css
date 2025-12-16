@@ -214,8 +214,36 @@ main,
   justify-content: center !important;
 }
 
+/* Fix table column widths - equal distribution */
 .ms-DetailsList {
   direction: rtl;
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+.ms-DetailsList-contentWrapper {
+  overflow-x: auto !important;
+}
+
+/* Equal column widths when flexGrow is same */
+.ms-DetailsHeader-cell,
+.ms-DetailsRow-cell {
+  flex: 1 1 0 !important;
+  min-width: 80px !important;
+  max-width: none !important;
+}
+
+/* Prevent specific columns from being too wide */
+.ms-DetailsHeader-cell[data-item-key="actions"],
+.ms-DetailsRow-cell[data-automation-key="actions"] {
+  flex: 0 0 100px !important;
+  max-width: 100px !important;
+}
+
+.ms-DetailsHeader-cell[data-item-key="adminActions"],
+.ms-DetailsRow-cell[data-automation-key="adminActions"] {
+  flex: 0 0 90px !important;
+  max-width: 90px !important;
 }
 
 .ms-DetailsRow {
@@ -278,7 +306,9 @@ main,
 @media print {
   .side-nav,
   .nav-panel,
-  .mobile-menu-btn {
+  .mobile-menu-btn,
+  .ms-Button,
+  .ms-SearchBox {
     display: none !important;
   }
 
@@ -290,4 +320,31 @@ main,
   .content {
     padding: 0;
   }
+
+  .card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Navigation center alignment */
+.ms-Nav-link {
+  text-align: center !important;
+  justify-content: center !important;
+}
+
+.ms-Nav-linkText {
+  text-align: center !important;
+}
+
+.ms-Nav-compositeLink {
+  text-align: center !important;
 }

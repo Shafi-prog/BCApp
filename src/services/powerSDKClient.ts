@@ -4,7 +4,7 @@
  */
 
 // SharePoint Site Configuration
-const SHAREPOINT_SITE_URL = 'https://edumadinah.sharepoint.com/sites/BCProgramData';
+const SHAREPOINT_SITE_URL = 'https://saudimoe.sharepoint.com/sites/em';
 
 // Table/List Configuration matching SharePoint lists
 export const TABLE_CONFIG = {
@@ -152,10 +152,12 @@ const getPowerSDKClient = (): PowerSDKClient | null => {
 
 // Create service class for a specific table
 export const createTableService = (dataSourceName: string) => {
-  const client = getPowerSDKClient();
+  // Lazy getter for client - get it when needed, not at module load time
+  const getClient = () => getPowerSDKClient();
   
   return {
     async getAll(options?: { top?: number; filter?: string; orderby?: string; skipToken?: string }): Promise<SDKResponse> {
+      const client = getClient();
       if (!client) {
         console.warn(`[${dataSourceName}] Power SDK client not available`);
         return { success: false, error: 'Power SDK not available' };
@@ -171,6 +173,7 @@ export const createTableService = (dataSourceName: string) => {
     },
     
     async get(id: number | string, options?: any): Promise<SDKResponse> {
+      const client = getClient();
       if (!client) {
         return { success: false, error: 'Power SDK not available' };
       }
@@ -184,6 +187,7 @@ export const createTableService = (dataSourceName: string) => {
     },
     
     async create(data: any): Promise<SDKResponse> {
+      const client = getClient();
       if (!client) {
         return { success: false, error: 'Power SDK not available' };
       }
@@ -197,6 +201,7 @@ export const createTableService = (dataSourceName: string) => {
     },
     
     async update(id: number | string, data: any): Promise<SDKResponse> {
+      const client = getClient();
       if (!client) {
         return { success: false, error: 'Power SDK not available' };
       }
@@ -210,6 +215,7 @@ export const createTableService = (dataSourceName: string) => {
     },
     
     async delete(id: number | string): Promise<SDKResponse> {
+      const client = getClient();
       if (!client) {
         return { success: false, error: 'Power SDK not available' };
       }
@@ -223,6 +229,7 @@ export const createTableService = (dataSourceName: string) => {
     },
     
     async getReferencedEntity(search: string, fieldName: string): Promise<SDKResponse> {
+      const client = getClient();
       if (!client) {
         return { success: false, error: 'Power SDK not available' };
       }

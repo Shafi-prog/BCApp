@@ -10,6 +10,8 @@ import Drills from './components/Drills'
 import Incidents from './components/Incidents'
 import Login from './components/Login'
 import SchoolInfo from './components/SchoolInfo'
+import AdminPanel from './components/AdminPanel'
+import BCPlan from './components/BCPlan'
 
 function AppContent() {
   const { user } = useAuth()
@@ -26,12 +28,14 @@ function AppContent() {
       <main style={{ flex: 1 }}>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/bcplan" element={<BCPlan />} />
           <Route path="/team" element={<Team />} />
           <Route path="/training" element={<Training />} />
           <Route path="/training-log" element={<TrainingLog />} />
           <Route path="/drills" element={<Drills />} />
           <Route path="/incidents" element={<Incidents />} />
           <Route path="/schoolinfo" element={<SchoolInfo />} />
+          <Route path="/admin" element={<AdminPanel />} />
           <Route path="*" element={<div style={{ padding: 20 }}>الصفحة غير موجودة</div>} />
         </Routes>
       </main>

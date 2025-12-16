@@ -18,12 +18,69 @@ import {
   Label,
   Pivot,
   PivotItem,
+  TextField,
+  DatePicker,
+  IconButton,
+  Icon,
 } from '@fluentui/react'
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, TrainingProgram, TrainingLog, TeamMember } from '../services/sharepointService'
+import { Coordination_Programs_CatalogService } from '../generated'
+
+// Default fallback options (used if SharePoint options can't be loaded)
+const defaultProviderEntityOptions: IDropdownOption[] = [
+  { key: 'إدارة الأمن والسلامة المدرسية', text: 'إدارة الأمن والسلامة المدرسية' },
+  { key: 'إدارة التدريب والابتعاث', text: 'إدارة التدريب والابتعاث' },
+  { key: 'الدفاع المدني', text: 'الدفاع المدني' },
+  { key: 'الهلال الأحمر', text: 'الهلال الأحمر' },
+  { key: 'جهة خارجية', text: 'جهة خارجية' },
+]
+
+const defaultActivityTypeOptions: IDropdownOption[] = [
+  { key: 'ورشة عمل', text: 'ورشة عمل' },
+  { key: 'دورة تدريبية', text: 'دورة تدريبية' },
+  { key: 'محاضرة', text: 'محاضرة' },
+  { key: 'ندوة', text: 'ندوة' },
+  { key: 'لقاء', text: 'لقاء' },
+]
+
+const defaultTargetAudienceOptions: IDropdownOption[] = [
+  { key: 'منسقي الأمن والسلامة', text: 'منسقي الأمن والسلامة' },
+  { key: 'قادة المدارس', text: 'قادة المدارس' },
+  { key: 'المعلمين', text: 'المعلمين' },
+  { key: 'الطلاب', text: 'الطلاب' },
+  { key: 'أولياء الأمور', text: 'أولياء الأمور' },
+  { key: 'فريق الأمن والسلامة', text: 'فريق الأمن والسلامة' },
+]
+
+const defaultExecutionModeOptions: IDropdownOption[] = [
+  { key: 'حضوري', text: 'حضوري' },
+  { key: 'تعليم عن بعد', text: 'تعليم عن بعد' },
+  { key: 'عن بعد', text: 'عن بعد' },
+  { key: 'تعليم مدمج', text: 'تعليم مدمج' },
+  { key: 'مدمج', text: 'مدمج' },
+]
+
+const defaultCoordinationStatusOptions: IDropdownOption[] = [
+  { key: 'تم التنفيذ', text: 'تم التنفيذ' },
+  { key: 'قيد التنفيذ', text: 'قيد التنفيذ' },
+  { key: 'مخطط', text: 'مخطط' },
+  { key: 'ملغي', text: 'ملغي' },
+  { key: 'مؤجل', text: 'مؤجل' },
+]
+
+// Helper function to convert SharePoint choice values to dropdown options
+const toDropdownOptions = (values: any[]): IDropdownOption[] => {
+  if (!Array.isArray(values)) return []
+  return values.map((v: any) => {
+    const text = typeof v === 'string' ? v : (v.Value || v.text || String(v))
+    return { key: text, text }
+  })
+}
 
 const Training: React.FC = () => {
   const { user } = useAuth()
+  const isAdmin = user?.type === 'admin'
   
   // Programs state
   const [programs, setPrograms] = useState<TrainingProgram[]>([])
@@ -49,20 +106,96 @@ const Training: React.FC = () => {
   const [editAttendees, setEditAttendees] = useState<string[]>([])
   const [savingEdit, setSavingEdit] = useState(false)
   
+  // Admin program management state
+  const [programPanelOpen, setProgramPanelOpen] = useState(false)
+  const [editingProgram, setEditingProgram] = useState<TrainingProgram | null>(null)
+  const [programForm, setProgramForm] = useState<Partial<TrainingProgram>>({
+    Title: '',
+    ProviderEntity: '',
+    ActivityType: '',
+    TargetAudience: '',
+    Date: '',
+    ExecutionMode: '',
+    CoordinationStatus: '',
+  })
+  const [selectedTargetAudience, setSelectedTargetAudience] = useState<string[]>([])
+  const [savingProgram, setSavingProgram] = useState(false)
+  
   // Messages
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  
+  // Dynamic dropdown options from SharePoint
+  const [providerEntityOptions, setProviderEntityOptions] = useState<IDropdownOption[]>(defaultProviderEntityOptions)
+  const [activityTypeOptions, setActivityTypeOptions] = useState<IDropdownOption[]>(defaultActivityTypeOptions)
+  const [targetAudienceOptions, setTargetAudienceOptions] = useState<IDropdownOption[]>(defaultTargetAudienceOptions)
+  const [executionModeOptions, setExecutionModeOptions] = useState<IDropdownOption[]>(defaultExecutionModeOptions)
+  const [coordinationStatusOptions, setCoordinationStatusOptions] = useState<IDropdownOption[]>(defaultCoordinationStatusOptions)
+
+  // Load dropdown options from SharePoint
+  const loadDropdownOptions = async () => {
+    try {
+      console.log('[Training] Loading dropdown options from SharePoint...')
+      
+      // Load all choice field options in parallel
+      const [providerResult, activityResult, targetResult, executionResult, statusResult] = await Promise.all([
+        Coordination_Programs_CatalogService.getReferencedEntity('', 'ProviderEntity').catch(e => { console.warn('ProviderEntity:', e); return null }),
+        Coordination_Programs_CatalogService.getReferencedEntity('', 'ActivityType').catch(e => { console.warn('ActivityType:', e); return null }),
+        Coordination_Programs_CatalogService.getReferencedEntity('', 'TargetAudience').catch(e => { console.warn('TargetAudience:', e); return null }),
+        Coordination_Programs_CatalogService.getReferencedEntity('', 'ExecutionMode').catch(e => { console.warn('ExecutionMode:', e); return null }),
+        Coordination_Programs_CatalogService.getReferencedEntity('', 'CoordinationStatus').catch(e => { console.warn('CoordinationStatus:', e); return null }),
+      ])
+      
+      // Update options if successfully loaded from SharePoint
+      if (providerResult?.success && providerResult.data) {
+        const options = toDropdownOptions(providerResult.data as any[])
+        if (options.length > 0) setProviderEntityOptions(options)
+        console.log('[Training] ProviderEntity options:', options)
+      }
+      
+      if (activityResult?.success && activityResult.data) {
+        const options = toDropdownOptions(activityResult.data as any[])
+        if (options.length > 0) setActivityTypeOptions(options)
+        console.log('[Training] ActivityType options:', options)
+      }
+      
+      if (targetResult?.success && targetResult.data) {
+        const options = toDropdownOptions(targetResult.data as any[])
+        if (options.length > 0) setTargetAudienceOptions(options)
+        console.log('[Training] TargetAudience options:', options)
+      }
+      
+      if (executionResult?.success && executionResult.data) {
+        const options = toDropdownOptions(executionResult.data as any[])
+        if (options.length > 0) setExecutionModeOptions(options)
+        console.log('[Training] ExecutionMode options:', options)
+      }
+      
+      if (statusResult?.success && statusResult.data) {
+        const options = toDropdownOptions(statusResult.data as any[])
+        if (options.length > 0) setCoordinationStatusOptions(options)
+        console.log('[Training] CoordinationStatus options:', options)
+      }
+      
+      console.log('[Training] Dropdown options loaded successfully')
+    } catch (e) {
+      console.error('[Training] Error loading dropdown options:', e)
+      // Keep using default options on error
+    }
+  }
 
   useEffect(() => {
     loadPrograms()
     loadTrainingLog()
     loadTeamMembers()
+    loadDropdownOptions()
   }, [user])
 
   const loadPrograms = async () => {
     try {
       setLoadingPrograms(true)
-      const data = await SharePointService.getTrainingPrograms(true)
+      // Load ALL programs from catalog (don't filter by status)
+      const data = await SharePointService.getTrainingPrograms(false)
       setPrograms(data || [])
     } catch (e) {
       console.error(e)
@@ -236,6 +369,101 @@ const Training: React.FC = () => {
     }
   }
 
+  // ========== ADMIN PROGRAM MANAGEMENT ==========
+  
+  // Open add program panel
+  const handleAddProgram = () => {
+    setEditingProgram(null)
+    setProgramForm({
+      Title: '',
+      ProviderEntity: '',
+      ActivityType: '',
+      TargetAudience: '',
+      Date: '',
+      ExecutionMode: '',
+      CoordinationStatus: 'مخطط',
+    })
+    setSelectedTargetAudience([])
+    setProgramPanelOpen(true)
+    setErrorMessage('')
+    setSuccessMessage('')
+  }
+
+  // Open edit program panel
+  const handleEditProgram = (program: TrainingProgram) => {
+    setEditingProgram(program)
+    setProgramForm({
+      Title: program.Title,
+      ProviderEntity: program.ProviderEntity || '',
+      ActivityType: program.ActivityType || '',
+      TargetAudience: program.TargetAudience || '',
+      Date: program.Date || '',
+      ExecutionMode: program.ExecutionMode || '',
+      CoordinationStatus: program.CoordinationStatus || '',
+    })
+    // Parse target audience
+    const audiences = (program.TargetAudience || '').split('، ').filter(a => a.trim())
+    setSelectedTargetAudience(audiences)
+    setProgramPanelOpen(true)
+    setErrorMessage('')
+    setSuccessMessage('')
+  }
+
+  // Save program (create or update)
+  const handleSaveProgram = async () => {
+    if (!programForm.Title) {
+      setErrorMessage('يجب إدخال عنوان البرنامج')
+      return
+    }
+
+    try {
+      setSavingProgram(true)
+      setErrorMessage('')
+
+      const programData: TrainingProgram = {
+        Title: programForm.Title || '',
+        ProviderEntity: programForm.ProviderEntity,
+        ActivityType: programForm.ActivityType,
+        TargetAudience: selectedTargetAudience.join('، '),
+        Date: programForm.Date,
+        ExecutionMode: programForm.ExecutionMode,
+        CoordinationStatus: programForm.CoordinationStatus,
+      }
+
+      if (editingProgram) {
+        await SharePointService.updateTrainingProgram(editingProgram.Id || 0, programData)
+        setSuccessMessage('تم تحديث البرنامج بنجاح')
+      } else {
+        await SharePointService.createTrainingProgram(programData)
+        setSuccessMessage('تم إضافة البرنامج بنجاح')
+      }
+
+      setProgramPanelOpen(false)
+      setEditingProgram(null)
+      loadPrograms()
+    } catch (e) {
+      console.error(e)
+      setErrorMessage(editingProgram ? 'فشل تحديث البرنامج' : 'فشل إضافة البرنامج')
+    } finally {
+      setSavingProgram(false)
+    }
+  }
+
+  // Delete program
+  const handleDeleteProgram = async (id: number) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا البرنامج؟')) return
+
+    try {
+      setErrorMessage('')
+      await SharePointService.deleteTrainingProgram(id)
+      setSuccessMessage('تم حذف البرنامج بنجاح')
+      loadPrograms()
+    } catch (e) {
+      console.error(e)
+      setErrorMessage('فشل حذف البرنامج')
+    }
+  }
+
   // Attendee options for dropdown
   const attendeeOptions: IDropdownOption[] = teamMembers.map(m => ({
     key: m.Id?.toString() || m.Title,
@@ -254,227 +482,275 @@ const Training: React.FC = () => {
   })
 
   // Programs columns
-  const programColumns: IColumn[] = [
-    { 
-      key: 'Title', 
-      name: 'البرنامج', 
-      fieldName: 'Title', 
-      minWidth: 200, 
-      maxWidth: 300, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingProgram) => (
-        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', lineHeight: '1.4' }}>
-          {item.Title}
-        </div>
-      )
-    },
-    { 
-      key: 'ProviderEntity', 
-      name: 'الجهة المقدمة', 
-      fieldName: 'ProviderEntity', 
-      minWidth: 150, 
-      maxWidth: 200, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingProgram) => (
-        <div style={{ textAlign: 'center', width: '100%' }}>{item.ProviderEntity || '-'}</div>
-      )
-    },
-    { 
-      key: 'ActivityType', 
-      name: 'نوع النشاط', 
-      fieldName: 'ActivityType', 
-      minWidth: 120, 
-      maxWidth: 160, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingProgram) => (
-        <div style={{ textAlign: 'center', width: '100%' }}>{item.ActivityType || '-'}</div>
-      )
-    },
-    { 
-      key: 'TargetAudience', 
-      name: 'الفئة المستهدفة', 
-      fieldName: 'TargetAudience', 
-      minWidth: 140, 
-      maxWidth: 180, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingProgram) => (
-        <div style={{ textAlign: 'center', width: '100%' }}>{item.TargetAudience || '-'}</div>
-      )
-    },
-    { 
-      key: 'Date', 
-      name: 'تاريخ التدريب', 
-      fieldName: 'Date', 
-      minWidth: 120, 
-      maxWidth: 140, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingProgram) => (
-        <div style={{ textAlign: 'center', width: '100%' }}>
-          {item.Date ? new Date(item.Date).toLocaleDateString('ar-SA') : '-'}
-        </div>
-      )
-    },
-    { 
-      key: 'ExecutionMode', 
-      name: 'طريقة التنفيذ', 
-      fieldName: 'ExecutionMode', 
-      minWidth: 120, 
-      maxWidth: 160, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingProgram) => (
-        <div style={{ textAlign: 'center', width: '100%' }}>{item.ExecutionMode || '-'}</div>
-      )
-    },
-    { 
-      key: 'actions', 
-      name: 'الإجراءات', 
-      minWidth: 120,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingProgram) => {
-        const isRegistered = trainingLog.some(log => log.Program_RefId === item.Id)
-        const isPast = isDatePast(item.Date)
-
-        return (
-          <div style={{ textAlign: 'center', width: '100%' }}>
-            {isRegistered ? (
-              <span style={{ color: '#008752', fontWeight: 600 }}>✓ مسجل</span>
-            ) : (
-              <PrimaryButton
-                text={isPast ? 'توثيق حضور' : 'تسجيل'}
-                onClick={() => handleRegisterClick(item)}
-                styles={{
-                  root: {
-                    backgroundColor: isPast ? '#0078d4' : '#008752',
-                    borderColor: isPast ? '#0078d4' : '#008752'
-                  }
-                }}
-              />
-            )}
+  const getProgramColumns = (): IColumn[] => {
+    const cols: IColumn[] = [
+      { 
+        key: 'Title', 
+        name: 'البرنامج', 
+        fieldName: 'Title', 
+        minWidth: 100,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TrainingProgram) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', lineHeight: '1.4', fontSize: '0.85rem' }}>
+            {item.Title}
           </div>
         )
-      }
+      },
+      { 
+        key: 'ProviderEntity', 
+        name: 'الجهة', 
+        fieldName: 'ProviderEntity', 
+        minWidth: 80,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TrainingProgram) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem' }}>{item.ProviderEntity || '-'}</div>
+        )
+      },
+      { 
+        key: 'ActivityType', 
+        name: 'النوع', 
+        fieldName: 'ActivityType', 
+        minWidth: 60,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TrainingProgram) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem' }}>{item.ActivityType || '-'}</div>
+        )
+      },
+      { 
+        key: 'TargetAudience', 
+        name: 'الفئة', 
+        fieldName: 'TargetAudience', 
+        minWidth: 70,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TrainingProgram) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem' }}>{item.TargetAudience || '-'}</div>
+        )
+      },
+      { 
+        key: 'Date', 
+        name: 'التاريخ', 
+        fieldName: 'Date', 
+        minWidth: 80,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TrainingProgram) => (
+          <div style={{ textAlign: 'center', width: '100%', fontSize: '0.85rem' }}>
+            {item.Date ? new Date(item.Date).toLocaleDateString('ar-SA') : '-'}
+          </div>
+        )
+      },
+      { 
+        key: 'ExecutionMode', 
+        name: 'التنفيذ', 
+        fieldName: 'ExecutionMode', 
+        minWidth: 60,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TrainingProgram) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem' }}>{item.ExecutionMode || '-'}</div>
+        )
+      },
+    ]
+
+    // Admin sees status and actions
+    if (isAdmin) {
+      cols.push(
+        { 
+          key: 'CoordinationStatus', 
+          name: 'الحالة', 
+          fieldName: 'CoordinationStatus', 
+          minWidth: 60,
+          isResizable: true,
+          styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+          onRender: (item: TrainingProgram) => {
+            const status = item.CoordinationStatus || '-'
+            const color = status === 'تم التنفيذ' ? '#107c10' : status === 'قيد التنفيذ' ? '#0078d4' : status === 'ملغي' ? '#d83b01' : '#666'
+            return (
+              <div style={{ textAlign: 'center', width: '100%', color, fontWeight: 600, fontSize: '0.85rem' }}>{status}</div>
+            )
+          }
+        },
+        { 
+          key: 'adminActions', 
+          name: 'الإجراءات', 
+          minWidth: 70,
+          maxWidth: 90,
+          styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+          onRender: (item: TrainingProgram) => (
+            <Stack horizontal tokens={{ childrenGap: 4 }} style={{ justifyContent: 'center', width: '100%' }}>
+              <IconButton
+                iconProps={{ iconName: 'Edit' }}
+                title="تعديل"
+                onClick={() => handleEditProgram(item)}
+                styles={{ root: { color: '#0078d4', width: 28, height: 28 }, icon: { fontSize: 14 } }}
+              />
+              <IconButton
+                iconProps={{ iconName: 'Delete' }}
+                title="حذف"
+                onClick={() => handleDeleteProgram(item.Id || 0)}
+                styles={{ root: { color: '#d83b01', width: 28, height: 28 }, icon: { fontSize: 14 } }}
+              />
+            </Stack>
+          )
+        }
+      )
     }
-  ]
+
+    // Schools see registration action
+    if (!isAdmin) {
+      cols.push({ 
+        key: 'actions', 
+        name: 'التسجيل', 
+        minWidth: 80,
+        maxWidth: 100,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TrainingProgram) => {
+          const isRegistered = trainingLog.some(log => log.Program_RefId === item.Id)
+          const isPast = isDatePast(item.Date)
+
+          return (
+            <div style={{ textAlign: 'center', width: '100%' }}>
+              {isRegistered ? (
+                <span style={{ color: '#008752', fontWeight: 600 }}>✓ مسجل</span>
+              ) : (
+                <PrimaryButton
+                  text={isPast ? 'توثيق حضور' : 'تسجيل'}
+                  onClick={() => handleRegisterClick(item)}
+                  styles={{
+                    root: {
+                      backgroundColor: isPast ? '#0078d4' : '#008752',
+                      borderColor: isPast ? '#0078d4' : '#008752'
+                    }
+                  }}
+                />
+              )}
+            </div>
+          )
+        }
+      })
+    }
+
+    return cols
+  }
 
   // Training log columns
-  const logColumns: IColumn[] = [
-    { 
-      key: 'Program_Ref', 
-      name: 'البرنامج', 
-      fieldName: 'Program_Ref', 
-      minWidth: 200, 
-      maxWidth: 280, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingLog) => (
-        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', lineHeight: '1.4' }}>
-          {item.Program_Ref || '-'}
-        </div>
-      )
-    },
-    { 
-      key: 'RegistrationType', 
-      name: 'نوع التسجيل', 
-      fieldName: 'RegistrationType', 
-      minWidth: 120, 
-      maxWidth: 150, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingLog) => (
-        <div style={{ textAlign: 'center', width: '100%' }}>{item.RegistrationType}</div>
-      )
-    },
-    { 
-      key: 'AttendeesNames', 
-      name: 'الحضور', 
-      fieldName: 'AttendeesNames', 
-      minWidth: 200, 
-      maxWidth: 280, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingLog) => (
-        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', lineHeight: '1.4' }}>
-          {item.AttendeesNames || '-'}
-        </div>
-      )
-    },
-    { 
-      key: 'TrainingDate', 
-      name: 'تاريخ التدريب', 
-      fieldName: 'TrainingDate', 
-      minWidth: 120, 
-      maxWidth: 140, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingLog) => (
-        <div style={{ textAlign: 'center', width: '100%' }}>
-          {item.TrainingDate ? new Date(item.TrainingDate).toLocaleDateString('ar-SA') : '-'}
-        </div>
-      )
-    },
-    { 
-      key: 'Title', 
-      name: 'ملاحظات', 
-      fieldName: 'Title', 
-      minWidth: 150, 
-      maxWidth: 200, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingLog) => (
-        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', lineHeight: '1.4' }}>
-          {item.Title || '-'}
-        </div>
-      )
-    },
-    { 
-      key: 'actions', 
-      name: 'الإجراءات', 
-      minWidth: 150,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingLog) => (
-        <Stack horizontal tokens={{ childrenGap: 8 }} style={{ justifyContent: 'center', width: '100%' }}>
-          <button
-            onClick={() => handleEditLog(item)}
-            title="تعديل"
-            style={{
-              padding: '4px 12px',
-              backgroundColor: '#0078d4',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 600
-            }}
-          >
-            ✏️ تعديل
-          </button>
-          <button
-            onClick={() => handleDeleteLog(item.Id || 0)}
-            title="حذف"
-            style={{
-              padding: '4px 12px',
-              backgroundColor: '#d13438',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 600
-            }}
-          >
-            🗑️ حذف
-          </button>
-        </Stack>
-      )
+  const getLogColumns = (): IColumn[] => {
+    const cols: IColumn[] = []
+
+    // Admin sees school name
+    if (isAdmin) {
+      cols.push({ 
+        key: 'SchoolName_Ref', 
+        name: 'المدرسة', 
+        fieldName: 'SchoolName_Ref', 
+        minWidth: 100, 
+        maxWidth: 180,
+        flexGrow: 1,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TrainingLog) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.SchoolName_Ref || '-'}</div>
+        )
+      })
     }
-  ]
+
+    cols.push(
+      { 
+        key: 'Program_Ref', 
+        name: 'البرنامج', 
+        fieldName: 'Program_Ref', 
+        minWidth: 100, 
+        maxWidth: 180,
+        flexGrow: 1,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TrainingLog) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', lineHeight: '1.4' }}>
+            {item.Program_Ref || '-'}
+          </div>
+        )
+      },
+      { 
+        key: 'RegistrationType', 
+        name: 'نوع التسجيل', 
+        fieldName: 'RegistrationType', 
+        minWidth: 70, 
+        maxWidth: 100,
+        flexGrow: 1,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TrainingLog) => (
+          <div style={{ textAlign: 'center', width: '100%' }}>{item.RegistrationType}</div>
+        )
+      },
+      { 
+        key: 'AttendeesNames', 
+        name: 'الحضور', 
+        fieldName: 'AttendeesNames', 
+        minWidth: 100, 
+        maxWidth: 180,
+        flexGrow: 1,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TrainingLog) => {
+          let names = item.AttendeesNames;
+          if (typeof names === 'object' && names !== null) {
+            names = (names as any)?.Value || (names as any)?.results?.join('، ') || '-';
+          }
+          return (
+            <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', lineHeight: '1.4' }}>
+              {names || '-'}
+            </div>
+          );
+        }
+      },
+      { 
+        key: 'TrainingDate', 
+        name: 'تاريخ التدريب', 
+        fieldName: 'TrainingDate', 
+        minWidth: 80, 
+        maxWidth: 110,
+        flexGrow: 1,
+        isResizable: true,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TrainingLog) => (
+          <div style={{ textAlign: 'center', width: '100%' }}>
+            {item.TrainingDate ? new Date(item.TrainingDate).toLocaleDateString('ar-SA') : '-'}
+          </div>
+        )
+      },
+      { 
+        key: 'actions', 
+        name: 'الإجراءات', 
+        minWidth: 70,
+        maxWidth: 90,
+        flexGrow: 0,
+        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+        onRender: (item: TrainingLog) => (
+          <Stack horizontal tokens={{ childrenGap: 8 }} style={{ justifyContent: 'center', width: '100%' }}>
+            <IconButton
+              iconProps={{ iconName: 'Edit' }}
+              title="تعديل"
+              onClick={() => handleEditLog(item)}
+              styles={{ root: { color: '#0078d4' } }}
+            />
+            <IconButton
+              iconProps={{ iconName: 'Delete' }}
+              title="حذف"
+              onClick={() => handleDeleteLog(item.Id || 0)}
+              styles={{ root: { color: '#d83b01' } }}
+            />
+          </Stack>
+        )
+      }
+    )
+
+    return cols
+  }
 
   // Check if schools should see warning
   const showTeamWarning = user?.type !== 'admin' && !loadingTeam && teamMembers.length === 0
@@ -485,14 +761,24 @@ const Training: React.FC = () => {
         {user?.schoolName && (
           <div style={{ backgroundColor: '#008752', borderRadius: '8px', padding: '16px 24px', color: '#fff', marginBottom: '8px' }}>
             <Text variant="large" style={{ color: '#fff', fontWeight: 600 }}>
-              حياكم الله - {user.schoolName}
+              أهلاً - {user.schoolName}
             </Text>
           </div>
         )}
 
-        <Text variant="xxLarge">
-          <strong>بوابة التدريب</strong>
-        </Text>
+        <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
+          <Text variant="xxLarge">
+            <strong>بوابة التدريب</strong>
+          </Text>
+          {isAdmin && (
+            <PrimaryButton
+              text="إضافة برنامج جديد"
+              iconProps={{ iconName: 'Add' }}
+              onClick={handleAddProgram}
+              styles={{ root: { backgroundColor: '#008752', borderColor: '#008752' } }}
+            />
+          )}
+        </Stack>
 
         {/* Warning for schools without team members */}
         {showTeamWarning && (
@@ -503,73 +789,88 @@ const Training: React.FC = () => {
 
         {/* Error message */}
         {errorMessage && (
-          <div style={{ padding: '12px', backgroundColor: '#fee', border: '1px solid #fcc', borderRadius: '4px', color: '#c50f1f' }}>
+          <MessageBar messageBarType={MessageBarType.error} onDismiss={() => setErrorMessage('')}>
             {errorMessage}
-          </div>
+          </MessageBar>
         )}
 
         {/* Success message */}
         {successMessage && (
-          <div style={{ padding: '12px', backgroundColor: '#efe', border: '1px solid #cfc', borderRadius: '4px', color: '#107c10' }}>
+          <MessageBar messageBarType={MessageBarType.success} onDismiss={() => setSuccessMessage('')}>
             {successMessage}
-          </div>
+          </MessageBar>
         )}
 
         {/* Tabs for programs and log */}
         <Pivot>
-          <PivotItem headerText="البرامج المتاحة">
-            {loadingPrograms ? (
-              <Spinner label="جارٍ تحميل البرامج..." />
-            ) : programs.length === 0 ? (
-              <div style={{ padding: '24px', textAlign: 'center', color: '#666' }}>
-                لا توجد برامج متاحة حالياً
-              </div>
-            ) : (
-              <DetailsList
-                items={programs}
-                columns={programColumns}
-                layoutMode={DetailsListLayoutMode.fixedColumns}
-                selectionMode={SelectionMode.none}
-              />
-            )}
+          <PivotItem headerText={isAdmin ? 'كتالوج البرامج' : 'البرامج المتاحة'}>
+            <div className="card" style={{ marginTop: 16, padding: 16 }}>
+              {loadingPrograms ? (
+                <Spinner label="جارٍ تحميل البرامج..." />
+              ) : programs.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#666' }}>
+                  لا توجد برامج متاحة حالياً
+                </div>
+              ) : (
+                <div style={{ width: '100%', overflowX: 'auto' }}>
+                  <DetailsList
+                    items={programs}
+                    columns={getProgramColumns()}
+                    layoutMode={DetailsListLayoutMode.justified}
+                    selectionMode={SelectionMode.none}
+                    styles={{ root: { width: '100%' } }}
+                  />
+                </div>
+              )}
+            </div>
           </PivotItem>
 
           <PivotItem headerText="السجل التدريبي">
-            {showTeamWarning ? (
-              <div style={{ 
-                padding: '32px', 
-                textAlign: 'center', 
-                backgroundColor: '#fff4ce', 
-                border: '1px solid #ffb900', 
-                borderRadius: '8px', 
-                margin: '16px 0' 
-              }}>
-                <Text variant="large" block style={{ marginBottom: '12px', color: '#323130' }}>
-                  ⚠️ يجب إضافة أعضاء فريق الأمن والسلامة أولاً
-                </Text>
-                <Text variant="medium" style={{ color: '#605e5c' }}>
-                  يرجى الانتقال إلى صفحة "فريق الأمن والسلامة" وإضافة الأعضاء قبل التسجيل في البرامج التدريبية
-                </Text>
-              </div>
-            ) : loadingLog ? (
-              <Spinner label="جارٍ تحميل السجل..." />
-            ) : trainingLog.length === 0 ? (
-              <div style={{ padding: '24px', textAlign: 'center', color: '#666' }}>
-                لا يوجد سجل تدريبي
-              </div>
-            ) : (
-              <DetailsList
-                items={trainingLog}
-                columns={logColumns}
-                layoutMode={DetailsListLayoutMode.fixedColumns}
-                selectionMode={SelectionMode.none}
-              />
-            )}
+            <div className="card" style={{ marginTop: 16, padding: 16 }}>
+              {loadingLog ? (
+                <Spinner label="جارٍ تحميل السجل..." />
+              ) : trainingLog.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#666' }}>
+                  {showTeamWarning ? (
+                    <div style={{ 
+                      padding: '32px', 
+                      textAlign: 'center', 
+                      backgroundColor: '#fff4ce', 
+                      border: '1px solid #ffb900', 
+                      borderRadius: '8px' 
+                    }}>
+                      <Text variant="large" block style={{ marginBottom: '12px', color: '#323130' }}>
+                        ⚠️ يجب إضافة أعضاء فريق الأمن والسلامة أولاً
+                      </Text>
+                      <Text variant="medium" style={{ color: '#605e5c' }}>
+                        يرجى الانتقال إلى صفحة "فريق الأمن والسلامة" وإضافة الأعضاء قبل التسجيل في البرامج التدريبية
+                      </Text>
+                    </div>
+                  ) : (
+                    <div style={{ padding: 24, textAlign: 'center' }}>
+                      <Icon iconName="PageList" style={{ fontSize: 48, color: '#999', marginBottom: 12 }} />
+                      <Text variant="large" block style={{ color: '#666' }}>لا يوجد سجل تدريبي</Text>
+                      <Text variant="medium" style={{ color: '#999' }}>قم بالتسجيل في البرامج التدريبية من تبويب "البرامج المتاحة"</Text>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ width: '100%', overflowX: 'auto' }}>
+                  <DetailsList
+                    items={trainingLog}
+                    columns={getLogColumns()}
+                    layoutMode={DetailsListLayoutMode.justified}
+                    selectionMode={SelectionMode.none}
+                    styles={{ root: { width: '100%' } }}
+                  />
+                </div>
+              )}
+            </div>
           </PivotItem>
         </Pivot>
       </Stack>
 
-      {/* Registration Panel */}
+      {/* Registration Panel (for schools) */}
       <Panel
         isOpen={panelOpen}
         onDismiss={() => setPanelOpen(false)}
@@ -648,12 +949,6 @@ const Training: React.FC = () => {
                   </div>
                 </div>
               )}
-              
-              {selectedAttendees.length === 0 && (
-                <Text variant="small" style={{ color: '#a4262c', marginTop: '4px', display: 'block' }}>
-                  * يجب اختيار الحضور للتسجيل
-                </Text>
-              )}
             </div>
 
             {/* Buttons */}
@@ -679,7 +974,7 @@ const Training: React.FC = () => {
         )}
       </Panel>
 
-      {/* Edit Panel */}
+      {/* Edit Log Panel */}
       <Panel
         isOpen={editPanelOpen}
         onDismiss={() => setEditPanelOpen(false)}
@@ -688,7 +983,6 @@ const Training: React.FC = () => {
       >
         {editingLog && (
           <Stack tokens={{ childrenGap: 16 }} style={{ marginTop: '16px' }}>
-            {/* Log info */}
             <div style={{ 
               padding: '16px', 
               backgroundColor: '#f3f2f1', 
@@ -704,7 +998,6 @@ const Training: React.FC = () => {
               </Stack>
             </div>
 
-            {/* Attendee selection */}
             <div>
               <Label required>تعديل الحضور *</Label>
               <Dropdown
@@ -740,18 +1033,12 @@ const Training: React.FC = () => {
               )}
             </div>
 
-            {/* Buttons */}
             <Stack horizontal tokens={{ childrenGap: 12 }} style={{ marginTop: '24px' }}>
               <PrimaryButton
                 text="تحديث التسجيل"
                 onClick={handleSaveEdit}
                 disabled={savingEdit || editAttendees.length === 0}
-                styles={{
-                  root: {
-                    backgroundColor: '#0078d4',
-                    borderColor: '#0078d4'
-                  }
-                }}
+                styles={{ root: { backgroundColor: '#0078d4', borderColor: '#0078d4' } }}
               />
               <DefaultButton
                 text="إلغاء"
@@ -761,6 +1048,93 @@ const Training: React.FC = () => {
             </Stack>
           </Stack>
         )}
+      </Panel>
+
+      {/* Admin Program Management Panel */}
+      <Panel
+        isOpen={programPanelOpen}
+        onDismiss={() => setProgramPanelOpen(false)}
+        headerText={editingProgram ? 'تعديل البرنامج التدريبي' : 'إضافة برنامج تدريبي جديد'}
+        type={PanelType.medium}
+      >
+        <Stack tokens={{ childrenGap: 16 }} style={{ marginTop: '16px' }}>
+          <TextField
+            label="عنوان البرنامج *"
+            value={programForm.Title || ''}
+            onChange={(_, val) => setProgramForm({ ...programForm, Title: val || '' })}
+            required
+          />
+
+          <Dropdown
+            label="الجهة المقدمة"
+            placeholder="اختر الجهة المقدمة"
+            options={providerEntityOptions}
+            selectedKey={programForm.ProviderEntity}
+            onChange={(_, option) => setProgramForm({ ...programForm, ProviderEntity: option?.key as string || '' })}
+          />
+
+          <Dropdown
+            label="نوع النشاط"
+            placeholder="اختر نوع النشاط"
+            options={activityTypeOptions}
+            selectedKey={programForm.ActivityType}
+            onChange={(_, option) => setProgramForm({ ...programForm, ActivityType: option?.key as string || '' })}
+          />
+
+          <Dropdown
+            label="الفئة المستهدفة"
+            placeholder="اختر الفئة المستهدفة"
+            multiSelect
+            options={targetAudienceOptions}
+            selectedKeys={selectedTargetAudience}
+            onChange={(_, option) => {
+              if (option) {
+                setSelectedTargetAudience(prev => 
+                  option.selected 
+                    ? [...prev, option.key as string] 
+                    : prev.filter(k => k !== option.key)
+                )
+              }
+            }}
+          />
+
+          <TextField
+            label="تاريخ التدريب"
+            type="date"
+            value={programForm.Date ? programForm.Date.split('T')[0] : ''}
+            onChange={(_, val) => setProgramForm({ ...programForm, Date: val || '' })}
+          />
+
+          <Dropdown
+            label="طريقة التنفيذ"
+            placeholder="اختر طريقة التنفيذ"
+            options={executionModeOptions}
+            selectedKey={programForm.ExecutionMode}
+            onChange={(_, option) => setProgramForm({ ...programForm, ExecutionMode: option?.key as string || '' })}
+          />
+
+          <Dropdown
+            label="حالة التنسيق"
+            placeholder="اختر الحالة"
+            options={coordinationStatusOptions}
+            selectedKey={programForm.CoordinationStatus}
+            onChange={(_, option) => setProgramForm({ ...programForm, CoordinationStatus: option?.key as string || '' })}
+          />
+
+          <Stack horizontal tokens={{ childrenGap: 12 }} style={{ marginTop: '24px' }}>
+            <PrimaryButton
+              text={editingProgram ? 'تحديث البرنامج' : 'إضافة البرنامج'}
+              onClick={handleSaveProgram}
+              disabled={savingProgram || !programForm.Title}
+              styles={{ root: { backgroundColor: '#008752', borderColor: '#008752' } }}
+            />
+            <DefaultButton
+              text="إلغاء"
+              onClick={() => setProgramPanelOpen(false)}
+              disabled={savingProgram}
+            />
+          </Stack>
+        </Stack>
       </Panel>
     </div>
   )

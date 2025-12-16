@@ -8,6 +8,48 @@
   "logoPath": "Default",
   "localAppUrl": "http://localhost:3000/",
   "region": "prod",
-  "connectionReferences": {},
+  "connectionReferences": {
+    "9f4811f1-8df8-491d-9d4f-a8b8e26cdb91": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+      "displayName": "SharePoint",
+      "iconUri": "https://conn-afd-prod-endpoint-bmc9bqahasf3grgk.b01.azurefd.net/v1.0.1769/1.0.1769.4352/sharepointonline/icon.png",
+      "dataSources": [
+        "sharepointonline",
+        "schoolinfo",
+        "bc_teams_members",
+        "sbc_incidents_log",
+        "sbc_drills_log",
+        "school_training_log",
+        "coordination_programs_catalog"
+      ],
+      "isOnPremiseConnection": false,
+      "bypassConsent": false,
+      "dataSets": {
+        "https://saudimoe.sharepoint.com/sites/em": {
+          "dataSources": {
+            "schoolinfo": {
+              "tableName": "SchoolInfo"
+            },
+            "bc_teams_members": {
+              "tableName": "BC_Teams_Members"
+            },
+            "sbc_incidents_log": {
+              "tableName": "SBC_Incidents_Log"
+            },
+            "sbc_drills_log": {
+              "tableName": "SBC_Drills_Log"
+            },
+            "school_training_log": {
+              "tableName": "School_Training_Log"
+            },
+            "coordination_programs_catalog": {
+              "tableName": "Coordination_Programs_Catalog"
+            }
+          }
+        }
+      },
+      "apiTier": "Standard"
+    }
+  },
   "databaseReferences": {}
 }

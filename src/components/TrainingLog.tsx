@@ -14,11 +14,18 @@ import {
   MessageBarType,
   Spinner,
   Stack,
+  PanelType,
+  IDropdownOption,
+  Label,
+  Text,
+  Icon,
 } from '@fluentui/react'
 import { useAuth } from '../context/AuthContext'
-import { SharePointService, TrainingLog as TrainingLogType } from '../services/sharepointService'
+import { SharePointService, TrainingLog as TrainingLogType, TrainingProgram, TeamMember } from '../services/sharepointService'
 
-const registrationTypeOptions = [
+const registrationTypeOptions: IDropdownOption[] = [
+  { key: 'طلب تسجيل', text: 'طلب تسجيل' },
+  { key: 'توثيق حضور سابق', text: 'توثيق حضور سابق' },
   { key: 'فردي', text: 'فردي' },
   { key: 'مجموعة', text: 'مجموعة' },
   { key: 'فريق كامل', text: 'فريق كامل' },
@@ -31,6 +38,13 @@ const TrainingLog: React.FC = () => {
   const [panelOpen, setPanelOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [message, setMessage] = useState<{ type: MessageBarType; text: string } | null>(null)
+  
+  // Programs and team members for dropdown selection
+  const [programs, setPrograms] = useState<TrainingProgram[]>([])
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [selectedProgram, setSelectedProgram] = useState<TrainingProgram | null>(null)
+  const [selectedAttendees, setSelectedAttendees] = useState<string[]>([])
+  
   const [form, setForm] = useState<Partial<TrainingLogType>>({
     Title: '',
     Program_Ref: '',
@@ -39,17 +53,100 @@ const TrainingLog: React.FC = () => {
     TrainingDate: '',
   })
 
+  // Get SharePoint attachment link - use DispForm.aspx?ID=X to open exact item
+  const getAttachmentLink = (item: TrainingLogType) => {
+    return `https://saudimoe.sharepoint.com/sites/em/Lists/School_Training_Log/DispForm.aspx?ID=${item.Id}`
+  }
+
   const columns: IColumn[] = [
-    { key: 'Title', name: 'العنوان', fieldName: 'Title', minWidth: 150, maxWidth: 200 },
-    { key: 'Program_Ref', name: 'البرنامج', fieldName: 'Program_Ref', minWidth: 150, maxWidth: 200 },
-    { key: 'RegistrationType', name: 'نوع التسجيل', fieldName: 'RegistrationType', minWidth: 80, maxWidth: 100 },
-    { key: 'AttendeesNames', name: 'أسماء الحضور', fieldName: 'AttendeesNames', minWidth: 150, maxWidth: 250 },
-    { key: 'TrainingDate', name: 'تاريخ التدريب', fieldName: 'TrainingDate', minWidth: 100, maxWidth: 120 },
+    { 
+      key: 'Program_Ref', 
+      name: 'البرنامج', 
+      fieldName: 'Program_Ref', 
+      minWidth: 100, 
+      maxWidth: 180,
+      flexGrow: 1,
+      isResizable: true,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: TrainingLogType) => (
+        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', lineHeight: '1.4' }}>
+          {typeof item.Program_Ref === 'object' ? (item.Program_Ref as any)?.Value || '-' : (item.Program_Ref || '-')}
+        </div>
+      )
+    },
+    { 
+      key: 'RegistrationType', 
+      name: 'نوع التسجيل', 
+      fieldName: 'RegistrationType', 
+      minWidth: 80, 
+      flexGrow: 1,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: TrainingLogType) => (
+        <div style={{ textAlign: 'center', width: '100%' }}>
+          {typeof item.RegistrationType === 'object' ? (item.RegistrationType as any)?.Value || '-' : (item.RegistrationType || '-')}
+        </div>
+      )
+    },
+    { 
+      key: 'AttendeesNames', 
+      name: 'أسماء الحضور', 
+      fieldName: 'AttendeesNames', 
+      minWidth: 90, 
+      maxWidth: 180,
+      flexGrow: 1,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: TrainingLogType) => {
+        let names = item.AttendeesNames;
+        if (typeof names === 'object' && names !== null) {
+          names = (names as any)?.Value || (names as any)?.results?.join('، ') || '-';
+        }
+        return (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', lineHeight: '1.4' }}>
+            {names || '-'}
+          </div>
+        );
+      }
+    },
+    { 
+      key: 'TrainingDate', 
+      name: 'تاريخ التدريب', 
+      fieldName: 'TrainingDate', 
+      minWidth: 90, 
+      flexGrow: 1,
+      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
+      onRender: (item: TrainingLogType) => (
+        <div style={{ textAlign: 'center', width: '100%' }}>
+          {item.TrainingDate ? new Date(item.TrainingDate).toLocaleDateString('ar-SA') : '-'}
+        </div>
+      )
+    },
+    {
+      key: 'attachment',
+      name: 'المرفق',
+      minWidth: 80,
+      flexGrow: 1,
+      onRender: (item: TrainingLogType) => (
+        <a
+          href={getAttachmentLink(item)}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: '#008752',
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+        >
+          📎 أضف مرفق
+        </a>
+      ),
+    },
     {
       key: 'actions',
       name: 'الإجراءات',
       fieldName: 'actions',
-      minWidth: 100,
+      minWidth: 120,
       onRender: (item: TrainingLogType) => (
         <Stack horizontal tokens={{ childrenGap: 8 }}>
           <IconButton
@@ -104,18 +201,53 @@ const TrainingLog: React.FC = () => {
     }
   }
 
+  const loadPrograms = async () => {
+    try {
+      const data = await SharePointService.getTrainingPrograms(true)
+      setPrograms(data || [])
+    } catch (e) {
+      console.error('Failed to load programs:', e)
+    }
+  }
+
+  const loadTeamMembers = async () => {
+    try {
+      const schoolName = user?.type === 'admin' ? undefined : user?.schoolName
+      const data = await SharePointService.getTeamMembers(schoolName)
+      setTeamMembers(data || [])
+    } catch (e) {
+      console.error('Failed to load team members:', e)
+    }
+  }
+
   useEffect(() => {
     loadTrainingLog()
+    loadPrograms()
+    loadTeamMembers()
   }, [user])
+
+  // Program options for dropdown
+  const programOptions: IDropdownOption[] = programs.map(p => ({
+    key: p.Id?.toString() || p.Title,
+    text: p.Title
+  }))
+
+  // Team member options for dropdown
+  const attendeeOptions: IDropdownOption[] = teamMembers.map(m => ({
+    key: m.Id?.toString() || m.Title,
+    text: `${m.Title} - ${m.JobRole || 'عضو'}`
+  }))
 
   const onOpen = () => {
     setEditingId(null)
+    setSelectedProgram(null)
+    setSelectedAttendees([])
     setForm({
       Title: '',
       Program_Ref: '',
-      RegistrationType: '',
+      RegistrationType: 'طلب تسجيل',
       AttendeesNames: '',
-      TrainingDate: '',
+      TrainingDate: new Date().toISOString().split('T')[0],
     })
     setPanelOpen(true)
   }
@@ -123,35 +255,64 @@ const TrainingLog: React.FC = () => {
   const onEdit = (item: TrainingLogType) => {
     setEditingId(item.Id!)
     setForm(item)
+    // Parse attendees from names
+    const attendeeIds: string[] = []
+    if (item.AttendeesNames) {
+      item.AttendeesNames.split('، ').forEach(name => {
+        const member = teamMembers.find(m => m.Title === name.trim())
+        if (member && member.Id) {
+          attendeeIds.push(member.Id.toString())
+        }
+      })
+    }
+    setSelectedAttendees(attendeeIds)
+    // Find program
+    const program = programs.find(p => p.Title === item.Program_Ref)
+    setSelectedProgram(program || null)
     setPanelOpen(true)
   }
 
   const onClose = () => {
     setPanelOpen(false)
     setEditingId(null)
+    setSelectedProgram(null)
+    setSelectedAttendees([])
   }
 
   const onSave = async () => {
-    if (!form.Title || !form.Program_Ref) {
-      setMessage({ type: MessageBarType.warning, text: 'يرجى ملء جميع الحقول المطلوبة' })
+    // Validate required fields
+    if (!form.Program_Ref && !selectedProgram) {
+      setMessage({ type: MessageBarType.warning, text: 'يرجى اختيار البرنامج التدريبي' })
+      return
+    }
+    if (selectedAttendees.length === 0 && !form.AttendeesNames) {
+      setMessage({ type: MessageBarType.warning, text: 'يرجى اختيار الحضور' })
       return
     }
 
     setLoading(true)
     try {
+      const attendeeIds = selectedAttendees.map(id => parseInt(id, 10)).filter(id => !isNaN(id))
+      const programId = selectedProgram?.Id || 0
+      const schoolName = user?.schoolName || ''
+      const trainingDate = form.TrainingDate || selectedProgram?.Date || new Date().toISOString()
+      const registrationType = form.RegistrationType || 'طلب تسجيل'
+
       if (editingId) {
-        await SharePointService.updateTrainingLog(editingId, { attendeeIds: [] })
+        // Update existing record
+        await SharePointService.updateTrainingLog(editingId, { attendeeIds })
         setMessage({ type: MessageBarType.success, text: 'تم تحديث السجل بنجاح' })
       } else {
+        // Create new record
         await SharePointService.registerForTraining(
-          user?.schoolName || '',  // schoolName
-          0,                        // programId
-          [],                       // attendeeIds
-          user?.schoolId,           // schoolId
-          form.RegistrationType || 'فردي',  // registrationType
-          form.TrainingDate         // trainingDate
+          schoolName,
+          programId,
+          attendeeIds,
+          user?.schoolId,
+          registrationType,
+          trainingDate
         )
-        setMessage({ type: MessageBarType.success, text: 'تم إضافة السجل بنجاح' })
+        setMessage({ type: MessageBarType.success, text: 'تم تسجيل التدريب بنجاح' })
       }
       await loadTrainingLog()
       onClose()
@@ -179,6 +340,13 @@ const TrainingLog: React.FC = () => {
 
   return (
     <div style={{ padding: 24 }}>
+      {user?.schoolName && (
+        <div style={{ backgroundColor: '#008752', borderRadius: '8px', padding: '16px 24px', color: '#fff', marginBottom: 16 }}>
+          <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+            أهلاً - {user.schoolName}
+          </span>
+        </div>
+      )}
       <h1 className="page-title" style={{ color: '#008752' }}>سجل التدريبات</h1>
 
       {message && (
@@ -187,78 +355,157 @@ const TrainingLog: React.FC = () => {
         </MessageBar>
       )}
 
-      {loading && <Spinner label="جاري التحميل..." />}
+      {loading ? (
+        <div style={{ padding: 24, textAlign: 'center' }}>
+          <Spinner label="جاري التحميل..." />
+        </div>
+      ) : (
+        <>
+          <Stack horizontal horizontalAlign="start" style={{ marginBottom: 16 }}>
+            <PrimaryButton 
+              text="تسجيل تدريب جديد" 
+              iconProps={{ iconName: 'Add' }} 
+              onClick={onOpen}
+              disabled={loading}
+              styles={{ root: { backgroundColor: '#008752', borderColor: '#008752' } }}
+            />
+          </Stack>
 
-      <Stack horizontal horizontalAlign="end" style={{ marginBottom: 16 }}>
-        <PrimaryButton 
-          text="تسجيل تدريب جديد" 
-          iconProps={{ iconName: 'Add' }} 
-          onClick={onOpen}
-          disabled={loading}
-        />
-      </Stack>
-
-      <div className="card">
-        <DetailsList
-          items={items}
-          columns={columns}
-          layoutMode={DetailsListLayoutMode.justified}
-          selectionMode={SelectionMode.none}
-        />
-        {items.length === 0 && !loading && (
-          <div style={{ padding: 20, textAlign: 'center', color: '#666' }}>
-            لا توجد سجلات تدريب حالياً
+          <div className="card">
+            {items.length > 0 ? (
+              <DetailsList
+                items={items}
+                columns={columns}
+                layoutMode={DetailsListLayoutMode.justified}
+                selectionMode={SelectionMode.none}
+              />
+            ) : (
+              <div style={{ padding: 32, textAlign: 'center' }}>
+                <Icon iconName="PageList" style={{ fontSize: 48, color: '#999', marginBottom: 12 }} />
+                <Text variant="large" block style={{ color: '#666', marginBottom: 8 }}>لا توجد سجلات تدريب حالياً</Text>
+                <Text variant="medium" style={{ color: '#999' }}>قم بالتسجيل في البرامج التدريبية بالضغط على الزر أعلاه</Text>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       <Panel
         isOpen={panelOpen}
         onDismiss={onClose}
         headerText={editingId ? 'تعديل سجل التدريب' : 'تسجيل تدريب جديد'}
+        type={PanelType.medium}
         isFooterAtBottom={true}
         onRenderFooterContent={() => (
           <Stack horizontal tokens={{ childrenGap: 8 }}>
-            <PrimaryButton text="حفظ" onClick={onSave} disabled={loading} />
+            <PrimaryButton text="حفظ" onClick={onSave} disabled={loading} styles={{ root: { backgroundColor: '#008752', borderColor: '#008752' } }} />
+            <DefaultButton text="إلغاء" onClick={onClose} disabled={loading} />
           </Stack>
         )}
       >
         <div style={{ padding: 16 }}>
-          <TextField
-            label="العنوان *"
-            value={form.Title || ''}
-            onChange={(_, v) => setForm({ ...form, Title: v || '' })}
-            required
-          />
-          <TextField
-            label="البرنامج التدريبي *"
-            value={form.Program_Ref || ''}
-            onChange={(_, v) => setForm({ ...form, Program_Ref: v || '' })}
-            required
-            styles={{ root: { marginTop: 12 } }}
-          />
+          {/* Program Selection - disabled in edit mode */}
           <Dropdown
-            label="نوع التسجيل"
+            label="البرنامج التدريبي *"
+            placeholder="اختر البرنامج التدريبي"
+            selectedKey={selectedProgram?.Id?.toString() || form.Program_Ref}
+            options={programOptions}
+            onChange={(_, option) => {
+              if (!editingId) {
+                const program = programs.find(p => (p.Id?.toString() === option?.key) || (p.Title === option?.key))
+                setSelectedProgram(program || null)
+                setForm({ ...form, Program_Ref: program?.Title || option?.text || '' })
+              }
+            }}
+            required
+            disabled={!!editingId}
+            styles={{ root: { marginBottom: 16 } }}
+          />
+
+          {/* Program info if selected */}
+          {selectedProgram && (
+            <div style={{ 
+              padding: '12px', 
+              backgroundColor: '#f3f2f1', 
+              borderRadius: '8px', 
+              borderRight: '4px solid #008752',
+              marginBottom: 16
+            }}>
+              <Text variant="medium" block style={{ fontWeight: 600, marginBottom: 8 }}>{selectedProgram.Title}</Text>
+              <div style={{ fontSize: 13 }}>
+                <div><strong>الجهة:</strong> {selectedProgram.ProviderEntity || '-'}</div>
+                <div><strong>التاريخ:</strong> {selectedProgram.Date ? new Date(selectedProgram.Date).toLocaleDateString('ar-SA') : '-'}</div>
+              </div>
+            </div>
+          )}
+
+          <Dropdown
+            label="نوع التسجيل *"
             selectedKey={form.RegistrationType}
             options={registrationTypeOptions}
             onChange={(_, option) => setForm({ ...form, RegistrationType: option?.key as string || '' })}
-            styles={{ root: { marginTop: 12 } }}
+            required
+            styles={{ root: { marginBottom: 16 } }}
           />
-          <TextField
-            label="أسماء الحضور"
-            value={form.AttendeesNames || ''}
-            onChange={(_, v) => setForm({ ...form, AttendeesNames: v || '' })}
-            multiline
-            rows={3}
-            styles={{ root: { marginTop: 12 } }}
+
+          {/* Attendee Selection */}
+          <Label required>اختيار الحضور من فريق الأمن والسلامة *</Label>
+          <Dropdown
+            placeholder="اختر الحضور"
+            multiSelect
+            options={attendeeOptions}
+            selectedKeys={selectedAttendees}
+            onChange={(_, option) => {
+              if (option) {
+                setSelectedAttendees(prev => 
+                  option.selected 
+                    ? [...prev, option.key as string] 
+                    : prev.filter(k => k !== option.key)
+                )
+              }
+            }}
+            styles={{ dropdown: { marginBottom: 8 } }}
           />
+
+          {selectedAttendees.length > 0 && (
+            <div style={{ marginTop: 8, marginBottom: 16 }}>
+              <Text variant="small" style={{ fontWeight: 600 }}>الحضور المختارون ({selectedAttendees.length}):</Text>
+              <div style={{ 
+                padding: '8px 12px', 
+                backgroundColor: '#e8f4e8', 
+                borderRadius: '4px', 
+                marginTop: '4px',
+                fontSize: 13
+              }}>
+                {selectedAttendees.map(id => {
+                  const member = teamMembers.find(m => m.Id?.toString() === id)
+                  return member?.Title
+                }).filter(Boolean).join(' | ')}
+              </div>
+            </div>
+          )}
+
           <TextField
             label="تاريخ التدريب"
             type="date"
             value={form.TrainingDate || ''}
             onChange={(_, v) => setForm({ ...form, TrainingDate: v || '' })}
-            styles={{ root: { marginTop: 12 } }}
+            styles={{ root: { marginBottom: 16 } }}
           />
+
+          <TextField
+            label="ملاحظات"
+            value={form.Title || ''}
+            onChange={(_, v) => setForm({ ...form, Title: v || '' })}
+            placeholder="أدخل ملاحظات إضافية (اختياري)"
+          />
+
+          {/* Attachment info */}
+          <div style={{ padding: '12px', backgroundColor: '#f0f9ff', border: '1px solid #0078d4', borderRadius: '4px', marginTop: 16 }}>
+            <Text variant="small" style={{ color: '#004578' }}>
+              📎 <strong>لإضافة مرفق:</strong> بعد الحفظ، يمكنك إضافة المرفقات من خلال عمود "المرفق" في الجدول
+            </Text>
+          </div>
         </div>
       </Panel>
     </div>
