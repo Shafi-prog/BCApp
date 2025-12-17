@@ -1174,7 +1174,7 @@ const AdminPanel: React.FC = () => {
               <DetailsList
                 items={testPlans}
                 columns={[
-                  { key: 'title', name: 'عنوان التمرين', fieldName: 'title', minWidth: 100, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%' }}>{item.title}</div> },
+                  { key: 'title', name: 'عنوان التمرين', fieldName: 'title', minWidth: 80, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.title}</div> },
                   { key: 'hypothesis', name: 'الفرضية', fieldName: 'hypothesis', minWidth: 100, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.hypothesis}</div> },
                   { key: 'targetGroup', name: 'الفئة المستهدفة', fieldName: 'targetGroup', minWidth: 80, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%' }}>{item.targetGroup}</div> },
                   { key: 'startDate', name: 'من', fieldName: 'startDate', minWidth: 80, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%' }}>{item.startDate ? new Date(item.startDate).toLocaleDateString('ar-SA') : '-'}</div> },
@@ -1206,7 +1206,7 @@ const AdminPanel: React.FC = () => {
                   progress: Math.min(((drillsPerSchool.get(s.SchoolName) || 0) / 4) * 100, 100)
                 })).sort((a, b) => b.drillCount - a.drillCount)}
                 columns={[
-                  { key: 'schoolName', name: 'المدرسة', fieldName: 'schoolName', minWidth: 200, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: any) => <div style={{ textAlign: 'center', width: '100%' }}>{item.schoolName}</div> },
+                  { key: 'schoolName', name: 'المدرسة', fieldName: 'schoolName', minWidth: 80, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: any) => <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.schoolName}</div> },
                   { key: 'drillCount', name: 'التمارين المنفذة', fieldName: 'drillCount', minWidth: 100, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: any) => <div style={{ textAlign: 'center', width: '100%' }}><span style={{ color: item.drillCount >= 4 ? '#107c10' : '#323130' }}>{item.drillCount} / 4</span></div> },
                   { key: 'progress', name: 'نسبة الإنجاز', minWidth: 150, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: any) => (
                     <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }} horizontalAlign="center">
@@ -1264,7 +1264,7 @@ const AdminPanel: React.FC = () => {
                 <DetailsList
                   items={adminContacts}
                   columns={[
-                    { key: 'name', name: 'الاسم', fieldName: 'name', minWidth: 100, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%', fontWeight: 500 }}>{item.name}</div> },
+                    { key: 'name', name: 'الاسم', fieldName: 'name', minWidth: 80, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%', fontWeight: 500, whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.name}</div> },
                     { key: 'role', name: 'الدور', fieldName: 'role', minWidth: 100, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%' }}>{item.role}</div> },
                     { key: 'organization', name: 'الجهة', fieldName: 'organization', minWidth: 100, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => {
                       const labels: any = { operations: 'غرفة العمليات', bc_team: 'فريق BC', civil_defense: 'الدفاع المدني', red_crescent: 'الهلال الأحمر', ministry: 'الوزارة', external: 'جهة خارجية' }
@@ -1598,7 +1598,7 @@ const AdminPanel: React.FC = () => {
                 <DetailsList
                   items={incidentEvaluations}
                   columns={[
-                    { key: 'incident', name: 'الحادث', minWidth: 150, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center' } }, onRender: (item: IncidentEvaluation) => {
+                    { key: 'incident', name: 'الحادث', minWidth: 80, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center' } }, onRender: (item: IncidentEvaluation) => {
                       const incident = incidents.find(i => i.ID === item.incidentId)
                       return <div style={{ textAlign: 'center' }}>{incident?.Title || `حادث #${item.incidentId}`}</div>
                     }},

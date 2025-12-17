@@ -107,19 +107,19 @@ const Team: React.FC = () => {
         name: 'الاسم', 
         fieldName: 'Title', 
         minWidth: 110, 
-        flexGrow: 1, 
+        flexGrow: 2, 
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TeamMember) => (
-          <div style={{ textAlign: 'center', width: '100%' }}>{item.Title}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.Title}</div>
         ),
       },
       { 
         key: 'JobRole', 
         name: 'الوظيفة', 
         fieldName: 'JobRole', 
-        minWidth: 90, 
-        flexGrow: 1, 
+        minWidth: 120, 
+        flexGrow: 2, 
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TeamMember) => (
@@ -130,7 +130,7 @@ const Team: React.FC = () => {
         key: 'MembershipType', 
         name: 'نوع العضوية', 
         fieldName: 'MembershipType', 
-        minWidth: 70, 
+        minWidth: 90, 
         flexGrow: 1, 
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },

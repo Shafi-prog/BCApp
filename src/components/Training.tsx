@@ -488,7 +488,7 @@ const Training: React.FC = () => {
         key: 'Title', 
         name: 'البرنامج', 
         fieldName: 'Title', 
-        minWidth: 140,
+        minWidth: 120,
         flexGrow: 2,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
@@ -502,7 +502,7 @@ const Training: React.FC = () => {
         key: 'ProviderEntity', 
         name: 'الجهة', 
         fieldName: 'ProviderEntity', 
-        minWidth: 90,
+        minWidth: 100,
         flexGrow: 1,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
@@ -514,8 +514,8 @@ const Training: React.FC = () => {
         key: 'ActivityType', 
         name: 'النوع', 
         fieldName: 'ActivityType', 
-        minWidth: 55,
-        flexGrow: 1,
+        minWidth: 60,
+        flexGrow: 0,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingProgram) => (
@@ -526,20 +526,20 @@ const Training: React.FC = () => {
         key: 'TargetAudience', 
         name: 'الفئة', 
         fieldName: 'TargetAudience', 
-        minWidth: 60,
-        flexGrow: 1,
+        minWidth: 150,
+        flexGrow: 3,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingProgram) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem' }}>{item.TargetAudience || '-'}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem', lineHeight: '1.4' }}>{item.TargetAudience || '-'}</div>
         )
       },
       { 
         key: 'Date', 
         name: 'التاريخ', 
         fieldName: 'Date', 
-        minWidth: 75,
-        flexGrow: 1,
+        minWidth: 80,
+        flexGrow: 0,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingProgram) => (
@@ -552,8 +552,8 @@ const Training: React.FC = () => {
         key: 'ExecutionMode', 
         name: 'التنفيذ', 
         fieldName: 'ExecutionMode', 
-        minWidth: 55,
-        flexGrow: 1,
+        minWidth: 70,
+        flexGrow: 0,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingProgram) => (

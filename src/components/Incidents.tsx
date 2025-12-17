@@ -247,12 +247,12 @@ const Incidents: React.FC = () => {
       key: 'Title', 
       name: 'العنوان', 
       fieldName: 'Title', 
-      minWidth: 140, 
+      minWidth: 120, 
       flexGrow: 2, 
       isResizable: true,
       styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: Incident) => (
-        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.Title}</div>
+        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', lineHeight: '1.4' }}>{item.Title}</div>
       ),
     },
     { 
@@ -260,7 +260,7 @@ const Incidents: React.FC = () => {
       name: 'رقم البلاغ', 
       fieldName: 'IncidentNumber', 
       minWidth: 70, 
-      flexGrow: 1, 
+      flexGrow: 0, 
       isResizable: true,
       styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: Incident) => (
@@ -271,7 +271,7 @@ const Incidents: React.FC = () => {
       key: 'IncidentCategory', 
       name: 'التصنيف', 
       fieldName: 'IncidentCategory', 
-      minWidth: 80, 
+      minWidth: 90, 
       flexGrow: 1, 
       isResizable: true,
       styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },

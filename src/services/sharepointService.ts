@@ -343,11 +343,39 @@ const transformTrainingProgram = (raw: any): TrainingProgram => {
 const transformTrainingLog = (raw: any): TrainingLog => {
   // Handle Attendees field - can be array of objects or string
   let attendeeNames = '';
-  if (raw.Attendees) {
-    attendeeNames = extractMultiChoiceValues(raw.Attendees);
+  
+  // Try AttendeesNames first (multi-select lookup field)
+  if (raw.AttendeesNames) {
+    if (Array.isArray(raw.AttendeesNames)) {
+      // Array of lookup objects: [{Id: 1, Value: "Name1"}, {Id: 2, Value: "Name2"}]
+      attendeeNames = raw.AttendeesNames
+        .map((item: any) => {
+          if (typeof item === 'object') {
+            return item.Value || item.Title || item.text || '';
+          }
+          return String(item);
+        })
+        .filter((name: string) => name)
+        .join('، ');
+    } else if (typeof raw.AttendeesNames === 'object') {
+      // Single object or results array
+      if (raw.AttendeesNames.results && Array.isArray(raw.AttendeesNames.results)) {
+        attendeeNames = raw.AttendeesNames.results
+          .map((item: any) => extractChoiceValue(item))
+          .filter((v: string) => v)
+          .join('، ');
+      } else {
+        attendeeNames = extractChoiceValue(raw.AttendeesNames);
+      }
+    } else {
+      // Plain string
+      attendeeNames = String(raw.AttendeesNames);
+    }
   }
-  if (!attendeeNames && raw.AttendeesNames) {
-    attendeeNames = extractChoiceValue(raw.AttendeesNames);
+  
+  // Fallback to Attendees field
+  if (!attendeeNames && raw.Attendees) {
+    attendeeNames = extractMultiChoiceValues(raw.Attendees);
   }
   
   return {

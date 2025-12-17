@@ -70,7 +70,7 @@ const TrainingLog: React.FC = () => {
       key: 'Program_Ref', 
       name: 'البرنامج', 
       fieldName: 'Program_Ref', 
-      minWidth: 140, 
+      minWidth: 120, 
       flexGrow: 2,
       isResizable: true,
       styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
@@ -84,12 +84,12 @@ const TrainingLog: React.FC = () => {
       key: 'RegistrationType', 
       name: 'نوع التسجيل', 
       fieldName: 'RegistrationType', 
-      minWidth: 70, 
-      flexGrow: 1,
+      minWidth: 90, 
+      flexGrow: 0,
       isResizable: true,
       styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: TrainingLogType) => (
-        <div style={{ textAlign: 'center', width: '100%' }}>
+        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', lineHeight: '1.3' }}>
           {typeof item.RegistrationType === 'object' ? (item.RegistrationType as any)?.Value || '-' : (item.RegistrationType || '-')}
         </div>
       )
@@ -98,8 +98,8 @@ const TrainingLog: React.FC = () => {
       key: 'AttendeesNames', 
       name: 'أسماء الحضور', 
       fieldName: 'AttendeesNames', 
-      minWidth: 120, 
-      flexGrow: 2,
+      minWidth: 150, 
+      flexGrow: 3,
       styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: TrainingLogType) => {
         let names = item.AttendeesNames;
@@ -117,8 +117,8 @@ const TrainingLog: React.FC = () => {
       key: 'TrainingDate', 
       name: 'تاريخ التدريب', 
       fieldName: 'TrainingDate', 
-      minWidth: 75, 
-      flexGrow: 1,
+      minWidth: 80, 
+      flexGrow: 0,
       isResizable: true,
       styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: TrainingLogType) => (

@@ -225,10 +225,6 @@ const BCPlan: React.FC = () => {
           خطة التمارين السنوية
         </h2>
 
-        <MessageBar messageBarType={MessageBarType.info} styles={{ root: { marginBottom: 16 } }}>
-          يمكنك الاطلاع على خطة التمارين السنوية وتنفيذها من صفحة سجل التمارين الفرضية
-        </MessageBar>
-
         {/* Progress Summary */}
         <div style={{ 
           backgroundColor: '#f0f9ff', 
@@ -253,25 +249,117 @@ const BCPlan: React.FC = () => {
             </span>
           )}
         </div>
-        
-        <a 
-          href="#/drills" 
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            backgroundColor: '#107c10',
-            color: '#fff',
-            padding: '12px 24px',
-            borderRadius: 8,
-            textDecoration: 'none',
-            fontWeight: 600,
-            fontSize: '1rem',
-          }}
-        >
-          <Icon iconName="TaskList" />
-          الذهاب لسجل التمارين الفرضية
-        </a>
+
+        {/* Display Yearly Plan Details */}
+        {yearlyPlan.length > 0 ? (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'grid', gap: 12 }}>
+              {yearlyPlan.map((plan, idx) => {
+                const executed = executedDrills.find(d => 
+                  d.Title === plan.title || 
+                  d.DrillHypothesis === plan.hypothesis
+                )
+                
+                const today = new Date()
+                today.setHours(0, 0, 0, 0)
+                const startDate = plan.startDate ? new Date(plan.startDate) : null
+                const endDate = plan.endDate ? new Date(plan.endDate) : null
+                
+                let availabilityStatus: 'not-started' | 'available' | 'expired' = 'available'
+                if (startDate && today < startDate) {
+                  availabilityStatus = 'not-started'
+                } else if (endDate && today > endDate) {
+                  availabilityStatus = 'expired'
+                }
+                
+                return (
+                  <div key={idx} style={{ 
+                    padding: '16px', 
+                    backgroundColor: executed ? '#e8f5e9' : availabilityStatus === 'available' ? '#fff' : '#f5f5f5', 
+                    borderRadius: 8, 
+                    border: executed ? '2px solid #4caf50' : availabilityStatus === 'available' ? '1px solid #0078d4' : '1px solid #e1dfdd',
+                    opacity: availabilityStatus === 'expired' && !executed ? 0.7 : 1
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 8 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: 4, color: '#333' }}>
+                          {executed ? '✅' : availabilityStatus === 'not-started' ? '🕐' : availabilityStatus === 'expired' ? '⏰' : '📋'} {plan.title}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 4 }}>
+                          <strong>الفرضية:</strong> {plan.hypothesis}
+                        </div>
+                        {plan.specificEvent && (
+                          <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 4 }}>
+                            <strong>الحدث المحدد:</strong> {plan.specificEvent}
+                          </div>
+                        )}
+                        {plan.targetGroup && (
+                          <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 4 }}>
+                            <strong>الفئة المستهدفة:</strong> {plan.targetGroup}
+                          </div>
+                        )}
+                        {(plan.startDate || plan.endDate) && (
+                          <div style={{ fontSize: '0.85rem', color: '#666', marginTop: 8 }}>
+                            <strong>فترة التنفيذ:</strong> {plan.startDate ? new Date(plan.startDate).toLocaleDateString('ar-SA') : '-'} إلى {plan.endDate ? new Date(plan.endDate).toLocaleDateString('ar-SA') : '-'}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', textAlign: 'center' }}>
+                        {executed ? (
+                          <span style={{ backgroundColor: '#4caf50', color: '#fff', padding: '4px 12px', borderRadius: 12, whiteSpace: 'nowrap' }}>
+                            تم التنفيذ
+                          </span>
+                        ) : availabilityStatus === 'not-started' ? (
+                          <span style={{ backgroundColor: '#ffb900', color: '#fff', padding: '4px 12px', borderRadius: 12, whiteSpace: 'nowrap' }}>
+                            لم يبدأ بعد
+                          </span>
+                        ) : availabilityStatus === 'expired' ? (
+                          <span style={{ backgroundColor: '#d83b01', color: '#fff', padding: '4px 12px', borderRadius: 12, whiteSpace: 'nowrap' }}>
+                            انتهى الموعد
+                          </span>
+                        ) : (
+                          <span style={{ backgroundColor: '#0078d4', color: '#fff', padding: '4px 12px', borderRadius: 12, whiteSpace: 'nowrap' }}>
+                            متاح للتنفيذ
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {executed && executed.ExecutionDate && (
+                      <div style={{ fontSize: '0.8rem', color: '#4caf50', marginTop: 8, paddingTop: 8, borderTop: '1px solid #e1dfdd' }}>
+                        <strong>تاريخ التنفيذ:</strong> {new Date(executed.ExecutionDate).toLocaleDateString('ar-SA')}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            
+            <div style={{ marginTop: 16 }}>
+              <a 
+                href="#/drills" 
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: '#107c10',
+                  color: '#fff',
+                  padding: '12px 24px',
+                  borderRadius: 8,
+                  textDecoration: 'none',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                }}
+              >
+                <Icon iconName="TaskList" />
+                الذهاب لسجل التمارين الفرضية
+              </a>
+            </div>
+          </div>
+        ) : (
+          <MessageBar messageBarType={MessageBarType.info} styles={{ root: { marginBottom: 16 } }}>
+            يمكنك الاطلاع على خطة التمارين السنوية وتنفيذها من صفحة سجل التمارين الفرضية
+          </MessageBar>
+        )}
       </div>
 
       {/* Emergency Contacts Section */}

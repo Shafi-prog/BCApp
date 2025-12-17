@@ -66,7 +66,7 @@ const Drills: React.FC = () => {
         key: 'SchoolName_Ref',
         name: 'المدرسة',
         fieldName: 'SchoolName_Ref',
-        minWidth: 120,
+        minWidth: 80,
         flexGrow: 2,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
@@ -81,20 +81,20 @@ const Drills: React.FC = () => {
         key: 'DrillHypothesis',
         name: 'الفرضية',
         fieldName: 'DrillHypothesis',
-        minWidth: 80,
+        minWidth: 100,
         flexGrow: 1,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem' }}>{item.DrillHypothesis}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem', lineHeight: '1.4' }}>{item.DrillHypothesis}</div>
         ),
       },
       {
         key: 'SpecificEvent',
         name: 'وصف الحدث المحدد *',
         fieldName: 'SpecificEvent',
-        minWidth: 180,
-        flexGrow: 3,
+        minWidth: 200,
+        flexGrow: 4,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
@@ -107,20 +107,20 @@ const Drills: React.FC = () => {
         key: 'TargetGroup',
         name: 'الفئة المستهدفة',
         fieldName: 'TargetGroup',
-        minWidth: 90,
+        minWidth: 110,
         flexGrow: 1,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem' }}>{item.TargetGroup}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem', lineHeight: '1.4' }}>{item.TargetGroup}</div>
         ),
       },
       {
         key: 'ExecutionDate',
         name: 'تاريخ التنفيذ',
         fieldName: 'ExecutionDate',
-        minWidth: 75,
-        flexGrow: 1,
+        minWidth: 80,
+        flexGrow: 0,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => {
