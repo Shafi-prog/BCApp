@@ -1,0 +1,3 @@
+Title,IncidentNumber,EvaluationDate,EvaluatedBy,ResponseEffectiveness,CommunicationEffectiveness,CoordinationEffectiveness,TimelinessScore,OverallScore,StrengthPoints,ImprovementAreas,RecommendedActions,LessonsLearned,FollowUpRequired,FollowUpDate,Notes
+تقييم حادث تسرب المياه,INC-001,2025-01-08,مدير المدرسة,5,4,5,4,4.5,سرعة الاستجابة وتفعيل الإخلاء,تحسين التواصل مع أولياء الأمور,إضافة قناة واتساب للطوارئ,أهمية وجود خطة إخلاء واضحة,TRUE,2025-02-08,تقييم شامل للحادث
+تقييم حادث انقطاع الكهرباء,INC-002,2025-01-05,نائب المدير,4,4,4,5,4.25,التحول السريع للمصدر البديل,توفير إضاءة طوارئ إضافية,شراء مصابيح طوارئ إضافية,ضرورة صيانة المولد بانتظام,FALSE,,تقييم جيد

@@ -136,7 +136,7 @@ const SchoolInfo: React.FC = () => {
           const schoolsWithDrills = new Set(drills.map(d => d.SchoolName_Ref))
           filtered = filtered.filter(s => !schoolsWithDrills.has(s.SchoolName))
         } else if (dataFilter === 'noTraining') {
-          const trainings = await SharePointService.getTrainingLogs()
+          const trainings = await SharePointService.getTrainingLog()
           const schoolsWithTraining = new Set(trainings.map(t => t.SchoolName_Ref))
           filtered = filtered.filter(s => !schoolsWithTraining.has(s.SchoolName))
         }

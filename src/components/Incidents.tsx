@@ -120,10 +120,10 @@ const Incidents: React.FC = () => {
   
   // Get alternative schools from mutual operation plan based on current school
   const alternativeSchools = useMemo(() => {
-    if (!user?.school) return []
-    const schoolData = mutualOperationPlan.find(s => s.schoolName === user.school)
+    if (!user?.schoolName) return []
+    const schoolData = mutualOperationPlan.find(s => s.schoolName === user.schoolName)
     return schoolData?.alternatives || []
-  }, [user?.school])
+  }, [user?.schoolName])
   
   const [form, setForm] = useState<Partial<Incident>>({
     Title: '',

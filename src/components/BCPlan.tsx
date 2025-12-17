@@ -87,6 +87,48 @@ const BCPlan: React.FC = () => {
     )
   }
 
+  // If plan is not published, show placeholder for schools
+  if (!sharedBCPlan.isPublished) {
+    return (
+      <div style={{ padding: 24 }}>
+        {user?.schoolName && (
+          <div style={{ backgroundColor: '#008752', borderRadius: '8px', padding: '16px 24px', color: '#fff', marginBottom: 16 }}>
+            <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+              أهلاً - {user.schoolName}
+            </span>
+          </div>
+        )}
+
+        <h1 className="page-title" style={{ color: '#008752' }}>خطة استمرارية العملية التعليمية</h1>
+        
+        <div className="card" style={{ 
+          padding: 40, 
+          textAlign: 'center', 
+          backgroundColor: '#fff8e1',
+          border: '2px dashed #ffc107'
+        }}>
+          <Icon iconName="Clock" style={{ fontSize: 64, color: '#ffc107', marginBottom: 16 }} />
+          <h2 style={{ color: '#f57c00', marginBottom: 12 }}>الخطة قيد الإعداد</h2>
+          <p style={{ color: '#666', fontSize: '1rem', marginBottom: 20 }}>
+            لم يتم نشر خطة استمرارية الأعمال بعد. المسؤول يعمل على إعداد الخطة وستكون متاحة قريباً.
+          </p>
+          <div style={{ 
+            backgroundColor: '#fff3e0', 
+            padding: 16, 
+            borderRadius: 8, 
+            display: 'inline-block',
+            textAlign: 'right'
+          }}>
+            <p style={{ margin: 0, color: '#e65100', fontSize: '0.9rem' }}>
+              <Icon iconName="Info" style={{ marginLeft: 8 }} />
+              للاستفسارات، يرجى التواصل مع وحدة الطوارئ والأزمات في إدارة التعليم
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ padding: 24 }}>
       {user?.schoolName && (
@@ -115,11 +157,6 @@ const BCPlan: React.FC = () => {
         <p style={{ margin: '8px 0 0 0', fontSize: '0.85rem', opacity: 0.7 }}>
           آخر تحديث: {new Date(sharedBCPlan.lastUpdated).toLocaleDateString('ar-SA')}
         </p>
-        {!sharedBCPlan.isPublished && (
-          <MessageBar messageBarType={MessageBarType.warning} styles={{ root: { marginTop: 12 } }}>
-            هذه الخطة مسودة ولم يتم نشرها بعد
-          </MessageBar>
-        )}
       </div>
 
       {/* Scenarios Section */}

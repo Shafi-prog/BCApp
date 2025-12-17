@@ -1,0 +1,4 @@
+Title,ReviewDate,ReviewedBy,ReviewerRole,PlanVersion,OverallStatus,CompletionPercentage,ScenariosReviewed,ProceduresReviewed,ContactsReviewed,ResourcesReviewed,TrainingReviewed,FindingsCount,CriticalFindings,RecommendationsCount,NextReviewDate,ApprovalStatus,ApprovedBy,ApprovalDate,Notes
+مراجعة الربع الأول 2025,2025-01-15,أحمد المطيري,مسؤول استمرارية الأعمال,3.0,approved,95,TRUE,TRUE,TRUE,TRUE,TRUE,3,0,2,2025-04-15,approved,مدير الإدارة,2025-01-16,مراجعة شاملة - الخطة جاهزة
+مراجعة الربع الرابع 2024,2024-10-15,خالد العنزي,مسؤول استمرارية الأعمال,2.5,approved,90,TRUE,TRUE,TRUE,FALSE,TRUE,5,1,4,2025-01-15,approved,مدير الإدارة,2024-10-20,تم معالجة النتيجة الحرجة
+مراجعة نصف سنوية 2024,2024-07-01,محمد السعيد,مستشار خارجي,2.0,needs_update,75,TRUE,TRUE,FALSE,FALSE,FALSE,8,2,6,2024-10-01,conditionally_approved,مدير الإدارة,2024-07-10,بحاجة لتحديث جهات الاتصال

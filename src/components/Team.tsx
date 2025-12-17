@@ -85,18 +85,18 @@ const Team: React.FC = () => {
   const getColumns = (): IColumn[] => {
     const cols: IColumn[] = []
     
-    // Admin sees school name column first
+    // Admin sees school name column first - max 80px
     if (user?.type === 'admin') {
       cols.push({
         key: 'SchoolName_Ref',
         name: 'المدرسة',
         fieldName: 'SchoolName_Ref',
-        minWidth: 100,
-        flexGrow: 2,
+        minWidth: 60,
+        maxWidth: 80,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TeamMember) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.SchoolName_Ref || '-'}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.8rem', lineHeight: '1.3', overflow: 'hidden' }}>{item.SchoolName_Ref || '-'}</div>
         ),
       })
     }
@@ -341,7 +341,7 @@ const Team: React.FC = () => {
       }
 
       if (editingId) {
-        await SharePointService.updateTeamMember(editingId, memberData, user?.schoolId)
+        await SharePointService.updateTeamMember(editingId, memberData)
         setMessage({ type: MessageBarType.success, text: 'تم تحديث العضو بنجاح' })
       } else {
         await SharePointService.createTeamMember(memberData, user?.schoolId)

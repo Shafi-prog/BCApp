@@ -1,0 +1,1643 @@
+{
+  "name": "BC_Plan_Review",
+  "title": "BC_Plan_Review",
+  "x-ms-permission": "read-write",
+  "x-ms-capabilities": {
+    "sortRestrictions": {
+      "sortable": true,
+      "unsortableProperties": [
+        "field_3",
+        "field_5",
+        "field_16",
+        "field_17",
+        "ReviewRecommendations",
+        "ResponseScenario1",
+        "ResponseScenario2",
+        "ResponseScenario3",
+        "ResponseScenario4",
+        "ResponseScenario5",
+        "{Identifier}",
+        "{IsFolder}",
+        "{Thumbnail}",
+        "{Link}",
+        "{Name}",
+        "{FilenameWithExtension}",
+        "{Path}",
+        "{FullPath}",
+        "{ModerationStatus}",
+        "{ModerationComment}",
+        "{ContentType}",
+        "{HasAttachments}",
+        "{Attachments}",
+        "{VersionNumber}",
+        "{TriggerWindowStartToken}",
+        "{TriggerWindowEndToken}"
+      ]
+    },
+    "filterRestrictions": {
+      "filterable": true,
+      "nonFilterableProperties": [
+        "ReviewRecommendations",
+        "ResponseScenario1",
+        "ResponseScenario2",
+        "ResponseScenario3",
+        "ResponseScenario4",
+        "ResponseScenario5",
+        "{Identifier}",
+        "{IsFolder}",
+        "{Thumbnail}",
+        "{Link}",
+        "{Name}",
+        "{FilenameWithExtension}",
+        "{Path}",
+        "{FullPath}",
+        "{ModerationStatus}",
+        "{ModerationComment}",
+        "{ContentType}",
+        "{HasAttachments}",
+        "{Attachments}",
+        "{VersionNumber}",
+        "{TriggerWindowStartToken}",
+        "{TriggerWindowEndToken}"
+      ]
+    },
+    "isOnlyServerPagable": true,
+    "filterFunctionSupport": [
+      "and",
+      "or",
+      "eq",
+      "startswith",
+      "gt",
+      "ge",
+      "lt",
+      "le",
+      "ne"
+    ],
+    "serverPagingOptions": [
+      "top",
+      "skiptoken"
+    ],
+    "odataVersion": 3
+  },
+  "schema": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "ID": {
+          "title": "المعرف",
+          "description": "معرّف عنصر القائمة. استخدم هذه القيمة لتحديد عنصر معين لتنفيذ الإجراءات المرتبطة بالقائمة عليه.",
+          "type": "integer",
+          "format": "int64",
+          "x-ms-keyType": "primary",
+          "x-ms-keyOrder": 1,
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq"
+            ]
+          }
+        },
+        "Title": {
+          "title": "Title",
+          "type": "string",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "startswith"
+            ]
+          },
+          "maxLength": 255
+        },
+        "field_1": {
+          "title": "ReviewDate",
+          "type": "string",
+          "format": "date-time",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "gt",
+              "ge",
+              "lt",
+              "le",
+              "ne"
+            ]
+          }
+        },
+        "field_2": {
+          "title": "ReviewedBy",
+          "type": "string",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "startswith"
+            ]
+          },
+          "maxLength": 255
+        },
+        "field_3#Id": {
+          "title": "ReviewerRole Id",
+          "x-ms-permission": "read-only",
+          "x-ms-visibility": "internal",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "@odata.type": "#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference)"
+        },
+        "field_3@odata.type": {
+          "title": "field_3",
+          "type": "string",
+          "x-ms-visibility": "internal",
+          "x-ms-permission": "read-write"
+        },
+        "field_3": {
+          "title": "ReviewerRole",
+          "x-ms-permission": "read-write",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-ms-sort": "none",
+            "x-ms-capabilities": {
+              "x-ms-sp": {
+                "IsChoice": true
+              },
+              "filterFunctions": [
+                "eq"
+              ]
+            },
+            "properties": {
+              "@odata.type": {
+                "title": "@odata.type",
+                "x-ms-visibility": "internal",
+                "type": "string",
+                "x-ms-permission": "read-write"
+              },
+              "Value": {
+                "title": "Value",
+                "type": "string",
+                "x-ms-dynamic-values": {
+                  "operationId": "GetEntityValues",
+                  "parameters": {
+                    "dataset": {
+                      "parameter": "dataset"
+                    },
+                    "table": {
+                      "parameter": "table"
+                    },
+                    "id": "92711c54-2cc3-4c43-aea2-eeeece33e0e8"
+                  },
+                  "value-path": "Value",
+                  "value-title": "Value",
+                  "value-collection": "value"
+                }
+              },
+              "Id": {
+                "title": "Id",
+                "type": "integer",
+                "format": "int64",
+                "x-ms-visibility": "internal",
+                "x-ms-permission": "read-only"
+              }
+            },
+            "x-ms-displayFormat": {
+              "titleProperty": "Value"
+            }
+          },
+          "@odata.type": "#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference)"
+        },
+        "field_4": {
+          "title": "PlanVersion",
+          "type": "number",
+          "format": "double",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "gt",
+              "ge",
+              "lt",
+              "le",
+              "ne"
+            ]
+          },
+          "maximum": 1.7976931348623157e+308,
+          "minimum": -1.7976931348623157e+308
+        },
+        "field_5#Id": {
+          "title": "OverallStatus Id",
+          "x-ms-permission": "read-only",
+          "x-ms-visibility": "internal",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "@odata.type": "#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference)"
+        },
+        "field_5@odata.type": {
+          "title": "field_5",
+          "type": "string",
+          "x-ms-visibility": "internal",
+          "x-ms-permission": "read-write"
+        },
+        "field_5": {
+          "title": "OverallStatus",
+          "x-ms-permission": "read-write",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-ms-sort": "none",
+            "x-ms-capabilities": {
+              "x-ms-sp": {
+                "IsChoice": true
+              },
+              "filterFunctions": [
+                "eq"
+              ]
+            },
+            "properties": {
+              "@odata.type": {
+                "title": "@odata.type",
+                "x-ms-visibility": "internal",
+                "type": "string",
+                "x-ms-permission": "read-write"
+              },
+              "Value": {
+                "title": "Value",
+                "type": "string",
+                "x-ms-dynamic-values": {
+                  "operationId": "GetEntityValues",
+                  "parameters": {
+                    "dataset": {
+                      "parameter": "dataset"
+                    },
+                    "table": {
+                      "parameter": "table"
+                    },
+                    "id": "2c2dcc2a-b3b4-4ab9-9d11-318fe98ac3a8"
+                  },
+                  "value-path": "Value",
+                  "value-title": "Value",
+                  "value-collection": "value"
+                }
+              },
+              "Id": {
+                "title": "Id",
+                "type": "integer",
+                "format": "int64",
+                "x-ms-visibility": "internal",
+                "x-ms-permission": "read-only"
+              }
+            },
+            "x-ms-displayFormat": {
+              "titleProperty": "Value"
+            }
+          },
+          "@odata.type": "#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference)"
+        },
+        "field_6": {
+          "title": "CompletionPercentage",
+          "type": "number",
+          "format": "double",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "gt",
+              "ge",
+              "lt",
+              "le",
+              "ne"
+            ]
+          },
+          "maximum": 1.7976931348623157e+308,
+          "minimum": -1.7976931348623157e+308
+        },
+        "field_7": {
+          "title": "ScenariosReviewed",
+          "type": "boolean",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq"
+            ]
+          },
+          "default": false
+        },
+        "field_8": {
+          "title": "ProceduresReviewed",
+          "type": "boolean",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq"
+            ]
+          },
+          "default": false
+        },
+        "field_9": {
+          "title": "ContactsReviewed",
+          "type": "boolean",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq"
+            ]
+          },
+          "default": false
+        },
+        "field_10": {
+          "title": "ResourcesReviewed",
+          "type": "boolean",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq"
+            ]
+          },
+          "default": false
+        },
+        "field_11": {
+          "title": "TrainingReviewed",
+          "type": "boolean",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq"
+            ]
+          },
+          "default": false
+        },
+        "field_12": {
+          "title": "FindingsCount",
+          "type": "number",
+          "format": "double",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "gt",
+              "ge",
+              "lt",
+              "le",
+              "ne"
+            ]
+          },
+          "maximum": 1.7976931348623157e+308,
+          "minimum": -1.7976931348623157e+308
+        },
+        "field_13": {
+          "title": "CriticalFindings",
+          "type": "number",
+          "format": "double",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "gt",
+              "ge",
+              "lt",
+              "le",
+              "ne"
+            ]
+          },
+          "maximum": 1.7976931348623157e+308,
+          "minimum": -1.7976931348623157e+308
+        },
+        "field_14": {
+          "title": "RecommendationsCount",
+          "type": "number",
+          "format": "double",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "gt",
+              "ge",
+              "lt",
+              "le",
+              "ne"
+            ]
+          },
+          "maximum": 1.7976931348623157e+308,
+          "minimum": -1.7976931348623157e+308
+        },
+        "field_15": {
+          "title": "NextReviewDate",
+          "type": "string",
+          "format": "date-time",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "gt",
+              "ge",
+              "lt",
+              "le",
+              "ne"
+            ]
+          }
+        },
+        "field_16#Id": {
+          "title": "ApprovalStatus Id",
+          "x-ms-permission": "read-only",
+          "x-ms-visibility": "internal",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "@odata.type": "#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference)"
+        },
+        "field_16@odata.type": {
+          "title": "field_16",
+          "type": "string",
+          "x-ms-visibility": "internal",
+          "x-ms-permission": "read-write"
+        },
+        "field_16": {
+          "title": "ApprovalStatus",
+          "x-ms-permission": "read-write",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-ms-sort": "none",
+            "x-ms-capabilities": {
+              "x-ms-sp": {
+                "IsChoice": true
+              },
+              "filterFunctions": [
+                "eq"
+              ]
+            },
+            "properties": {
+              "@odata.type": {
+                "title": "@odata.type",
+                "x-ms-visibility": "internal",
+                "type": "string",
+                "x-ms-permission": "read-write"
+              },
+              "Value": {
+                "title": "Value",
+                "type": "string",
+                "x-ms-dynamic-values": {
+                  "operationId": "GetEntityValues",
+                  "parameters": {
+                    "dataset": {
+                      "parameter": "dataset"
+                    },
+                    "table": {
+                      "parameter": "table"
+                    },
+                    "id": "7be7ba12-10c9-4712-a503-94c695fed9a4"
+                  },
+                  "value-path": "Value",
+                  "value-title": "Value",
+                  "value-collection": "value"
+                }
+              },
+              "Id": {
+                "title": "Id",
+                "type": "integer",
+                "format": "int64",
+                "x-ms-visibility": "internal",
+                "x-ms-permission": "read-only"
+              }
+            },
+            "x-ms-displayFormat": {
+              "titleProperty": "Value"
+            }
+          },
+          "@odata.type": "#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference)"
+        },
+        "field_17#Claims": {
+          "title": "ApprovedBy Claims",
+          "x-ms-permission": "read-only",
+          "x-ms-visibility": "internal",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "@odata.type": "#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedUser)"
+        },
+        "field_17@odata.type": {
+          "title": "field_17",
+          "type": "string",
+          "x-ms-visibility": "internal",
+          "x-ms-permission": "read-write"
+        },
+        "field_17": {
+          "title": "ApprovedBy",
+          "x-ms-permission": "read-write",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "x-ms-sort": "none",
+            "x-ms-capabilities": {
+              "filterFunctions": [
+                "eq"
+              ]
+            },
+            "properties": {
+              "@odata.type": {
+                "title": "@odata.type",
+                "x-ms-visibility": "internal",
+                "type": "string",
+                "x-ms-permission": "read-write"
+              },
+              "Claims": {
+                "title": "Claims",
+                "type": "string",
+                "x-ms-dynamic-values": {
+                  "operationId": "GetEntityValues",
+                  "parameters": {
+                    "dataset": {
+                      "parameter": "dataset"
+                    },
+                    "table": {
+                      "parameter": "table"
+                    },
+                    "id": "7f07ed4b-6a7b-4547-9af5-79f73b53d4a4"
+                  },
+                  "value-path": "Claims",
+                  "value-title": "DisplayName",
+                  "value-collection": "value"
+                }
+              },
+              "DisplayName": {
+                "title": "DisplayName",
+                "type": "string",
+                "x-ms-permission": "read-only",
+                "x-ms-capabilities": {
+                  "x-ms-sp": {
+                    "OdataQueryName": "Title"
+                  },
+                  "filterFunctions": [
+                    "eq",
+                    "startswith"
+                  ]
+                }
+              },
+              "Email": {
+                "title": "Email",
+                "type": "string",
+                "format": "email",
+                "x-ms-permission": "read-only",
+                "x-ms-capabilities": {
+                  "x-ms-sp": {
+                    "OdataQueryName": "EMail"
+                  },
+                  "filterFunctions": [
+                    "eq",
+                    "startswith"
+                  ]
+                }
+              },
+              "Picture": {
+                "title": "Picture",
+                "type": "string",
+                "format": "uri",
+                "x-ms-media-kind": "image",
+                "x-ms-media-default-folder-path": "/sites/em",
+                "x-ms-media-base-url": "https://saudimoe.sharepoint.com/sites/em",
+                "x-ms-permission": "read-only"
+              },
+              "Department": {
+                "title": "Department",
+                "type": "string",
+                "x-ms-permission": "read-only"
+              },
+              "JobTitle": {
+                "title": "JobTitle",
+                "type": "string",
+                "x-ms-permission": "read-only"
+              }
+            },
+            "x-ms-displayFormat": {
+              "titleProperty": "DisplayName",
+              "subtitleProperty": "Email",
+              "thumbnailProperty": "Picture"
+            }
+          },
+          "@odata.type": "#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedUser)"
+        },
+        "field_18": {
+          "title": "ApprovalDate",
+          "type": "string",
+          "format": "date-time",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "gt",
+              "ge",
+              "lt",
+              "le",
+              "ne"
+            ]
+          }
+        },
+        "field_19": {
+          "title": "reviewNotes",
+          "type": "string",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "startswith"
+            ]
+          },
+          "maxLength": 255
+        },
+        "Plan_Ref#Id": {
+          "title": "Plan_Ref Id",
+          "type": "integer",
+          "format": "int64",
+          "x-ms-permission": "read-only",
+          "x-ms-visibility": "internal"
+        },
+        "Plan_Ref": {
+          "title": "Plan_Ref",
+          "type": "object",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq"
+            ]
+          },
+          "properties": {
+            "@odata.type": {
+              "title": "@odata.type",
+              "x-ms-visibility": "internal",
+              "type": "string",
+              "x-ms-permission": "read-write"
+            },
+            "Id": {
+              "title": "Id",
+              "type": "integer",
+              "format": "int64",
+              "x-ms-dynamic-values": {
+                "operationId": "GetEntityValues",
+                "parameters": {
+                  "dataset": {
+                    "parameter": "dataset"
+                  },
+                  "table": {
+                    "parameter": "table"
+                  },
+                  "id": "97cd552a-346a-4344-be29-4367851115b4"
+                },
+                "value-path": "Id",
+                "value-title": "Value",
+                "value-collection": "value"
+              }
+            },
+            "Value": {
+              "title": "Value",
+              "type": "string",
+              "x-ms-permission": "read-only",
+              "x-ms-capabilities": {
+                "x-ms-sp": {
+                  "OdataQueryName": "Plan_Ref/Title"
+                },
+                "filterFunctions": [
+                  "eq"
+                ]
+              }
+            }
+          },
+          "x-ms-displayFormat": {
+            "titleProperty": "Value"
+          }
+        },
+        "ReviewFileName": {
+          "title": "ReviewFileName",
+          "type": "string",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "startswith"
+            ]
+          },
+          "maxLength": 255
+        },
+        "ReviewFileUploadDate": {
+          "title": "ReviewFileUploadDate",
+          "type": "string",
+          "format": "date",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "gt",
+              "ge",
+              "lt",
+              "le",
+              "ne"
+            ]
+          }
+        },
+        "ReviewRecommendations": {
+          "title": "ReviewRecommendations",
+          "type": "string",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "none",
+          "format": "html"
+        },
+        "ResponseScenario1": {
+          "title": "response_scenario1",
+          "type": "string",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "none",
+          "format": "html"
+        },
+        "ResponseScenario2": {
+          "title": "response_scenario2",
+          "type": "string",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "none",
+          "format": "html"
+        },
+        "ResponseScenario3": {
+          "title": "response_scenario3",
+          "type": "string",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "none",
+          "format": "html"
+        },
+        "ResponseScenario4": {
+          "title": "response_scenario4",
+          "type": "string",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "none",
+          "format": "html"
+        },
+        "ResponseScenario5": {
+          "title": "response_scenario5",
+          "type": "string",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "none",
+          "format": "html"
+        },
+        "ProceduresFileName": {
+          "title": "ProceduresFileName",
+          "type": "string",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "startswith"
+            ]
+          },
+          "maxLength": 255
+        },
+        "ProceduresFileUploadDate": {
+          "title": "ProceduresFileUploadDate",
+          "type": "string",
+          "format": "date",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "gt",
+              "ge",
+              "lt",
+              "le",
+              "ne"
+            ]
+          }
+        },
+        "Task7_1_Complete": {
+          "title": "Task7_1_Complete",
+          "type": "boolean",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq"
+            ]
+          },
+          "default": false
+        },
+        "Task7_2_Complete": {
+          "title": "Task7_2_Complete",
+          "type": "boolean",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq"
+            ]
+          },
+          "default": false
+        },
+        "Task7_3_Complete": {
+          "title": "Task7_3_Complete",
+          "type": "boolean",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq"
+            ]
+          },
+          "default": false
+        },
+        "LastUpdated": {
+          "title": "LastUpdated",
+          "type": "string",
+          "format": "date",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "gt",
+              "ge",
+              "lt",
+              "le",
+              "ne"
+            ]
+          }
+        },
+        "OData__ColorTag": {
+          "title": "علامة اللون",
+          "type": "string",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "startswith"
+            ]
+          },
+          "maxLength": 255
+        },
+        "ComplianceAssetId": {
+          "title": "معرّف أصل التوافق",
+          "type": "string",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "startswith"
+            ]
+          },
+          "maxLength": 255
+        },
+        "Modified": {
+          "title": "تاريخ التعديل",
+          "description": "تاريخ آخر تغيير لهذا العنصر.",
+          "type": "string",
+          "format": "date-time",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "gt",
+              "ge",
+              "lt",
+              "le",
+              "ne"
+            ]
+          }
+        },
+        "Created": {
+          "title": "تاريخ الإنشاء",
+          "description": "تاريخ إنشاء هذا العنصر.",
+          "type": "string",
+          "format": "date-time",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq",
+              "gt",
+              "ge",
+              "lt",
+              "le",
+              "ne"
+            ]
+          }
+        },
+        "Author#Claims": {
+          "title": "تم الإنشاء بواسطة Claims",
+          "type": "string",
+          "description": "المعرّف الداخلي للمستخدم الذي أنشأ هذا العنصر.",
+          "x-ms-permission": "read-only",
+          "x-ms-visibility": "internal"
+        },
+        "Author": {
+          "title": "تم الإنشاء بواسطة",
+          "description": "المستخدم الذي أنشأ هذا العنصر.",
+          "type": "object",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq"
+            ]
+          },
+          "properties": {
+            "@odata.type": {
+              "title": "@odata.type",
+              "x-ms-visibility": "internal",
+              "type": "string",
+              "x-ms-permission": "read-only"
+            },
+            "Claims": {
+              "title": "Claims",
+              "type": "string",
+              "description": "المعرّف الداخلي للمستخدم الذي أنشأ هذا العنصر.",
+              "x-ms-permission": "read-only",
+              "x-ms-dynamic-values": {
+                "operationId": "GetEntityValues",
+                "parameters": {
+                  "dataset": {
+                    "parameter": "dataset"
+                  },
+                  "table": {
+                    "parameter": "table"
+                  },
+                  "id": "1df5e554-ec7e-46a6-901d-d85a3881cb18"
+                },
+                "value-path": "Claims",
+                "value-title": "DisplayName",
+                "value-collection": "value"
+              }
+            },
+            "DisplayName": {
+              "title": "DisplayName",
+              "type": "string",
+              "description": "اسم المستخدم الذي أنشأ هذا العنصر.",
+              "x-ms-permission": "read-only",
+              "x-ms-capabilities": {
+                "x-ms-sp": {
+                  "OdataQueryName": "Title"
+                },
+                "filterFunctions": [
+                  "eq",
+                  "startswith"
+                ]
+              }
+            },
+            "Email": {
+              "title": "Email",
+              "type": "string",
+              "description": "عنوان البريد الإلكتروني للمستخدم الذي أنشأ هذا العنصر.",
+              "format": "email",
+              "x-ms-permission": "read-only",
+              "x-ms-capabilities": {
+                "x-ms-sp": {
+                  "OdataQueryName": "EMail"
+                },
+                "filterFunctions": [
+                  "eq",
+                  "startswith"
+                ]
+              }
+            },
+            "Picture": {
+              "title": "Picture",
+              "type": "string",
+              "description": "ارتباط إلى صورة المستخدم الذي أنشأ هذا العنصر.",
+              "format": "uri",
+              "x-ms-media-kind": "image",
+              "x-ms-media-default-folder-path": "/sites/em",
+              "x-ms-media-base-url": "https://saudimoe.sharepoint.com/sites/em",
+              "x-ms-permission": "read-only"
+            },
+            "Department": {
+              "title": "Department",
+              "type": "string",
+              "description": "اسم القسم الذي يتبعه المستخدم الذي أنشأ هذا العنصر.",
+              "x-ms-permission": "read-only"
+            },
+            "JobTitle": {
+              "title": "JobTitle",
+              "type": "string",
+              "description": "المسمى الوظيفي للمستخدم الذي أنشأ هذا العنصر.",
+              "x-ms-permission": "read-only"
+            }
+          },
+          "x-ms-displayFormat": {
+            "titleProperty": "DisplayName",
+            "subtitleProperty": "Email",
+            "thumbnailProperty": "Picture"
+          }
+        },
+        "Editor#Claims": {
+          "title": "تم التعديل بواسطة Claims",
+          "type": "string",
+          "description": "المعرّف الداخلي للمستخدم الذي قام بتغيير هذا العنصر آخر مرة.",
+          "x-ms-permission": "read-only",
+          "x-ms-visibility": "internal"
+        },
+        "Editor": {
+          "title": "تم التعديل بواسطة",
+          "description": "المستخدم الذي قام بتغيير هذا العنصر آخر مرة.",
+          "type": "object",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "asc,desc",
+          "x-ms-capabilities": {
+            "filterFunctions": [
+              "eq"
+            ]
+          },
+          "properties": {
+            "@odata.type": {
+              "title": "@odata.type",
+              "x-ms-visibility": "internal",
+              "type": "string",
+              "x-ms-permission": "read-only"
+            },
+            "Claims": {
+              "title": "Claims",
+              "type": "string",
+              "description": "المعرّف الداخلي للمستخدم الذي قام بتغيير هذا العنصر آخر مرة.",
+              "x-ms-permission": "read-only",
+              "x-ms-dynamic-values": {
+                "operationId": "GetEntityValues",
+                "parameters": {
+                  "dataset": {
+                    "parameter": "dataset"
+                  },
+                  "table": {
+                    "parameter": "table"
+                  },
+                  "id": "d31655d1-1d5b-4511-95a1-7a09e9b75bf2"
+                },
+                "value-path": "Claims",
+                "value-title": "DisplayName",
+                "value-collection": "value"
+              }
+            },
+            "DisplayName": {
+              "title": "DisplayName",
+              "type": "string",
+              "description": "اسم المستخدم الذي قام بتغيير هذا العنصر آخر مرة.",
+              "x-ms-permission": "read-only",
+              "x-ms-capabilities": {
+                "x-ms-sp": {
+                  "OdataQueryName": "Title"
+                },
+                "filterFunctions": [
+                  "eq",
+                  "startswith"
+                ]
+              }
+            },
+            "Email": {
+              "title": "Email",
+              "type": "string",
+              "description": "عنوان البريد الإلكتروني للمستخدم الذي قام بتغيير هذا العنصر آخر مرة.",
+              "format": "email",
+              "x-ms-permission": "read-only",
+              "x-ms-capabilities": {
+                "x-ms-sp": {
+                  "OdataQueryName": "EMail"
+                },
+                "filterFunctions": [
+                  "eq",
+                  "startswith"
+                ]
+              }
+            },
+            "Picture": {
+              "title": "Picture",
+              "type": "string",
+              "description": "ارتباط إلى صورة المستخدم الذي قام بتغيير هذا العنصر آخر مرة.",
+              "format": "uri",
+              "x-ms-media-kind": "image",
+              "x-ms-media-default-folder-path": "/sites/em",
+              "x-ms-media-base-url": "https://saudimoe.sharepoint.com/sites/em",
+              "x-ms-permission": "read-only"
+            },
+            "Department": {
+              "title": "Department",
+              "type": "string",
+              "description": "اسم القسم الذي يتبعه المستخدم الذي قام بتغيير هذا العنصر آخر مرة.",
+              "x-ms-permission": "read-only"
+            },
+            "JobTitle": {
+              "title": "JobTitle",
+              "type": "string",
+              "description": "المسمى الوظيفي للمستخدم الذي قام بتغيير هذا العنصر آخر مرة.",
+              "x-ms-permission": "read-only"
+            }
+          },
+          "x-ms-displayFormat": {
+            "titleProperty": "DisplayName",
+            "subtitleProperty": "Email",
+            "thumbnailProperty": "Picture"
+          }
+        },
+        "{Identifier}": {
+          "title": "المعرّف",
+          "description": "القيمة التي يمكن استخدامها في الإجراءات المرتبطة بالملف لتحديد ملف.",
+          "type": "string",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "none"
+        },
+        "{IsFolder}": {
+          "title": "IsFolder",
+          "description": "صحيح عندما يكون العنصر مجلداً، وخطأ بخلاف ذلك.",
+          "type": "boolean",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "none"
+        },
+        "{Thumbnail}": {
+          "title": "صورة مصغّرة",
+          "description": "عنوان URL إلى الصور المصغّرة للعنصر بـ 3 أحجام مختلفة، إن وجدت.",
+          "type": "object",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "none",
+          "properties": {
+            "@odata.type": {
+              "title": "@odata.type",
+              "x-ms-visibility": "internal",
+              "type": "string",
+              "x-ms-permission": "read-only"
+            },
+            "Small": {
+              "title": "Small",
+              "type": "string",
+              "description": "عنوان URL الخاص بأصغر صورة مصغّرة مضغوطة للعنصر، إذا كان متوفراً.",
+              "x-ms-permission": "read-only"
+            },
+            "Medium": {
+              "title": "Medium",
+              "type": "string",
+              "description": "عنوان URL الخاص بصورة مصغّرة بمقاس قياسي للعنصر، إذا كان متوفراً.",
+              "x-ms-permission": "read-only"
+            },
+            "Large": {
+              "title": "Large",
+              "type": "string",
+              "description": "عنوان URL الخاص بأكبر صورة مصغّرة للعنصر، إذا كان متوفراً.",
+              "x-ms-permission": "read-only"
+            }
+          }
+        },
+        "{Link}": {
+          "title": "ارتباط إلى العنصر",
+          "description": "ارتباط يمكن استخدامه للانتقال إلى الملف أو عنصر القائمة. يمكن فقط للأشخاص الذين يمتلكون أذونات بالوصول إلى العنصر، فتح الارتباط.",
+          "type": "string",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "none"
+        },
+        "{Name}": {
+          "title": "الاسم",
+          "description": "اسم ملف العنصر في مكتبات المستندات، يعرض اسم العنصر في القوائم.",
+          "type": "string",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "none"
+        },
+        "{FilenameWithExtension}": {
+          "title": "اسم الملف بملحق",
+          "description": "بالنسبة للمكتبات، يتم إرجاع اسم الملف بما في ذلك الملحق. بالنسبة للقوائم، يتم إرجاع خاصية العنوان.",
+          "type": "string",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "none"
+        },
+        "{Path}": {
+          "title": "مسار المجلد",
+          "description": "مسار المجلد الذي تم وضع العنصر فيه، مرتبط بعنوان الموقع.",
+          "type": "string",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "none"
+        },
+        "{FullPath}": {
+          "title": "المسار الكامل",
+          "description": "المسار الكامل لعنصر أو مجلد أو ملف",
+          "type": "string",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "none"
+        },
+        "{ModerationStatus}": {
+          "title": "حالة الموافقة على المحتوى",
+          "description": "حالة الموافقة على المحتوى. يمكن أن تكون إحدى الخيارات التالية: مسودة أو معلق أو موافق عليه أو مرفوض",
+          "type": "string",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "none"
+        },
+        "{ModerationComment}": {
+          "title": "التعليقات المقترنة بالموافقة على محتوى عنصر القائمة هذا",
+          "description": "التعليقات المقترنة بالإشراف على عنصر القائمة.",
+          "type": "string",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "none"
+        },
+        "{ContentType}#Id": {
+          "title": "نوع المحتوى Id",
+          "type": "string",
+          "x-ms-permission": "read-only",
+          "x-ms-visibility": "internal"
+        },
+        "{ContentType}": {
+          "title": "نوع المحتوى",
+          "description": "اسم نوع محتوى العنصر.",
+          "type": "object",
+          "x-ms-permission": "read-write",
+          "x-ms-sort": "none",
+          "properties": {
+            "@odata.type": {
+              "title": "@odata.type",
+              "x-ms-visibility": "internal",
+              "type": "string",
+              "x-ms-permission": "read-write"
+            },
+            "Id": {
+              "title": "Id",
+              "type": "string",
+              "x-ms-dynamic-values": {
+                "operationId": "GetEntityValues",
+                "parameters": {
+                  "dataset": {
+                    "parameter": "dataset"
+                  },
+                  "table": {
+                    "parameter": "table"
+                  },
+                  "id": "4651e8f2-38c9-4ad0-8def-41f743f76f30"
+                },
+                "value-path": "Id",
+                "value-title": "Name",
+                "value-collection": "value"
+              }
+            },
+            "Name": {
+              "title": "Name",
+              "type": "string",
+              "x-ms-permission": "read-only"
+            }
+          },
+          "x-ms-displayFormat": {
+            "titleProperty": "Name"
+          }
+        },
+        "{HasAttachments}": {
+          "title": "به مرفقات",
+          "description": "الإشارة إلى وجود مرفقات في العنصر.",
+          "type": "boolean",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "none"
+        },
+        "{Attachments}@odata.type": {
+          "title": "{Attachments}",
+          "type": "string",
+          "x-ms-visibility": "internal",
+          "x-ms-permission": "read-write"
+        },
+        "{Attachments}": {
+          "title": "المرفقات",
+          "description": "عدم إرجاع أي بيانات. استخدم نقاط نهاية المرفق للوصول إلى مرفقات العنصر.",
+          "x-ms-permission": "read-write",
+          "targetEntity": "attachments",
+          "format": "x-ms-containedMediaEntity",
+          "x-ms-visibility": "internal",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "format": "x-ms-mediaEntity",
+            "x-ms-sort": "none",
+            "properties": {
+              "@odata.type": {
+                "title": "@odata.type",
+                "x-ms-visibility": "internal",
+                "type": "string",
+                "x-ms-permission": "read-write"
+              },
+              "Id": {
+                "title": "Id",
+                "type": "string",
+                "x-ms-keyType": "primary",
+                "x-ms-keyOrder": 1,
+                "x-ms-permission": "read-only"
+              },
+              "AbsoluteUri": {
+                "title": "AbsoluteUri",
+                "type": "string",
+                "format": "uri",
+                "x-ms-permission": "read-only"
+              },
+              "DisplayName": {
+                "title": "DisplayName",
+                "type": "string",
+                "x-ms-permission": "read-only"
+              }
+            }
+          },
+          "@odata.type": "#Collection(Microsoft.Azure.Connectors.SharePoint.SPListItemAttachment)"
+        },
+        "{VersionNumber}": {
+          "title": "رقم الإصدار",
+          "description": "رقم إصدار الملف أو عنصر القائمة.",
+          "type": "string",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "none"
+        },
+        "{TriggerWindowStartToken}": {
+          "title": "الرمز المميز لبدء تشغيل نافذة المشغل",
+          "description": "رمز مميز يعبر عن وقت التحقق الأخير من التدفق. استخدمه إذا كنت تريد التحقق مما إذا تم تعديل عمود واحد أو أكثر منذ آخر عملية تحقق من التدفق.",
+          "type": "string",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "none"
+        },
+        "{TriggerWindowEndToken}": {
+          "title": "الرمز المميز لانتهاء تشغيل نافذة المشغل",
+          "description": "رمز مميز يعبر عن وقت التحقق الحالي من التدفق. استخدمه إذا كنت تريد التحقق مما إذا تم تعديل عمود واحد أو أكثر منذ آخر عملية تحقق من التدفق.",
+          "type": "string",
+          "x-ms-permission": "read-only",
+          "x-ms-sort": "none"
+        }
+      },
+      "x-ms-relationships": {
+        "field_3": {
+          "targetEntity": "field_3",
+          "referentialConstraints": {
+            "field_3#Id": {
+              "referencedProperty": "Id"
+            }
+          }
+        },
+        "field_5": {
+          "targetEntity": "field_5",
+          "referentialConstraints": {
+            "field_5#Id": {
+              "referencedProperty": "Id"
+            }
+          }
+        },
+        "field_16": {
+          "targetEntity": "field_16",
+          "referentialConstraints": {
+            "field_16#Id": {
+              "referencedProperty": "Id"
+            }
+          }
+        },
+        "field_17": {
+          "targetEntity": "field_17",
+          "referentialConstraints": {
+            "field_17#Claims": {
+              "referencedProperty": "Claims"
+            }
+          }
+        },
+        "Plan_Ref": {
+          "targetEntity": "Plan_Ref",
+          "referentialConstraints": {
+            "Plan_Ref#Id": {
+              "referencedProperty": "Id"
+            }
+          }
+        },
+        "Author": {
+          "targetEntity": "Author",
+          "referentialConstraints": {
+            "Author#Claims": {
+              "referencedProperty": "Claims"
+            }
+          }
+        },
+        "Editor": {
+          "targetEntity": "Editor",
+          "referentialConstraints": {
+            "Editor#Claims": {
+              "referencedProperty": "Claims"
+            }
+          }
+        },
+        "{ContentType}": {
+          "targetEntity": "4651e8f2-38c9-4ad0-8def-41f743f76f30",
+          "referentialConstraints": {
+            "{ContentType}#Id": {
+              "referencedProperty": "Id"
+            }
+          }
+        }
+      },
+      "x-ms-displayFormat": {
+        "propertiesDisplayOrder": [
+          "Title",
+          "field_1",
+          "field_2",
+          "field_3",
+          "field_4",
+          "field_5",
+          "field_6",
+          "field_7",
+          "field_8",
+          "field_9",
+          "field_10",
+          "field_11",
+          "field_12",
+          "field_13",
+          "field_14",
+          "field_15",
+          "field_16",
+          "field_17",
+          "field_18",
+          "field_19",
+          "Plan_Ref",
+          "ReviewFileName",
+          "ReviewFileUploadDate",
+          "ReviewRecommendations",
+          "ResponseScenario1",
+          "ResponseScenario2",
+          "ResponseScenario3",
+          "ResponseScenario4",
+          "ResponseScenario5",
+          "ProceduresFileName",
+          "ProceduresFileUploadDate",
+          "Task7_1_Complete",
+          "Task7_2_Complete",
+          "Task7_3_Complete",
+          "LastUpdated",
+          "{Attachments}"
+        ],
+        "propertiesCompactDisplayOrder": [
+          "Title",
+          "field_1",
+          "field_2",
+          "field_3",
+          "field_4",
+          "field_5",
+          "field_6",
+          "field_7",
+          "field_8",
+          "field_9",
+          "field_10",
+          "field_11",
+          "field_12",
+          "field_13",
+          "field_14",
+          "field_15",
+          "field_16",
+          "field_17",
+          "field_18",
+          "field_19",
+          "Plan_Ref",
+          "ReviewFileName",
+          "ReviewFileUploadDate",
+          "ReviewRecommendations",
+          "ResponseScenario1",
+          "ResponseScenario2",
+          "ResponseScenario3",
+          "ResponseScenario4",
+          "ResponseScenario5",
+          "ProceduresFileName",
+          "ProceduresFileUploadDate",
+          "Task7_1_Complete",
+          "Task7_2_Complete",
+          "Task7_3_Complete",
+          "LastUpdated"
+        ],
+        "propertiesTabularDisplayOrder": [
+          "Title",
+          "field_1",
+          "field_2",
+          "field_3",
+          "field_4",
+          "field_5",
+          "field_6",
+          "field_7",
+          "field_8",
+          "field_9",
+          "field_10",
+          "field_11",
+          "field_12",
+          "field_13",
+          "field_14",
+          "field_15",
+          "field_16",
+          "field_17",
+          "field_18",
+          "field_19",
+          "Plan_Ref",
+          "ReviewFileName",
+          "ReviewFileUploadDate",
+          "ReviewRecommendations",
+          "ResponseScenario1",
+          "ResponseScenario2",
+          "ResponseScenario3",
+          "ResponseScenario4",
+          "ResponseScenario5",
+          "ProceduresFileName",
+          "ProceduresFileUploadDate",
+          "Task7_1_Complete",
+          "Task7_2_Complete",
+          "Task7_3_Complete",
+          "LastUpdated"
+        ]
+      }
+    }
+  },
+  "referencedEntities": {
+    "field_3": {
+      "lookupEndpoint": {
+        "path": "/tables/4d057c21-8d02-4c86-9d53-19939dd8a048/entities/field_3",
+        "capabilities": {
+          "searchable": true,
+          "requiresSearch": false
+        }
+      }
+    },
+    "field_5": {
+      "lookupEndpoint": {
+        "path": "/tables/4d057c21-8d02-4c86-9d53-19939dd8a048/entities/field_5",
+        "capabilities": {
+          "searchable": true,
+          "requiresSearch": false
+        }
+      }
+    },
+    "field_16": {
+      "lookupEndpoint": {
+        "path": "/tables/4d057c21-8d02-4c86-9d53-19939dd8a048/entities/field_16",
+        "capabilities": {
+          "searchable": true,
+          "requiresSearch": false
+        }
+      }
+    },
+    "field_17": {
+      "lookupEndpoint": {
+        "path": "/tables/4d057c21-8d02-4c86-9d53-19939dd8a048/entities/field_17",
+        "capabilities": {
+          "searchable": true,
+          "requiresSearch": false
+        }
+      }
+    },
+    "Plan_Ref": {
+      "lookupEndpoint": {
+        "path": "/tables/4d057c21-8d02-4c86-9d53-19939dd8a048/entities/Plan_Ref",
+        "capabilities": {
+          "searchable": true,
+          "requiresSearch": false
+        }
+      }
+    },
+    "Author": {
+      "lookupEndpoint": {
+        "path": "/tables/4d057c21-8d02-4c86-9d53-19939dd8a048/entities/Author",
+        "capabilities": {
+          "searchable": true,
+          "requiresSearch": false
+        }
+      }
+    },
+    "Editor": {
+      "lookupEndpoint": {
+        "path": "/tables/4d057c21-8d02-4c86-9d53-19939dd8a048/entities/Editor",
+        "capabilities": {
+          "searchable": true,
+          "requiresSearch": false
+        }
+      }
+    },
+    "4651e8f2-38c9-4ad0-8def-41f743f76f30": {
+      "lookupEndpoint": {
+        "path": "/tables/4d057c21-8d02-4c86-9d53-19939dd8a048/entities/%257bContentType%257d",
+        "capabilities": {
+          "searchable": true,
+          "requiresSearch": false
+        }
+      }
+    }
+  },
+  "webUrl": "https://saudimoe.sharepoint.com/sites/em/Lists/BC_Plan_Review/AllItems.aspx"
+}

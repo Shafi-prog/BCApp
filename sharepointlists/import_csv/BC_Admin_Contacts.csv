@@ -1,0 +1,13 @@
+Title,Role,Phone,Email,Organization,Category,ContactScope,ContactTiming,BackupMember,Notes,IsActive
+فيصل بن صالح عيد الجهني,رئيس وحدة عمليات الطوارئ والأزمات والكوارث,0590006072,fjuhani5709@moe.gov.sa,operations,internal,,,,,Yes
+ماهر بن حامد بن عبد العزيز الحربي,رئيس فريق السلامة المدرسية,0542079282,mhaharbi7309@moe.gov.sa,bc_team,internal,,,,,Yes
+ابراهيم بن بخيت بن عواد الجهني,رئيس فريق الأمن المدرسي,0508633600,ijuhani4425@moe.gov.sa,bc_team,internal,,,,,Yes
+ابراهيم محمد مصلح العوفي,رئيس فريق الأزمات والكوارث,0590100035,ioufi0535@moe.gov.sa,bc_team,internal,,,,,Yes
+حسين بن نورالدين بن محمد يار علي,رئيس فريق الطوارئ,0595756606,hali2682@moe.gov.sa,bc_team,internal,,,,,Yes
+عضو احتياطي 1,عضو احتياطي,,@moe.gov.sa,bc_team_backup,internal,,,,,Yes
+الدفاع المدني,ضابط اتصال طوارئ,998,,civil_defense,external,الحوادث والكوارث,fire,الدفاع المدني - البديل,,Yes
+الشرطة,ضابط اتصال أمني,999,,police,external,الاضطرابات الأمنية,security,الشرطة - البديل,,Yes
+الإسعاف,خدمات الطوارئ الطبية,997,,ambulance,external,الإصابات والحالات الطبية,injury,الهلال الأحمر,,Yes
+شركة تطوير,مسؤول المباني المدرسية,,,tatweer,external,مشاكل المبنى والموارد الحيوية,disruption,شركة تطوير - البديل,,Yes
+الأنظمة وخدمات تقنية المعلومات,دعم تقني,,,it_systems,external,الأنظمة والتطبيقات,disruption,,,Yes
+أمن المعلومات,مسؤول أمن المعلومات,,,infosec,external,حوادث الأمن السيبراني,cyber,,,Yes

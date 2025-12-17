@@ -12,6 +12,7 @@ import Login from './components/Login'
 import SchoolInfo from './components/SchoolInfo'
 import AdminPanel from './components/AdminPanel'
 import BCPlan from './components/BCPlan'
+import ConnectionTest from './components/ConnectionTest'
 
 function AppContent() {
   const { user } = useAuth()
@@ -36,6 +37,7 @@ function AppContent() {
           <Route path="/incidents" element={<Incidents />} />
           <Route path="/schoolinfo" element={<SchoolInfo />} />
           <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/test-connection" element={<ConnectionTest />} />
           <Route path="*" element={<div style={{ padding: 20 }}>الصفحة غير موجودة</div>} />
         </Routes>
       </main>

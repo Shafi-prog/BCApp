@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Nav, INavStyles, DefaultButton, Text, Icon } from '@fluentui/react'
+import { Nav, INavStyles, DefaultButton, Text, Icon, IconButton } from '@fluentui/react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import BCInfoSidebar from './BCInfoSidebar'
 
 interface LeaderboardEntry {
   rank: number
@@ -41,6 +42,7 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
   const { user, logout } = useAuth()
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [showBCInfo, setShowBCInfo] = useState(false)
 
   // Load leaderboard from localStorage
   useEffect(() => {
@@ -51,10 +53,38 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
       }
     }
     loadLeaderboard()
-    // Listen for storage changes
+    
+    // Listen for storage changes from other tabs
     window.addEventListener('storage', loadLeaderboard)
-    return () => window.removeEventListener('storage', loadLeaderboard)
+    
+    // Also poll periodically for same-tab updates
+    const interval = setInterval(loadLeaderboard, 2000)
+    
+    return () => {
+      window.removeEventListener('storage', loadLeaderboard)
+      clearInterval(interval)
+    }
   }, [])
+
+  // Listen for navigation events from stats cards in AdminPanel
+  useEffect(() => {
+    const handleNavigateEvent = (e: CustomEvent) => {
+      const target = e.detail
+      const routeMap: Record<string, string> = {
+        'home': '/',
+        'team': '/team',
+        'drills': '/drills',
+        'training': '/training-log',
+        'incidents': '/incidents',
+      }
+      if (routeMap[target]) {
+        navigate(routeMap[target])
+      }
+    }
+    
+    window.addEventListener('navigate', handleNavigateEvent as EventListener)
+    return () => window.removeEventListener('navigate', handleNavigateEvent as EventListener)
+  }, [navigate])
 
   const handleLogout = () => {
     logout()
@@ -237,6 +267,26 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
         </div>
       )}
 
+      {/* BC Info Button - For Schools (Quick Reference) */}
+      {user?.type !== 'admin' && (
+        <div style={{ padding: '12px 16px', borderTop: '1px solid #e1dfdd' }}>
+          <DefaultButton
+            text="📖 المرجع السريع (RTO/جهات الاتصال)"
+            iconProps={{ iconName: 'Info' }}
+            onClick={() => setShowBCInfo(true)}
+            styles={{
+              root: { 
+                width: '100%', 
+                backgroundColor: '#e6f2ff',
+                border: '1px solid #0078d4',
+              },
+              label: { color: '#0078d4', fontWeight: 600, fontSize: '0.8rem' },
+              icon: { color: '#0078d4' },
+            }}
+          />
+        </div>
+      )}
+
       {/* Logout Button */}
       <div style={{ padding: '16px', borderTop: '1px solid #e1dfdd' }}>
         <DefaultButton
@@ -249,6 +299,9 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
           }}
         />
       </div>
+
+      {/* BC Info Sidebar */}
+      <BCInfoSidebar isOpen={showBCInfo} onClose={() => setShowBCInfo(false)} />
     </div>
   )
 }

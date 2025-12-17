@@ -137,6 +137,16 @@ export interface Incident {
   Suggestions?: string;
   SharePointLink?: string;
   Created?: string;
+  // Dynamic Evaluation Fields (calculated automatically)
+  ResponseTimeMinutes?: number;    // Time from Created to ActivationTime
+  RecoveryTimeHours?: number;      // Time from ActivationTime to ClosureTime
+  ResponseRating?: number;         // 1-5 rating for response speed
+  CoordinationRating?: number;     // 1-5 rating for coordination
+  CommunicationRating?: number;    // 1-5 rating for communication
+  RecoveryRating?: number;         // 1-5 rating for recovery
+  OverallRating?: number;          // Average of all ratings
+  EvaluationNotes?: string;        // Admin notes on evaluation
+  IsEvaluated?: boolean;           // Has been evaluated
 }
 
 export interface TrainingProgram {
@@ -171,6 +181,106 @@ export type AdminDrillPlan = Drill;
 export interface ChoiceOption {
   key: string;
   text: string;
+}
+
+// ============ INCIDENT EVALUATION CALCULATOR ============
+// Calculates evaluation ratings automatically based on incident data
+
+export interface IncidentEvaluation {
+  ResponseTimeMinutes: number;
+  RecoveryTimeHours: number;
+  ResponseRating: number;
+  CoordinationRating: number;
+  CommunicationRating: number;
+  RecoveryRating: number;
+  OverallRating: number;
+}
+
+export function calculateIncidentEvaluation(incident: Incident): IncidentEvaluation {
+  // Default values if dates are missing
+  let responseMinutes = 0;
+  let recoveryHours = 0;
+  
+  // 1. Calculate Response Time (Created to ActivationTime)
+  if (incident.Created && incident.ActivationTime) {
+    const created = new Date(incident.Created);
+    const activated = new Date(incident.ActivationTime);
+    responseMinutes = Math.max(0, (activated.getTime() - created.getTime()) / (1000 * 60));
+  }
+  
+  // 2. Calculate Recovery Time (ActivationTime to ClosureTime)
+  if (incident.ActivationTime && incident.ClosureTime) {
+    const activated = new Date(incident.ActivationTime);
+    const closed = new Date(incident.ClosureTime);
+    recoveryHours = Math.max(0, (closed.getTime() - activated.getTime()) / (1000 * 60 * 60));
+  }
+  
+  // 3. Response Rating (based on response time in minutes)
+  let responseRating = 1;
+  if (responseMinutes <= 15) responseRating = 5;
+  else if (responseMinutes <= 30) responseRating = 4;
+  else if (responseMinutes <= 60) responseRating = 3;
+  else if (responseMinutes <= 120) responseRating = 2;
+  
+  // 4. Coordination Rating (based on coordinated entities)
+  let coordinationRating = 2; // Default: internal only
+  if (incident.CoordinatedEntities) {
+    const entities = incident.CoordinatedEntities.split(/[,،]/).filter(e => e.trim()).length;
+    if (entities >= 3) coordinationRating = 5;
+    else if (entities >= 2) coordinationRating = 4;
+    else if (entities >= 1) coordinationRating = 3;
+  }
+  
+  // 5. Communication Rating (based on CommunicationDone)
+  let communicationRating = incident.CommunicationDone ? 4 : 1;
+  // Bonus if communication was quick (within first hour of recovery)
+  if (incident.CommunicationDone && recoveryHours > 0 && recoveryHours <= 1) {
+    communicationRating = 5;
+  }
+  
+  // 6. Recovery Rating (based on recovery time in hours)
+  let recoveryRating = 1;
+  if (recoveryHours > 0) {
+    if (recoveryHours <= 2) recoveryRating = 5;
+    else if (recoveryHours <= 4) recoveryRating = 4;
+    else if (recoveryHours <= 8) recoveryRating = 3;
+    else if (recoveryHours <= 24) recoveryRating = 2;
+    // Bonus for using alternative location
+    if (incident.AltLocation && recoveryRating < 5) {
+      recoveryRating = Math.min(5, recoveryRating + 1);
+    }
+  }
+  
+  // 7. Overall Rating (average)
+  const overallRating = (responseRating + coordinationRating + communicationRating + recoveryRating) / 4;
+  
+  return {
+    ResponseTimeMinutes: Math.round(responseMinutes),
+    RecoveryTimeHours: Math.round(recoveryHours * 10) / 10,
+    ResponseRating: responseRating,
+    CoordinationRating: coordinationRating,
+    CommunicationRating: communicationRating,
+    RecoveryRating: recoveryRating,
+    OverallRating: Math.round(overallRating * 10) / 10
+  };
+}
+
+// Get rating label in Arabic
+export function getRatingLabel(rating: number): string {
+  if (rating >= 4.5) return 'ممتاز';
+  if (rating >= 3.5) return 'جيد جداً';
+  if (rating >= 2.5) return 'جيد';
+  if (rating >= 1.5) return 'مقبول';
+  return 'يحتاج تحسين';
+}
+
+// Get rating color for UI
+export function getRatingColor(rating: number): string {
+  if (rating >= 4.5) return '#107c10'; // Green
+  if (rating >= 3.5) return '#0078d4'; // Blue
+  if (rating >= 2.5) return '#ffaa00'; // Orange
+  if (rating >= 1.5) return '#d83b01'; // Dark Orange
+  return '#a80000'; // Red
 }
 
 // ============ MOCK DATA (for local development fallback) ============

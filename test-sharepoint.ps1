@@ -126,8 +126,12 @@ if ($pnpModule) {
                     }
                     
                     # Check item count
-                    $itemCount = (Get-PnPListItem -List $listName -PageSize 1).Count
-                    Write-Host "  Items in list: $itemCount" -ForegroundColor Gray
+                    try {
+                        $itemCount = (Get-PnPListItem -List $listName -PageSize 1).Count
+                        Write-Host "  Items in list: $itemCount" -ForegroundColor Gray
+                    } catch {
+                        Write-Host "  Items in list: Unable to count" -ForegroundColor Gray
+                    }
                     
                 } catch {
                     $testResults[$listName].Status = "ERROR"

@@ -60,18 +60,18 @@ const Drills: React.FC = () => {
   const getColumns = (): IColumn[] => {
     const cols: IColumn[] = [];
     
-    // Admin sees school name column
+    // Admin sees school name column - first column max 80px
     if (user?.type === 'admin') {
       cols.push({
         key: 'SchoolName_Ref',
         name: 'المدرسة',
         fieldName: 'SchoolName_Ref',
-        minWidth: 80,
-        flexGrow: 2,
+        minWidth: 60,
+        maxWidth: 80,
         isResizable: true,
         styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem' }}>{item.SchoolName_Ref}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.8rem', lineHeight: '1.3', overflow: 'hidden' }}>{item.SchoolName_Ref}</div>
         ),
       });
     }

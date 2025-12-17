@@ -1,0 +1,4 @@
+Title,SourceSchoolID,SourceSchoolName,AlternativeSchoolID,AlternativeSchoolName,AlternativeAddress,Distance,TransportationArrangement,Capacity,SupportingGrades,ActivationPriority,ContactPerson,ContactPhone,ContactEmail,AgreementStatus,AgreementDate,LastVerified,Notes,IsActive
+اتفاقية دعم متبادل - المدرسة أ,1001,مدرسة الأمير سلطان,2001,مدرسة الملك فهد,حي الروضة - شارع الملك عبدالله,2.5,حافلات مدرسية - 3 حافلات,200,ابتدائي + متوسط,1,محمد العتيبي,0501234567,m.otaibi@moe.gov.sa,active,2024-09-01,2025-01-10,اتفاقية سارية لمدة سنة,TRUE
+اتفاقية دعم متبادل - المدرسة ب,1002,مدرسة النور,2002,مدرسة الإمام محمد,حي النسيم - شارع الثلاثين,3.0,حافلات مدرسية - 2 حافلات,150,متوسط + ثانوي,2,خالد السالم,0509876543,k.salem@moe.gov.sa,active,2024-10-15,2025-01-05,,TRUE
+اتفاقية دعم متبادل - المدرسة ج,1003,مدرسة الرواد,2003,مدرسة المستقبل,حي الملز - شارع الستين,1.8,مشي + حافلة واحدة,180,ابتدائي,1,أحمد الحربي,0507654321,a.harbi@moe.gov.sa,pending,,,في انتظار توقيع الاتفاقية,FALSE

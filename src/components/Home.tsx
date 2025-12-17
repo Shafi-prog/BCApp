@@ -196,7 +196,7 @@ const Home: React.FC = () => {
             ...prev,
             teamMembers: allTeamMembers.length,
             drillsConducted: allDrills.length,
-            activeIncidents: allIncidents.filter(i => i.Status !== 'مغلق').length,
+            activeIncidents: allIncidents.filter(i => !i.ClosureTime).length,
             trainingsCompleted: allTrainingLog.length,
             schoolsWithTeams,
             schoolsWithDrills,
@@ -282,7 +282,7 @@ const Home: React.FC = () => {
             ...prev,
             teamMembers: myTeamMembers.length,
             drillsConducted: myDrills.length,
-            activeIncidents: incidents.filter(i => i.Status !== 'مغلق').length,
+            activeIncidents: incidents.filter(i => !i.ClosureTime).length,
             trainingsCompleted: myTrainingLog.length,
           }))
         }

@@ -1,0 +1,10 @@
+Title,ContactPerson,Department,Phone1,Phone2,Email,EntityType,IsEmergency,IsActive,Notes
+الدفاع المدني,مركز العمليات,عمليات الطوارئ,998,,operations@cd.gov.sa,CivilDefense,Yes,Yes,للحالات الطارئة فقط
+الهلال الأحمر,مركز الإسعاف,الإسعاف,997,,emergency@srca.org.sa,RedCrescent,Yes,Yes,
+الشرطة,مركز البلاغات,الأمن,999,,security@moi.gov.sa,Police,Yes,Yes,
+وزارة الصحة,إدارة الطوارئ,الصحة العامة,920033411,,health@moh.gov.sa,Health,Yes,Yes,
+شركة الكهرباء,خدمات الطوارئ,الصيانة,920001100,,support@se.com.sa,Other,No,Yes,انقطاع التيار
+شركة المياه,خدمة العملاء,الصيانة,920001744,,support@nwc.com.sa,Other,No,Yes,
+الاتصالات السعودية,الدعم الفني,الاتصالات,900,,support@stc.com.sa,Other,No,Yes,
+وزارة التعليم,مركز العمليات,التعليم,920033988,,operations@moe.gov.sa,Ministry,Yes,Yes,
+إدارة التعليم المحلية,مدير الطوارئ,الطوارئ والسلامة,,,emergency@edu.sa,Ministry,Yes,Yes,

@@ -7,19 +7,28 @@ import {
 } from '@fluentui/react'
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, SchoolInfo, TeamMember, Drill, Incident, TrainingLog } from '../services/sharepointService'
+import { AdminDataService } from '../services/adminDataService'
 import { mutualOperationPlan, SchoolAlternatives } from '../data/mutualOperation'
+import BCTasksDashboard from './BCTasksDashboard'
 
 // Interfaces
 // Admin Contacts - for admin's own contact list (not school teams)
+// Based on BC_Plan_Content.txt official structure:
+// - Internal: قائمة اتصال إدارة التعليم (م، الاسم، المنصب، رقم الجوال، البريد الإلكتروني)
+// - External: قائمة جهات الاتصال الخارجية (نطاق التواصل، التوقيت، العضو الأساسي، العضو البديل)
 interface AdminContact {
   id: number
-  name: string
-  role: string
-  email: string
-  phone: string
-  organization: 'operations' | 'bc_team' | 'civil_defense' | 'red_crescent' | 'external' | 'ministry'
+  Title: string  // الاسم - matches SharePoint Title column
+  role: string  // المنصب / الوظيفة
+  email: string  // البريد الإلكتروني
+  phone: string  // رقم الجوال
+  organization: 'operations' | 'bc_team' | 'bc_team_backup' | 'civil_defense' | 'red_crescent' | 'police' | 'ambulance' | 'tatweer' | 'it_systems' | 'infosec' | 'external' | 'ministry'
   category: 'internal' | 'external'
   notes: string
+  // External contact specific fields based on Word file structure
+  contactScope?: string  // نطاق التواصل (شركة تطوير، الدفاع المدني، etc.)
+  contactTiming?: string  // التوقيت (عند وجود اضطراب بحسب كل فرضية، عند الحريق، etc.)
+  backupMember?: string  // العضو البديل
 }
 
 // BC Plan Document with attachment tracking
@@ -68,7 +77,7 @@ interface TestPlan {
 interface DRCheckItem {
   id: number
   category: string
-  item: string
+  Title: string  // matches SharePoint Title column (checklist item description)
   status: 'ready' | 'partial' | 'not_ready'
   lastChecked: string
   notes: string
@@ -192,53 +201,39 @@ const AdminPanel: React.FC = () => {
 
   const loadLocalData = async () => {
     try {
-      // Load DR checklist from localStorage (admin-only data)
-      const savedDR = localStorage.getItem('bc_dr_checklist')
-      if (savedDR) setDRChecklist(JSON.parse(savedDR))
+      // Load DR checklist from SharePoint/localStorage
+      const drItems = await AdminDataService.getDRChecklist()
+      if (drItems.length > 0) setDRChecklist(drItems)
       else initializeDRChecklist()
       
-      // Load admin contacts from localStorage
-      const savedContacts = localStorage.getItem('bc_admin_contacts')
-      if (savedContacts) setAdminContacts(JSON.parse(savedContacts))
+      // Load admin contacts from SharePoint/localStorage
+      const contacts = await AdminDataService.getAdminContacts()
+      setAdminContacts(contacts)
       
-      // Load BC Plan documents from localStorage
-      const savedBCPlans = localStorage.getItem('bc_plan_documents')
-      if (savedBCPlans) setBCPlanDocuments(JSON.parse(savedBCPlans))
+      // Load BC Plan documents from SharePoint/localStorage
+      const planDocs = await AdminDataService.getBCPlanDocuments()
+      setBCPlanDocuments(planDocs)
       
-      // Load incident evaluations from localStorage
-      const savedEvaluations = localStorage.getItem('bc_incident_evaluations')
-      if (savedEvaluations) setIncidentEvaluations(JSON.parse(savedEvaluations))
+      // Load incident evaluations from SharePoint/localStorage
+      const evaluations = await AdminDataService.getIncidentEvaluations()
+      setIncidentEvaluations(evaluations)
       
-      // Load admin drill plans from SharePoint service (secure storage)
+      // Load test plans from SharePoint/localStorage
       try {
-        const drillPlans = await SharePointService.getAdminDrillPlans()
-        setTestPlans(drillPlans.map(p => ({
-          id: p.Id || 0,
-          title: p.Title,
-          hypothesis: p.DrillHypothesis || '',
-          specificEvent: p.SpecificEvent || '',
-          targetGroup: p.TargetGroup || '',
-          startDate: p.StartDate || '',
-          endDate: p.EndDate || '',
-          status: p.PlanStatus || 'مخطط',
-          responsible: p.Responsible || '',
-          notes: p.Notes || '',
-        })))
+        const plans = await AdminDataService.getTestPlans()
+        setTestPlans(plans)
       } catch (e) {
-        console.error('Error loading drill plans from SharePoint:', e)
-        // Fallback to old localStorage data for migration
-        const savedTestPlans = localStorage.getItem('bc_test_plans')
-        if (savedTestPlans) setTestPlans(JSON.parse(savedTestPlans))
+        console.error('Error loading test plans:', e)
       }
       
-      // Load shared BC Plan
-      const savedBCPlan = localStorage.getItem('bc_shared_plan')
-      if (savedBCPlan) setSharedBCPlan(JSON.parse(savedBCPlan))
+      // Load shared BC Plan from SharePoint/localStorage
+      const bcPlan = await AdminDataService.getSharedBCPlan()
+      if (bcPlan) setSharedBCPlan(bcPlan)
       else initializeSharedBCPlan()
       
-      // Load Plan Review (Task 7)
-      const savedPlanReview = localStorage.getItem('bc_plan_review')
-      if (savedPlanReview) setPlanReview(JSON.parse(savedPlanReview))
+      // Load Plan Review (Task 7) from SharePoint/localStorage
+      const review = await AdminDataService.getPlanReview()
+      if (review) setPlanReview(review)
       else initializePlanReview()
     } catch (e) {
       console.error('Error loading local data:', e)
@@ -260,11 +255,16 @@ const AdminPanel: React.FC = () => {
   }
 
   // Save Plan Review
-  const savePlanReview = (data: PlanReview) => {
-    const updated = { ...data, lastUpdated: new Date().toISOString() }
-    setPlanReview(updated)
-    localStorage.setItem('bc_plan_review', JSON.stringify(updated))
-    setMessage({ type: MessageBarType.success, text: 'تم حفظ بيانات المراجعة وإجراءات الاستجابة' })
+  const savePlanReview = async (data: PlanReview) => {
+    try {
+      const updated = { ...data, lastUpdated: new Date().toISOString() }
+      await AdminDataService.savePlanReview(updated)
+      setPlanReview(updated)
+      setMessage({ type: MessageBarType.success, text: 'تم حفظ بيانات المراجعة وإجراءات الاستجابة' })
+    } catch (e) {
+      console.error('Error saving plan review:', e)
+      setMessage({ type: MessageBarType.error, text: 'حدث خطأ أثناء حفظ بيانات المراجعة' })
+    }
   }
 
   const initializeSharedBCPlan = () => {
@@ -293,26 +293,31 @@ const AdminPanel: React.FC = () => {
     localStorage.setItem('bc_shared_plan', JSON.stringify(defaultPlan))
   }
 
-  const saveSharedBCPlan = (plan: SharedBCPlan) => {
-    const updatedPlan = { ...plan, lastUpdated: new Date().toISOString() }
-    setSharedBCPlan(updatedPlan)
-    localStorage.setItem('bc_shared_plan', JSON.stringify(updatedPlan))
-    setMessage({ type: MessageBarType.success, text: plan.isPublished ? 'تم نشر الخطة للمدارس بنجاح' : 'تم حفظ الخطة' })
+  const saveSharedBCPlan = async (plan: SharedBCPlan) => {
+    try {
+      const updatedPlan = { ...plan, lastUpdated: new Date().toISOString() }
+      await AdminDataService.saveSharedBCPlan(updatedPlan)
+      setSharedBCPlan(updatedPlan)
+      setMessage({ type: MessageBarType.success, text: plan.isPublished ? 'تم نشر الخطة للمدارس بنجاح' : 'تم حفظ الخطة' })
+    } catch (e) {
+      console.error('Error saving shared BC plan:', e)
+      setMessage({ type: MessageBarType.error, text: 'حدث خطأ أثناء حفظ الخطة' })
+    }
   }
 
   const initializeDRChecklist = () => {
     const defaultChecklist: DRCheckItem[] = [
-      { id: 1, category: 'البيانات', item: 'النسخ الاحتياطي للبيانات', status: 'not_ready', lastChecked: '', notes: '' },
-      { id: 2, category: 'البيانات', item: 'اختبار استعادة البيانات', status: 'not_ready', lastChecked: '', notes: '' },
-      { id: 3, category: 'الأنظمة', item: 'منصة مدرستي', status: 'not_ready', lastChecked: '', notes: '' },
-      { id: 4, category: 'الأنظمة', item: 'نظام نور', status: 'not_ready', lastChecked: '', notes: '' },
-      { id: 5, category: 'الأنظمة', item: 'قنوات عين', status: 'not_ready', lastChecked: '', notes: '' },
-      { id: 6, category: 'الاتصالات', item: 'قوائم الاتصال محدثة', status: 'not_ready', lastChecked: '', notes: '' },
-      { id: 7, category: 'الاتصالات', item: 'وسائل التواصل البديلة', status: 'not_ready', lastChecked: '', notes: '' },
-      { id: 8, category: 'المواقع البديلة', item: 'تحديد المدارس البديلة', status: 'not_ready', lastChecked: '', notes: '' },
-      { id: 9, category: 'المواقع البديلة', item: 'اتفاقيات التشغيل المتبادل', status: 'not_ready', lastChecked: '', notes: '' },
-      { id: 10, category: 'الفرق', item: 'تشكيل فريق استمرارية الأعمال', status: 'not_ready', lastChecked: '', notes: '' },
-      { id: 11, category: 'الفرق', item: 'تدريب الفرق على الخطة', status: 'not_ready', lastChecked: '', notes: '' },
+      { id: 1, category: 'البيانات', Title: 'النسخ الاحتياطي للبيانات', status: 'not_ready', lastChecked: '', notes: '' },
+      { id: 2, category: 'البيانات', Title: 'اختبار استعادة البيانات', status: 'not_ready', lastChecked: '', notes: '' },
+      { id: 3, category: 'الأنظمة', Title: 'منصة مدرستي', status: 'not_ready', lastChecked: '', notes: '' },
+      { id: 4, category: 'الأنظمة', Title: 'نظام نور', status: 'not_ready', lastChecked: '', notes: '' },
+      { id: 5, category: 'الأنظمة', Title: 'قنوات عين', status: 'not_ready', lastChecked: '', notes: '' },
+      { id: 6, category: 'الاتصالات', Title: 'قوائم الاتصال محدثة', status: 'not_ready', lastChecked: '', notes: '' },
+      { id: 7, category: 'الاتصالات', Title: 'وسائل التواصل البديلة', status: 'not_ready', lastChecked: '', notes: '' },
+      { id: 8, category: 'المواقع البديلة', Title: 'تحديد المدارس البديلة', status: 'not_ready', lastChecked: '', notes: '' },
+      { id: 9, category: 'المواقع البديلة', Title: 'اتفاقيات التشغيل المتبادل', status: 'not_ready', lastChecked: '', notes: '' },
+      { id: 10, category: 'الفرق', Title: 'تشكيل فريق استمرارية الأعمال', status: 'not_ready', lastChecked: '', notes: '' },
+      { id: 11, category: 'الفرق', Title: 'تدريب الفرق على الخطة', status: 'not_ready', lastChecked: '', notes: '' },
     ]
     setDRChecklist(defaultChecklist)
     localStorage.setItem('bc_dr_checklist', JSON.stringify(defaultChecklist))
@@ -352,26 +357,34 @@ const AdminPanel: React.FC = () => {
     }
   }
 
-  const saveDRChecklist = (data: DRCheckItem[]) => {
+  const saveDRChecklist = async (data: DRCheckItem[]) => {
     setDRChecklist(data)
+    // Note: For bulk updates, we still use localStorage as fallback
+    // Individual item updates go through AdminDataService
     localStorage.setItem('bc_dr_checklist', JSON.stringify(data))
   }
 
-  // Save admin contacts
-  const saveAdminContacts = (data: AdminContact[]) => {
+  // Save admin contacts - now uses AdminDataService
+  const saveAdminContacts = async (data: AdminContact[]) => {
     setAdminContacts(data)
+    // Note: For bulk updates, we still use localStorage as fallback
+    // Individual create/update/delete operations go through AdminDataService
     localStorage.setItem('bc_admin_contacts', JSON.stringify(data))
   }
 
-  // Save BC Plan documents
-  const saveBCPlanDocuments = (data: BCPlanDocument[]) => {
+  // Save BC Plan documents - now uses AdminDataService
+  const saveBCPlanDocuments = async (data: BCPlanDocument[]) => {
     setBCPlanDocuments(data)
+    // Note: For bulk updates, we still use localStorage as fallback
+    // Individual create/update/delete operations go through AdminDataService
     localStorage.setItem('bc_plan_documents', JSON.stringify(data))
   }
 
-  // Save incident evaluations
-  const saveIncidentEvaluations = (data: IncidentEvaluation[]) => {
+  // Save incident evaluations - now uses AdminDataService
+  const saveIncidentEvaluations = async (data: IncidentEvaluation[]) => {
     setIncidentEvaluations(data)
+    // Note: For bulk updates, we still use localStorage as fallback
+    // Individual create/update/delete operations go through AdminDataService
     localStorage.setItem('bc_incident_evaluations', JSON.stringify(data))
   }
 
@@ -506,7 +519,7 @@ const AdminPanel: React.FC = () => {
     // 18. مراجعة وتحديث بيانات التواصل وبيانات الأصول
     { id: 18, title: 'مراجعة وتحديث بيانات التواصل وبيانات الأصول، ومراجعة مدى جاهزية مركز البيانات الاحتياطي (DR) وآليات وإجراءات النسخ الاحتياطي مع الأطراف المعنية (داخلياً أو خارجياً)', done: adminContacts.length > 0 && stats.drReadiness > 0, tab: 'dr', category: 'dr' },
     // 19. التأكد من وعي الموظفين
-    { id: 19, title: 'التأكد من وعي ومعرفة كافة الموظفين وفرق العمل بخطة استمرارية الأعمال وإجراءاتها', done: trainingLogs.filter(t => t.TrainingType === 'توعية').length > 0, tab: 'stats', category: 'awareness' },
+    { id: 19, title: 'التأكد من وعي ومعرفة كافة الموظفين وفرق العمل بخطة استمرارية الأعمال وإجراءاتها', done: trainingLogs.filter(t => t.RegistrationType === 'توعية').length > 0, tab: 'stats', category: 'awareness' },
     // 20. الالتزام بتطبيق سياسات استمرارية الأعمال
     { id: 20, title: 'الالتزام بتطبيق سياسات استمرارية الأعمال أثناء تنفيذ خطط استمرارية الأعمال', done: bcPlanDocuments.filter(d => d.documentType === 'policy').length > 0, tab: 'bcplans', category: 'policies' },
     // 21. المشاركة في مراجعة خطط العمل - مرتبطة بالمهمة 1
@@ -565,95 +578,23 @@ const AdminPanel: React.FC = () => {
 
       {loading && <Spinner label="جاري التحميل..." />}
 
-      <Pivot selectedKey={activeTab} onLinkClick={(item) => setActiveTab(item?.props.itemKey || 'duties')}>
-        {/* Tab 1: Duties Checklist */}
-        <PivotItem headerText="مهام استمرارية الأعمال" itemKey="duties" itemIcon="TaskList">
-          <div style={{ padding: '20px 0' }}>
-            <div className="card" style={{ padding: 20, marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h3 style={{ color: '#008752', margin: 0 }}>قائمة المهام (قبل حالة الاضطراب - مرحلة الاستعداد)</h3>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <span style={{ padding: '4px 12px', borderRadius: 16, backgroundColor: '#e8f5e9', color: '#2e7d32', fontSize: 12, fontWeight: 600 }}>
-                    ✅ مكتمل: {bcDuties.filter(d => d.done).length}
-                  </span>
-                  <span style={{ padding: '4px 12px', borderRadius: 16, backgroundColor: '#fff3e0', color: '#ef6c00', fontSize: 12, fontWeight: 600 }}>
-                    ⏳ قيد العمل: {bcDuties.filter(d => !d.done).length}
-                  </span>
-                </div>
-              </div>
-              <div style={{ display: 'grid', gap: 12 }}>
-                {bcDuties.map((duty: any) => {
-                  // تحديد المهام المرتبطة
-                  const isLinked_1_21 = duty.id === 1 || duty.id === 21
-                  const isLinked_2_16_22 = duty.id === 2 || duty.id === 16 || duty.id === 22
-                  const linkedLabel = isLinked_1_21 ? '🔗 المهمة 1 و 21' : isLinked_2_16_22 ? '🔗 المهام 2 و 16 و 22' : null
-                  const linkedColor = isLinked_1_21 ? '#5c2d91' : isLinked_2_16_22 ? '#0078d4' : null
-                  
-                  return (
-                    <div 
-                      key={duty.id} 
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 12, 
-                        padding: '12px 16px', 
-                        backgroundColor: duty.done ? '#dff6dd' : '#fff4ce', 
-                        borderRadius: 8, 
-                        border: `2px solid ${linkedLabel ? linkedColor : duty.done ? '#107c10' : '#ffb900'}`,
-                        cursor: 'pointer',
-                        boxShadow: linkedLabel ? `0 2px 8px ${linkedColor}30` : undefined
-                      }}
-                      onClick={() => setActiveTab(duty.tab)}
-                      title={`انقر للانتقال إلى تبويب ${duty.tab}`}
-                    >
-                      <Icon iconName={duty.done ? 'CheckMark' : 'Clock'} style={{ color: duty.done ? '#107c10' : '#ffb900', fontSize: 20 }} />
-                      <span style={{ flex: 1 }}>
-                        <strong style={{ color: duty.done ? '#107c10' : '#835c00' }}>المهمة {duty.id}:</strong> {duty.title}
-                        {linkedLabel && (
-                          <span style={{ marginRight: 8, fontSize: '0.75rem', color: linkedColor, backgroundColor: `${linkedColor}15`, padding: '2px 8px', borderRadius: 12, fontWeight: 600 }}>
-                            {linkedLabel}
-                          </span>
-                        )}
-                      </span>
-                      <span style={{ color: duty.done ? '#107c10' : '#835c00', fontWeight: 600, fontSize: 12 }}>
-                        {duty.done ? '✅ مكتمل' : '⏳ قيد العمل'}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-              
-              {/* ملخص المهام المترابطة */}
-              <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div style={{ padding: 16, backgroundColor: '#f3e5f5', borderRadius: 8, border: '2px solid #5c2d91' }}>
-                  <h4 style={{ color: '#5c2d91', margin: '0 0 8px 0', fontSize: '0.9rem' }}>🔗 المهام المترابطة: 1 و 21</h4>
-                  <p style={{ color: '#666', fontSize: '0.8rem', margin: 0 }}>
-                    إعداد خطط الطوارئ ومراجعتها + المشاركة في مراجعة خطط العمل
-                  </p>
-                  <div style={{ marginTop: 8 }}>
-                    <span style={{ padding: '4px 12px', borderRadius: 16, fontSize: '0.75rem', fontWeight: 600, backgroundColor: (task1Complete && task7Complete) ? '#e8f5e9' : '#fff3e0', color: (task1Complete && task7Complete) ? '#2e7d32' : '#ef6c00' }}>
-                      {(task1Complete && task7Complete) ? '✅ مكتملة' : '⏳ قيد العمل'}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ padding: 16, backgroundColor: '#e3f2fd', borderRadius: 8, border: '2px solid #0078d4' }}>
-                  <h4 style={{ color: '#0078d4', margin: '0 0 8px 0', fontSize: '0.9rem' }}>🔗 المهام المترابطة: 2 و 16 و 22</h4>
-                  <p style={{ color: '#666', fontSize: '0.8rem', margin: 0 }}>
-                    إعداد خطة التمارين ({testPlans.length}/4) + تقييم الفعالية ({drillsWithRatings.length}) + تنفيذ الاختبارات ({drills.length})
-                  </p>
-                  <div style={{ marginTop: 8 }}>
-                    <span style={{ padding: '4px 12px', borderRadius: 16, fontSize: '0.75rem', fontWeight: 600, backgroundColor: (task2Complete && task16Complete && task22Complete) ? '#e8f5e9' : '#fff3e0', color: (task2Complete && task16Complete && task22Complete) ? '#2e7d32' : '#ef6c00' }}>
-                      {(task2Complete && task16Complete && task22Complete) ? '✅ مكتملة' : '⏳ قيد العمل'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              <div style={{ marginTop: 20, padding: 16, backgroundColor: '#f3f2f1', borderRadius: 8 }}>
-                <ProgressIndicator label={`نسبة الإنجاز: ${Math.round(bcDuties.filter(d => d.done).length / bcDuties.length * 100)}%`} percentComplete={bcDuties.filter(d => d.done).length / bcDuties.length} barHeight={8} />
-              </div>
-            </div>
-          </div>
+      <Pivot selectedKey={activeTab} onLinkClick={(item) => setActiveTab(item?.props.itemKey || 'tasks25')}>
+        {/* Tab 1: BC Tasks Dashboard - 25 Tasks (Main Dashboard) */}
+        <PivotItem headerText="📊 لوحة المهام الـ25" itemKey="tasks25" itemIcon="ViewDashboard">
+          <BCTasksDashboard
+            schools={schools}
+            teamMembers={teamMembers}
+            drills={drills}
+            incidents={incidents}
+            trainingLogs={trainingLogs}
+            testPlans={testPlans}
+            adminContacts={adminContacts}
+            bcPlanDocuments={bcPlanDocuments}
+            incidentEvaluations={incidentEvaluations}
+            drChecklist={drChecklist}
+            sharedBCPlan={sharedBCPlan}
+            planReview={planReview}
+          />
         </PivotItem>
 
         {/* Tab 2: Statistics */}
@@ -661,20 +602,53 @@ const AdminPanel: React.FC = () => {
           <div style={{ padding: '20px 0' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
               {[
-                { title: 'إجمالي المدارس', value: stats.totalSchools, icon: 'Org', color: '#008752' },
-                { title: 'مدارس لديها فرق', value: stats.schoolsWithTeams, icon: 'Group', color: '#0078d4' },
-                { title: 'مدارس نفذت تمارين', value: stats.schoolsWithDrills, icon: 'TaskList', color: '#107c10' },
-                { title: 'مدارس لديها تدريبات', value: stats.schoolsWithTraining, icon: 'ReadingMode', color: '#5c2d91' },
-                { title: 'أعضاء الفرق', value: stats.totalTeamMembers, icon: 'People', color: '#0078d4' },
-                { title: 'التمارين المنفذة', value: stats.totalDrills, icon: 'CheckList', color: '#107c10' },
-                { title: 'الحوادث المسجلة', value: stats.totalIncidents, icon: 'Warning', color: '#d83b01' },
-                { title: 'الحوادث النشطة', value: stats.activeIncidents, icon: 'ShieldAlert', color: stats.activeIncidents > 0 ? '#d83b01' : '#107c10' },
-                { title: 'جاهزية DR', value: `${stats.drReadiness}%`, icon: 'CloudUpload', color: stats.drReadiness >= 70 ? '#107c10' : '#ffb900' },
+                { title: 'إجمالي المدارس', value: stats.totalSchools, icon: 'Org', color: '#008752', navigate: 'home', tooltip: 'عرض قائمة المدارس' },
+                { title: 'مدارس لديها فرق', value: stats.schoolsWithTeams, icon: 'Group', color: '#0078d4', navigate: 'team', tooltip: 'عرض فرق الأمن والسلامة' },
+                { title: 'مدارس نفذت تمارين', value: stats.schoolsWithDrills, icon: 'TaskList', color: '#107c10', navigate: 'drills', tooltip: 'عرض سجل التمارين' },
+                { title: 'مدارس لديها تدريبات', value: stats.schoolsWithTraining, icon: 'ReadingMode', color: '#5c2d91', navigate: 'training', tooltip: 'عرض سجل التدريبات' },
+                { title: 'أعضاء الفرق', value: stats.totalTeamMembers, icon: 'People', color: '#0078d4', navigate: 'team', tooltip: 'عرض أعضاء الفرق' },
+                { title: 'التمارين المنفذة', value: stats.totalDrills, icon: 'CheckList', color: '#107c10', navigate: 'drills', tooltip: 'عرض التمارين المنفذة' },
+                { title: 'الحوادث المسجلة', value: stats.totalIncidents, icon: 'Warning', color: '#d83b01', navigate: 'incidents', tooltip: 'عرض سجل الحوادث' },
+                { title: 'الحوادث النشطة', value: stats.activeIncidents, icon: 'ShieldAlert', color: stats.activeIncidents > 0 ? '#d83b01' : '#107c10', navigate: 'incidents', tooltip: 'عرض الحوادث النشطة' },
+                { title: 'جاهزية DR', value: `${stats.drReadiness}%`, icon: 'CloudUpload', color: stats.drReadiness >= 70 ? '#107c10' : '#ffb900', navigate: 'dr', tooltip: 'عرض قائمة جاهزية DR' },
               ].map((stat, i) => (
-                <div key={i} className="card" style={{ padding: 20, textAlign: 'center', borderTop: `4px solid ${stat.color}` }}>
+                <div 
+                  key={i} 
+                  className="card" 
+                  style={{ 
+                    padding: 20, 
+                    textAlign: 'center', 
+                    borderTop: `4px solid ${stat.color}`,
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s, box-shadow 0.2s'
+                  }}
+                  onClick={() => {
+                    // Navigate to the appropriate tab or page
+                    if (['team', 'drills', 'training', 'incidents', 'home'].includes(stat.navigate)) {
+                      // These are main navigation items - emit event for Navigation.tsx
+                      window.dispatchEvent(new CustomEvent('navigate', { detail: stat.navigate }))
+                    } else {
+                      // Internal admin tabs
+                      setActiveTab(stat.navigate)
+                    }
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)'
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = ''
+                  }}
+                  title={stat.tooltip}
+                >
                   <Icon iconName={stat.icon} style={{ fontSize: 28, color: stat.color, marginBottom: 8 }} />
                   <div style={{ fontSize: '1.8rem', fontWeight: 700, color: stat.color }}>{stat.value}</div>
                   <div style={{ color: '#666' }}>{stat.title}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#999', marginTop: 4 }}>
+                    <Icon iconName="Forward" style={{ fontSize: 10, marginLeft: 4 }} />
+                    {stat.tooltip}
+                  </div>
                 </div>
               ))}
             </div>
@@ -1241,14 +1215,32 @@ const AdminPanel: React.FC = () => {
                 />
               </Stack>
 
-              {/* Organization Stats */}
+              {/* Organization Stats - matching BC_Plan_Content.txt structure */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 16 }}>
+                {/* Internal Contacts */}
+                <div style={{ gridColumn: '1 / -1', fontWeight: 600, color: '#333', marginBottom: 4 }}>قائمة جهات الاتصال الداخلية:</div>
                 {[
-                  { key: 'operations', label: 'غرفة العمليات', icon: '🏢', color: '#1565c0' },
-                  { key: 'bc_team', label: 'فريق BC', icon: '👥', color: '#2e7d32' },
-                  { key: 'civil_defense', label: 'الدفاع المدني', icon: '🚒', color: '#d32f2f' },
-                  { key: 'red_crescent', label: 'الهلال الأحمر', icon: '🏥', color: '#c2185b' },
+                  { key: 'operations', label: 'فريق غرفة العمليات', icon: '🏢', color: '#1565c0' },
+                  { key: 'bc_team', label: 'فريق استمرارية الأعمال', icon: '👥', color: '#2e7d32' },
+                  { key: 'bc_team_backup', label: 'الأعضاء الاحتياطيون', icon: '👤', color: '#558b2f' },
                   { key: 'ministry', label: 'الوزارة', icon: '🏛️', color: '#7b1fa2' },
+                ].map(org => (
+                  <div key={org.key} style={{ background: '#f5f5f5', padding: 10, borderRadius: 8, textAlign: 'center', borderRight: `3px solid ${org.color}` }}>
+                    <div style={{ fontSize: 20 }}>{org.icon}</div>
+                    <div style={{ fontSize: 18, fontWeight: 'bold', color: org.color }}>{adminContacts.filter(c => c.organization === org.key).length}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#666' }}>{org.label}</div>
+                  </div>
+                ))}
+                {/* External Contacts */}
+                <div style={{ gridColumn: '1 / -1', fontWeight: 600, color: '#333', marginTop: 8, marginBottom: 4 }}>قائمة جهات الاتصال الخارجية:</div>
+                {[
+                  { key: 'tatweer', label: 'شركة تطوير', icon: '🏗️', color: '#00796b' },
+                  { key: 'it_systems', label: 'الأنظمة والتطبيقات', icon: '💻', color: '#0277bd' },
+                  { key: 'infosec', label: 'أمن المعلومات', icon: '🔐', color: '#5d4037' },
+                  { key: 'police', label: 'الشرطة', icon: '👮', color: '#37474f' },
+                  { key: 'civil_defense', label: 'الدفاع المدني', icon: '🚒', color: '#d32f2f' },
+                  { key: 'ambulance', label: 'الإسعاف', icon: '🚑', color: '#c2185b' },
+                  { key: 'red_crescent', label: 'الهلال الأحمر', icon: '🏥', color: '#e91e63' },
                   { key: 'external', label: 'جهات أخرى', icon: '🌐', color: '#455a64' },
                 ].map(org => (
                   <div key={org.key} style={{ background: '#f5f5f5', padding: 10, borderRadius: 8, textAlign: 'center', borderRight: `3px solid ${org.color}` }}>
@@ -1264,15 +1256,25 @@ const AdminPanel: React.FC = () => {
                 <DetailsList
                   items={adminContacts}
                   columns={[
-                    { key: 'name', name: 'الاسم', fieldName: 'name', minWidth: 80, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%', fontWeight: 500, whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.name}</div> },
-                    { key: 'role', name: 'الدور', fieldName: 'role', minWidth: 100, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%' }}>{item.role}</div> },
-                    { key: 'organization', name: 'الجهة', fieldName: 'organization', minWidth: 100, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => {
-                      const labels: any = { operations: 'غرفة العمليات', bc_team: 'فريق BC', civil_defense: 'الدفاع المدني', red_crescent: 'الهلال الأحمر', ministry: 'الوزارة', external: 'جهة خارجية' }
-                      const colors: any = { operations: '#1565c0', bc_team: '#2e7d32', civil_defense: '#d32f2f', red_crescent: '#c2185b', ministry: '#7b1fa2', external: '#455a64' }
-                      return <div style={{ textAlign: 'center', width: '100%' }}><span style={{ padding: '2px 8px', borderRadius: 12, backgroundColor: colors[item.organization] + '20', color: colors[item.organization], fontSize: 12, fontWeight: 500 }}>{labels[item.organization]}</span></div>
+                    { key: 'Title', name: 'الاسم', fieldName: 'Title', minWidth: 80, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%', fontWeight: 500, whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.Title}</div> },
+                    { key: 'role', name: 'المنصب/الوظيفة', fieldName: 'role', minWidth: 100, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%' }}>{item.role || '-'}</div> },
+                    { key: 'organization', name: 'الجهة', fieldName: 'organization', minWidth: 120, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => {
+                      const labels: any = { 
+                        operations: 'غرفة العمليات', bc_team: 'فريق BC', bc_team_backup: 'احتياطي BC',
+                        civil_defense: 'الدفاع المدني', red_crescent: 'الهلال الأحمر', ministry: 'الوزارة', 
+                        tatweer: 'شركة تطوير', it_systems: 'الأنظمة والتطبيقات', infosec: 'أمن المعلومات',
+                        police: 'الشرطة', ambulance: 'الإسعاف', external: 'جهة خارجية' 
+                      }
+                      const colors: any = { 
+                        operations: '#1565c0', bc_team: '#2e7d32', bc_team_backup: '#558b2f',
+                        civil_defense: '#d32f2f', red_crescent: '#c2185b', ministry: '#7b1fa2',
+                        tatweer: '#00796b', it_systems: '#0277bd', infosec: '#5d4037',
+                        police: '#37474f', ambulance: '#c2185b', external: '#455a64'
+                      }
+                      return <div style={{ textAlign: 'center', width: '100%' }}><span style={{ padding: '2px 8px', borderRadius: 12, backgroundColor: (colors[item.organization] || '#455a64') + '20', color: colors[item.organization] || '#455a64', fontSize: 12, fontWeight: 500 }}>{labels[item.organization] || 'أخرى'}</span></div>
                     }},
-                    { key: 'phone', name: 'الهاتف', fieldName: 'phone', minWidth: 100, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%', direction: 'ltr' }}>{item.phone || '-'}</div> },
-                    { key: 'email', name: 'البريد', fieldName: 'email', minWidth: 140, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%', fontSize: '0.85rem' }}>{item.email || '-'}</div> },
+                    { key: 'phone', name: 'رقم الجوال', fieldName: 'phone', minWidth: 100, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%', direction: 'ltr' }}>{item.phone || '-'}</div> },
+                    { key: 'email', name: 'البريد الإلكتروني', fieldName: 'email', minWidth: 140, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%', fontSize: '0.85rem' }}>{item.email || '-'}</div> },
                     { key: 'actions', name: 'إجراءات', minWidth: 100, flexGrow: 0, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => (
                       <Stack horizontal tokens={{ childrenGap: 4 }} horizontalAlign="center">
                         <DefaultButton text="تعديل" onClick={() => { setEditingContact(item); setContactPanelOpen(true) }} styles={{ root: { minWidth: 50 } }} />
@@ -1342,7 +1344,7 @@ const AdminPanel: React.FC = () => {
                         }}
                         styles={{ root: { width: 120 } }}
                       />
-                      <span style={{ flex: 1 }}>{item.item}</span>
+                      <span style={{ flex: 1 }}>{item.Title}</span>
                       <TextField placeholder="ملاحظات" value={item.notes} onChange={(_, v) => {
                         const updated = drChecklist.map(d => d.id === item.id ? { ...d, notes: v || '' } : d)
                         saveDRChecklist(updated)
@@ -1426,22 +1428,28 @@ const AdminPanel: React.FC = () => {
           </div>
         </PivotItem>
 
-        {/* Tab 9: BC Plan Documents */}
-        <PivotItem headerText="خطط BC" itemKey="bcplans" itemIcon="DocumentSet">
+        {/* Tab 9: BC Supporting Documents (distinct from main BC Plan in tab 3) */}
+        <PivotItem headerText="المستندات المساندة" itemKey="bcplans" itemIcon="DocumentSet">
           <div style={{ padding: '20px 0' }}>
+            {/* Clarification Note */}
+            <MessageBar messageBarType={MessageBarType.info} style={{ marginBottom: 16 }}>
+              <strong>ملاحظة:</strong> هذا التبويب لإدارة المستندات المساندة للخطة (السياسات، الإجراءات، النماذج). 
+              لرفع خطة استمرارية الأعمال الرئيسية ونشرها للمدارس، انتقل إلى تبويب "📋 المهمة 1 و 7".
+            </MessageBar>
+            
             <div className="card" style={{ padding: 20, marginBottom: 20 }}>
               <Stack horizontal horizontalAlign="space-between" verticalAlign="center" style={{ marginBottom: 16 }}>
                 <div>
                   <h3 style={{ color: '#008752', margin: 0 }}>
                     <Icon iconName="DocumentSet" style={{ marginLeft: 8 }} />
-                    مستندات خطط استمرارية الأعمال
+                    المستندات المساندة لاستمرارية الأعمال
                   </h3>
-                  <p style={{ color: '#666', margin: '8px 0 0 0', fontSize: '0.9rem' }}>إدارة المستندات والخطط مع تتبع تواريخ الرفع والمشاركة</p>
+                  <p style={{ color: '#666', margin: '8px 0 0 0', fontSize: '0.9rem' }}>إدارة السياسات والإجراءات والنماذج والتقارير</p>
                 </div>
                 <PrimaryButton 
                   text="إضافة مستند" 
                   iconProps={{ iconName: 'PageAdd' }} 
-                  onClick={() => { setEditingBCPlan(null); setBcPlanPanelOpen(true) }}
+                  onClick={() => { setEditingBCPlan(null); setBCPlanPanelOpen(true) }}
                   styles={{ root: { backgroundColor: '#008752' } }}
                 />
               </Stack>
@@ -1498,7 +1506,7 @@ const AdminPanel: React.FC = () => {
                             )}
                           </div>
                           <Stack horizontal tokens={{ childrenGap: 4 }}>
-                            <DefaultButton text="تعديل" onClick={() => { setEditingBCPlan(doc); setBcPlanPanelOpen(true) }} styles={{ root: { minWidth: 50 } }} />
+                            <DefaultButton text="تعديل" onClick={() => { setEditingBCPlan(doc); setBCPlanPanelOpen(true) }} styles={{ root: { minWidth: 50 } }} />
                             <DefaultButton text="حذف" onClick={() => saveBCPlanDocuments(bcPlanDocuments.filter(d => d.id !== doc.id))} styles={{ root: { minWidth: 50, color: '#d32f2f' } }} />
                           </Stack>
                         </div>
@@ -1599,7 +1607,7 @@ const AdminPanel: React.FC = () => {
                   items={incidentEvaluations}
                   columns={[
                     { key: 'incident', name: 'الحادث', minWidth: 80, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center' } }, onRender: (item: IncidentEvaluation) => {
-                      const incident = incidents.find(i => i.ID === item.incidentId)
+                      const incident = incidents.find(i => i.Id === item.incidentId)
                       return <div style={{ textAlign: 'center' }}>{incident?.Title || `حادث #${item.incidentId}`}</div>
                     }},
                     { key: 'responseTime', name: 'وقت الاستجابة', minWidth: 80, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center' } }, onRender: (item: IncidentEvaluation) => (
@@ -1637,9 +1645,9 @@ const AdminPanel: React.FC = () => {
               )}
 
               {/* Incidents without evaluation */}
-              {incidents.filter(i => !incidentEvaluations.find(e => e.incidentId === i.ID)).length > 0 && (
+              {incidents.filter(i => !incidentEvaluations.find(e => e.incidentId === i.Id)).length > 0 && (
                 <MessageBar messageBarType={MessageBarType.warning} styles={{ root: { marginTop: 16 } }}>
-                  يوجد {incidents.filter(i => !incidentEvaluations.find(e => e.incidentId === i.ID)).length} حادث بدون تقييم. يُنصح بتقييم جميع الحوادث لتحسين مؤشرات الأداء.
+                  يوجد {incidents.filter(i => !incidentEvaluations.find(e => e.incidentId === i.Id)).length} حادث بدون تقييم. يُنصح بتقييم جميع الحوادث لتحسين مؤشرات الأداء.
                 </MessageBar>
               )}
             </div>
@@ -1686,8 +1694,8 @@ const AdminPanel: React.FC = () => {
       </Panel>
 
       {/* BC Plan Document Panel */}
-      <Panel isOpen={bcPlanPanelOpen} onDismiss={() => setBcPlanPanelOpen(false)} headerText={editingBCPlan ? 'تعديل مستند' : 'إضافة مستند خطة BC'} type={PanelType.medium}>
-        <BCPlanDocumentForm document={editingBCPlan} onSave={(d) => { saveBCPlanDocuments(editingBCPlan ? bcPlanDocuments.map(x => x.id === d.id ? d : x) : [...bcPlanDocuments, { ...d, id: Date.now() }]); setBcPlanPanelOpen(false) }} />
+      <Panel isOpen={bcPlanPanelOpen} onDismiss={() => setBCPlanPanelOpen(false)} headerText={editingBCPlan ? 'تعديل مستند' : 'إضافة مستند خطة BC'} type={PanelType.medium}>
+        <BCPlanDocumentForm document={editingBCPlan} onSave={(d) => { saveBCPlanDocuments(editingBCPlan ? bcPlanDocuments.map(x => x.id === d.id ? d : x) : [...bcPlanDocuments, { ...d, id: Date.now() }]); setBCPlanPanelOpen(false) }} />
       </Panel>
 
       {/* Evaluation Panel */}
@@ -1702,26 +1710,101 @@ const AdminPanel: React.FC = () => {
 
 // Admin Contact Form
 const AdminContactForm: React.FC<{ contact: AdminContact | null, onSave: (c: AdminContact) => void }> = ({ contact, onSave }) => {
-  const [form, setForm] = useState<Partial<AdminContact>>(contact || { name: '', role: '', organization: 'operations', phone: '', email: '', notes: '' })
+  const [form, setForm] = useState<Partial<AdminContact>>(contact || { Title: '', role: '', organization: 'operations', phone: '', email: '', notes: '', category: 'internal', contactScope: '', contactTiming: '', backupMember: '' })
   
-  const organizationOptions = [
-    { key: 'operations', text: 'غرفة العمليات' },
-    { key: 'bc_team', text: 'فريق BC' },
-    { key: 'civil_defense', text: 'الدفاع المدني' },
-    { key: 'red_crescent', text: 'الهلال الأحمر' },
+  // Organization options matching BC_Plan_Content.txt structure
+  const internalOrganizations = [
+    { key: 'operations', text: 'فريق غرفة العمليات في إدارة التعليم' },
+    { key: 'bc_team', text: 'فريق استمرارية الأعمال' },
+    { key: 'bc_team_backup', text: 'الأعضاء الاحتياطيون لفريق استمرارية الأعمال' },
     { key: 'ministry', text: 'الوزارة' },
-    { key: 'external', text: 'جهة خارجية' },
   ]
+  
+  const externalOrganizations = [
+    { key: 'tatweer', text: 'شركة تطوير (المباني والموارد الحيوية)' },
+    { key: 'it_systems', text: 'الأنظمة وخدمات تقنية المعلومات' },
+    { key: 'infosec', text: 'أمن المعلومات (حوادث سيبرانية)' },
+    { key: 'police', text: 'الشرطة (الاضطرابات الأمنية)' },
+    { key: 'civil_defense', text: 'الدفاع المدني (الحريق)' },
+    { key: 'ambulance', text: 'الإسعاف (الإصابات)' },
+    { key: 'red_crescent', text: 'الهلال الأحمر' },
+    { key: 'external', text: 'جهة خارجية أخرى' },
+  ]
+  
+  const contactTimingOptions = [
+    { key: 'disruption', text: 'عند وجود اضطراب بحسب كل فرضية' },
+    { key: 'fire', text: 'عند الحريق' },
+    { key: 'security', text: 'عند الاضطرابات الأمنية' },
+    { key: 'cyber', text: 'عند وجود حوادث سيبرانية' },
+    { key: 'injury', text: 'عند إصابة أحد منسوبي المدرسة' },
+    { key: 'evacuation', text: 'عند الحريق أو الكوارث الطبيعية والأمنية' },
+    { key: 'other', text: 'حسب الحاجة' },
+  ]
+  
+  const isExternal = ['tatweer', 'it_systems', 'infosec', 'police', 'civil_defense', 'ambulance', 'red_crescent', 'external'].includes(form.organization || '')
   
   return (
     <Stack tokens={{ childrenGap: 12 }} style={{ padding: 16 }}>
-      <TextField label="الاسم *" value={form.name} onChange={(_, v) => setForm({ ...form, name: v })} required placeholder="اسم جهة الاتصال" />
-      <TextField label="الدور / المنصب" value={form.role} onChange={(_, v) => setForm({ ...form, role: v })} placeholder="مثال: منسق الطوارئ" />
-      <Dropdown label="الجهة *" selectedKey={form.organization} options={organizationOptions} onChange={(_, opt) => setForm({ ...form, organization: opt?.key as any })} required />
-      <TextField label="رقم الهاتف" value={form.phone} onChange={(_, v) => setForm({ ...form, phone: v })} placeholder="05xxxxxxxx" />
-      <TextField label="البريد الإلكتروني" value={form.email} onChange={(_, v) => setForm({ ...form, email: v })} placeholder="email@example.com" />
+      {/* Category Selection */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
+        <DefaultButton 
+          text="جهة اتصال داخلية" 
+          iconProps={{ iconName: 'Building' }}
+          primary={form.category === 'internal'}
+          onClick={() => setForm({ ...form, category: 'internal', organization: 'operations' })}
+        />
+        <DefaultButton 
+          text="جهة اتصال خارجية" 
+          iconProps={{ iconName: 'Globe' }}
+          primary={form.category === 'external'}
+          onClick={() => setForm({ ...form, category: 'external', organization: 'tatweer' })}
+        />
+      </div>
+      
+      <Dropdown 
+        label="الجهة *" 
+        selectedKey={form.organization} 
+        options={form.category === 'external' ? externalOrganizations : internalOrganizations} 
+        onChange={(_, opt) => setForm({ ...form, organization: opt?.key as any })} 
+        required 
+      />
+      
+      {/* Internal Contact Fields (matching Word file: م، الاسم، المنصب، رقم الجوال، البريد الإلكتروني) */}
+      <TextField label="الاسم *" value={form.Title} onChange={(_, v) => setForm({ ...form, Title: v })} required placeholder="الاسم الكامل" />
+      <TextField label={isExternal ? 'الوظيفة' : 'المنصب'} value={form.role} onChange={(_, v) => setForm({ ...form, role: v })} placeholder={isExternal ? 'مثال: ضابط اتصال' : 'مثال: رئيس وحدة عمليات الطوارئ'} />
+      <TextField label="رقم الجوال" value={form.phone} onChange={(_, v) => setForm({ ...form, phone: v })} placeholder="05xxxxxxxx" />
+      <TextField label="البريد الإلكتروني" value={form.email} onChange={(_, v) => setForm({ ...form, email: v })} placeholder="email@moe.gov.sa" />
+      
+      {/* External Contact Specific Fields (matching Word file: نطاق التواصل، التوقيت، العضو البديل) */}
+      {isExternal && (
+        <div style={{ backgroundColor: '#fff3e0', padding: 16, borderRadius: 8, marginTop: 8 }}>
+          <h4 style={{ margin: '0 0 12px 0', color: '#ef6c00' }}>📞 معلومات الاتصال الخارجي</h4>
+          <Stack tokens={{ childrenGap: 12 }}>
+            <TextField 
+              label="نطاق التواصل" 
+              value={form.contactScope} 
+              onChange={(_, v) => setForm({ ...form, contactScope: v })} 
+              placeholder="مثال: مشاكل المبنى أو الموارد الحيوية"
+            />
+            <Dropdown 
+              label="توقيت التواصل" 
+              selectedKey={form.contactTiming} 
+              options={contactTimingOptions}
+              onChange={(_, opt) => setForm({ ...form, contactTiming: opt?.key as string })} 
+              placeholder="متى يتم التواصل مع هذه الجهة"
+            />
+            <TextField 
+              label="العضو البديل" 
+              value={form.backupMember} 
+              onChange={(_, v) => setForm({ ...form, backupMember: v })} 
+              placeholder="اسم ورقم العضو البديل للتواصل"
+            />
+          </Stack>
+        </div>
+      )}
+      
       <TextField label="ملاحظات" multiline rows={2} value={form.notes} onChange={(_, v) => setForm({ ...form, notes: v })} />
-      <PrimaryButton text="حفظ" onClick={() => onSave(form as AdminContact)} disabled={!form.name || !form.organization} />
+      <PrimaryButton text="حفظ" onClick={() => onSave(form as AdminContact)} disabled={!form.Title || !form.organization} />
     </Stack>
   )
 }
@@ -1788,7 +1871,7 @@ const IncidentEvaluationForm: React.FC<{ evaluation: IncidentEvaluation | null, 
     evaluatedBy: ''
   })
   
-  const incidentOptions = incidents.map(i => ({ key: i.ID, text: `${i.Title} - ${i.SchoolName_Ref}` }))
+  const incidentOptions = incidents.map(i => ({ key: i.Id || 0, text: `${i.Title} - ${i.SchoolName_Ref}` }))
   
   return (
     <Stack tokens={{ childrenGap: 12 }} style={{ padding: 16 }}>

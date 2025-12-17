@@ -1,0 +1,3 @@
+Title,IncidentNumber,ReportDate,ReportedBy,DamageType,AffectedArea,AffectedAssets,EstimatedCost,InsuranceClaim,ClaimNumber,RepairStatus,RepairStartDate,RepairEndDate,ContractorName,AffectsOperations,OperationalImpact,PhotosAttached,Notes
+تقرير أضرار تسرب المياه,INC-001,2025-01-08,مدير الصيانة,water_damage,الطابق الأرضي - الجناح الشرقي,أجهزة كمبيوتر + أثاث,15000,TRUE,CLM-2025-001,in_progress,2025-01-09,2025-01-20,شركة الصيانة المتكاملة,TRUE,تعطل معمل الحاسب,TRUE,تم توثيق الأضرار بالصور
+تقرير أضرار السور الخارجي,INC-003,2025-01-02,مدير المدرسة,structural,السور الشرقي,سور المدرسة,8000,FALSE,,completed,2025-01-03,2025-01-10,مؤسسة البناء الحديث,FALSE,,FALSE,تم الإصلاح بالكامل

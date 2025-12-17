@@ -20,7 +20,17 @@
         "sbc_incidents_log",
         "sbc_drills_log",
         "school_training_log",
-        "coordination_programs_catalog"
+        "coordination_programs_catalog",
+        "bc_admin_contacts",
+        "bc_plan_documents",
+        "bc_shared_plan",
+        "bc_test_plans",
+        "bc_dr_checklist",
+        "bc_incident_evaluations",
+        "bc_damage_reports",
+        "bc_plan_review",
+        "bc_plan_scenarios",
+        "bc_mutual_operation"
       ],
       "isOnPremiseConnection": false,
       "bypassConsent": false,
@@ -44,6 +54,36 @@
             },
             "coordination_programs_catalog": {
               "tableName": "Coordination_Programs_Catalog"
+            },
+            "bc_admin_contacts": {
+              "tableName": "BC_Admin_Contacts"
+            },
+            "bc_plan_documents": {
+              "tableName": "BC_Plan_Documents"
+            },
+            "bc_shared_plan": {
+              "tableName": "BC_Shared_Plan"
+            },
+            "bc_test_plans": {
+              "tableName": "BC_Test_Plans"
+            },
+            "bc_dr_checklist": {
+              "tableName": "BC_DR_Checklist"
+            },
+            "bc_incident_evaluations": {
+              "tableName": "BC_Incident_Evaluations"
+            },
+            "bc_damage_reports": {
+              "tableName": "BC_Damage_Reports"
+            },
+            "bc_plan_review": {
+              "tableName": "BC_Plan_Review"
+            },
+            "bc_plan_scenarios": {
+              "tableName": "BC_Plan_Scenarios"
+            },
+            "bc_mutual_operation": {
+              "tableName": "BC_Mutual_Operation"
             }
           }
         }
