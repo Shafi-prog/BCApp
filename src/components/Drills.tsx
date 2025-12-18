@@ -61,83 +61,67 @@ const Drills: React.FC = () => {
   const getColumns = (): IColumn[] => {
     const cols: IColumn[] = [];
     
-    // Admin sees school name column - first column max 80px
+    // Admin sees school name column
     if (user?.type === 'admin') {
       cols.push({
+        ...getColumnConfig(ColumnType.SHORT_TEXT),
         key: 'SchoolName_Ref',
         name: 'المدرسة',
         fieldName: 'SchoolName_Ref',
-        minWidth: 60,
-        maxWidth: 80,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.8rem', lineHeight: '1.3', overflow: 'hidden' }}>{item.SchoolName_Ref}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {item.SchoolName_Ref}
+          </div>
         ),
       });
     }
 
     cols.push(
       {
+        ...getColumnConfig(ColumnType.MEDIUM_TEXT),
         key: 'DrillHypothesis',
         name: 'الفرضية',
         fieldName: 'DrillHypothesis',
-        minWidth: 100,
-        flexGrow: 1,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem', lineHeight: '1.4' }}>{item.DrillHypothesis}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {item.DrillHypothesis}
+          </div>
         ),
       },
       {
+        ...getColumnConfig(ColumnType.LONG_TEXT),
         key: 'SpecificEvent',
         name: 'وصف الحدث المحدد *',
         fieldName: 'SpecificEvent',
-        minWidth: 200,
-        flexGrow: 4,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
-          <div style={{ textAlign: 'right', width: '100%', whiteSpace: 'pre-wrap', wordWrap: 'break-word', fontSize: '0.85rem', color: '#333', lineHeight: '1.5', padding: '4px 0' }}>
+          <div style={{ textAlign: 'right', width: '100%', whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
             {item.SpecificEvent || '-'}
           </div>
         ),
       },
       {
+        ...getColumnConfig(ColumnType.MEDIUM_TEXT),
         key: 'TargetGroup',
         name: 'الفئة المستهدفة',
         fieldName: 'TargetGroup',
-        minWidth: 110,
-        flexGrow: 1,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem', lineHeight: '1.4' }}>{item.TargetGroup}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {item.TargetGroup}
+          </div>
         ),
       },
       {
+        ...getColumnConfig(ColumnType.DATE),
         key: 'ExecutionDate',
         name: 'تاريخ التنفيذ',
         fieldName: 'ExecutionDate',
-        minWidth: 80,
-        flexGrow: 0,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-        onRender: (item: Drill) => {
-          if (!item.ExecutionDate) return <div style={{ textAlign: 'center', width: '100%' }}>-</div>;
-          const date = new Date(item.ExecutionDate);
-          return <div style={{ textAlign: 'center', width: '100%' }}>{date.toLocaleDateString('ar-SA')}</div>;
-        },
+        onRender: (item: Drill) => renderDate(item.ExecutionDate)
       },
       // أعمدة التقييم - تظهر للأدمن فقط
       ...(user?.type === 'admin' ? [{
+        ...getColumnConfig(ColumnType.RATING),
         key: 'PlanRating',
         name: 'تقييم الخطة',
-        minWidth: 70,
-        flexGrow: 0,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => {
           const rating = item.PlanEffectivenessRating
           if (!rating) return <div style={{ textAlign: 'center', color: '#999' }}>-</div>
@@ -159,12 +143,9 @@ const Drills: React.FC = () => {
         },
       },
       {
+        ...getColumnConfig(ColumnType.RATING),
         key: 'ProceduresRating',
         name: 'تقييم الإجراءات',
-        minWidth: 70,
-        flexGrow: 0,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => {
           const rating = item.ProceduresEffectivenessRating
           if (!rating) return <div style={{ textAlign: 'center', color: '#999' }}>-</div>
@@ -186,12 +167,9 @@ const Drills: React.FC = () => {
         },
       }] : []),
       {
+        ...getColumnConfig(ColumnType.ATTACHMENT),
         key: 'attachment',
         name: 'المرفق',
-        minWidth: 65,
-        flexGrow: 0,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => {
           // Use DispForm.aspx?ID=X to open exact item in SharePoint
           const itemLink = `https://saudimoe.sharepoint.com/sites/em/Lists/SBC_Drills_Log/DispForm.aspx?ID=${item.Id}`;
@@ -239,11 +217,9 @@ const Drills: React.FC = () => {
         },
       },
       {
+        ...getColumnConfig(ColumnType.ACTIONS),
         key: 'actions',
         name: 'الإجراءات',
-        minWidth: 80,
-        flexGrow: 0,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: Drill) => (
           <Stack horizontal tokens={{ childrenGap: 8 }} horizontalAlign="center">
             <IconButton
