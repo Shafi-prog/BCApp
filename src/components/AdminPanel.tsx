@@ -10,6 +10,7 @@ import { SharePointService, SchoolInfo, TeamMember, Drill, Incident, TrainingLog
 import { AdminDataService } from '../services/adminDataService'
 import { mutualOperationPlan, SchoolAlternatives } from '../data/mutualOperation'
 import BCTasksDashboard from './BCTasksDashboard'
+import { getColumnConfig, ColumnType, renderDate } from '../config/tableConfig'
 
 // Interfaces
 // Admin Contacts - for admin's own contact list (not school teams)
@@ -1148,16 +1149,16 @@ const AdminPanel: React.FC = () => {
               <DetailsList
                 items={testPlans}
                 columns={[
-                  { key: 'title', name: 'عنوان التمرين', fieldName: 'title', minWidth: 80, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.title}</div> },
-                  { key: 'hypothesis', name: 'الفرضية', fieldName: 'hypothesis', minWidth: 100, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.hypothesis}</div> },
-                  { key: 'targetGroup', name: 'الفئة المستهدفة', fieldName: 'targetGroup', minWidth: 80, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%' }}>{item.targetGroup}</div> },
-                  { key: 'startDate', name: 'من', fieldName: 'startDate', minWidth: 80, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%' }}>{item.startDate ? new Date(item.startDate).toLocaleDateString('ar-SA') : '-'}</div> },
-                  { key: 'endDate', name: 'إلى', fieldName: 'endDate', minWidth: 80, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%' }}>{item.endDate ? new Date(item.endDate).toLocaleDateString('ar-SA') : '-'}</div> },
-                  { key: 'status', name: 'الحالة', fieldName: 'status', minWidth: 70, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: TestPlan) => {
+                  { ...getColumnConfig(ColumnType.MEDIUM_TEXT), key: 'title', name: 'عنوان التمرين', fieldName: 'title', onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.title}</div> },
+                  { ...getColumnConfig(ColumnType.MEDIUM_TEXT), key: 'hypothesis', name: 'الفرضية', fieldName: 'hypothesis', onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.hypothesis}</div> },
+                  { ...getColumnConfig(ColumnType.SHORT_TEXT), key: 'targetGroup', name: 'الفئة المستهدفة', fieldName: 'targetGroup', onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%' }}>{item.targetGroup}</div> },
+                  { ...getColumnConfig(ColumnType.DATE), key: 'startDate', name: 'من', fieldName: 'startDate', onRender: (item: TestPlan) => renderDate(item.startDate) },
+                  { ...getColumnConfig(ColumnType.DATE), key: 'endDate', name: 'إلى', fieldName: 'endDate', onRender: (item: TestPlan) => renderDate(item.endDate) },
+                  { ...getColumnConfig(ColumnType.STATUS), key: 'status', name: 'الحالة', fieldName: 'status', onRender: (item: TestPlan) => {
                     const colors: any = { 'مخطط': '#ffb900', 'قيد التنفيذ': '#0078d4', 'مكتمل': '#107c10', 'مؤجل': '#d83b01' }
                     return <div style={{ textAlign: 'center', width: '100%' }}><span style={{ color: colors[item.status] || '#666', fontWeight: 600 }}>{item.status}</span></div>
                   }},
-                  { key: 'actions', name: 'إجراءات', minWidth: 80, flexGrow: 0, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: TestPlan) => (
+                  { ...getColumnConfig(ColumnType.ACTIONS), key: 'actions', name: 'إجراءات', onRender: (item: TestPlan) => (
                     <Stack horizontal tokens={{ childrenGap: 4 }} horizontalAlign="center">
                       <IconButton iconProps={{ iconName: 'Edit' }} title="تعديل" onClick={() => { setEditingTestPlan(item); setTestPlanPanelOpen(true) }} styles={{ root: { color: '#0078d4' } }} />
                       <IconButton iconProps={{ iconName: 'Delete' }} title="حذف" onClick={() => saveTestPlans(testPlans.filter(t => t.id !== item.id))} styles={{ root: { color: '#d83b01' } }} />
@@ -1180,9 +1181,9 @@ const AdminPanel: React.FC = () => {
                   progress: Math.min(((drillsPerSchool.get(s.SchoolName) || 0) / 4) * 100, 100)
                 })).sort((a, b) => b.drillCount - a.drillCount)}
                 columns={[
-                  { key: 'schoolName', name: 'المدرسة', fieldName: 'schoolName', minWidth: 80, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: any) => <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.schoolName}</div> },
-                  { key: 'drillCount', name: 'التمارين المنفذة', fieldName: 'drillCount', minWidth: 100, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: any) => <div style={{ textAlign: 'center', width: '100%' }}><span style={{ color: item.drillCount >= 4 ? '#107c10' : '#323130' }}>{item.drillCount} / 4</span></div> },
-                  { key: 'progress', name: 'نسبة الإنجاز', minWidth: 150, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: any) => (
+                  { ...getColumnConfig(ColumnType.MEDIUM_TEXT), key: 'schoolName', name: 'المدرسة', fieldName: 'schoolName', onRender: (item: any) => <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.schoolName}</div> },
+                  { ...getColumnConfig(ColumnType.SHORT_TEXT), key: 'drillCount', name: 'التمارين المنفذة', fieldName: 'drillCount', onRender: (item: any) => <div style={{ textAlign: 'center', width: '100%' }}><span style={{ color: item.drillCount >= 4 ? '#107c10' : '#323130' }}>{item.drillCount} / 4</span></div> },
+                  { ...getColumnConfig(ColumnType.MEDIUM_TEXT), key: 'progress', name: 'نسبة الإنجاز', onRender: (item: any) => (
                     <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }} horizontalAlign="center">
                       <ProgressIndicator percentComplete={item.progress / 100} barHeight={6} styles={{ root: { width: 80 }, progressBar: { backgroundColor: item.progress >= 100 ? '#107c10' : '#0078d4' } }} />
                       <span style={{ color: item.progress >= 100 ? '#107c10' : '#323130', fontWeight: 600 }}>{Math.round(item.progress)}%</span>
@@ -1256,9 +1257,9 @@ const AdminPanel: React.FC = () => {
                 <DetailsList
                   items={adminContacts}
                   columns={[
-                    { key: 'Title', name: 'الاسم', fieldName: 'Title', minWidth: 80, flexGrow: 2, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%', fontWeight: 500, whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.Title}</div> },
-                    { key: 'role', name: 'المنصب/الوظيفة', fieldName: 'role', minWidth: 100, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%' }}>{item.role || '-'}</div> },
-                    { key: 'organization', name: 'الجهة', fieldName: 'organization', minWidth: 120, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => {
+                    { ...getColumnConfig(ColumnType.MEDIUM_TEXT), key: 'Title', name: 'الاسم', fieldName: 'Title', onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%', fontWeight: 500, whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.Title}</div> },
+                    { ...getColumnConfig(ColumnType.SHORT_TEXT), key: 'role', name: 'المنصب/الوظيفة', fieldName: 'role', onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%' }}>{item.role || '-'}</div> },
+                    { ...getColumnConfig(ColumnType.MEDIUM_TEXT), key: 'organization', name: 'الجهة', fieldName: 'organization', onRender: (item: AdminContact) => {
                       const labels: any = { 
                         operations: 'غرفة العمليات', bc_team: 'فريق BC', bc_team_backup: 'احتياطي BC',
                         civil_defense: 'الدفاع المدني', red_crescent: 'الهلال الأحمر', ministry: 'الوزارة', 
@@ -1273,8 +1274,8 @@ const AdminPanel: React.FC = () => {
                       }
                       return <div style={{ textAlign: 'center', width: '100%' }}><span style={{ padding: '2px 8px', borderRadius: 12, backgroundColor: (colors[item.organization] || '#455a64') + '20', color: colors[item.organization] || '#455a64', fontSize: 12, fontWeight: 500 }}>{labels[item.organization] || 'أخرى'}</span></div>
                     }},
-                    { key: 'phone', name: 'رقم الجوال', fieldName: 'phone', minWidth: 100, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%', direction: 'ltr' }}>{item.phone || '-'}</div> },
-                    { key: 'email', name: 'البريد الإلكتروني', fieldName: 'email', minWidth: 140, flexGrow: 1, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%', fontSize: '0.85rem' }}>{item.email || '-'}</div> },
+                    { ...getColumnConfig(ColumnType.PHONE), key: 'phone', name: 'رقم الجوال', fieldName: 'phone', onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%', direction: 'ltr' }}>{item.phone || '-'}</div> },
+                    { ...getColumnConfig(ColumnType.EMAIL), key: 'email', name: 'البريد الإلكتروني', fieldName: 'email', onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%' }}>{item.email || '-'}</div> },
                     { key: 'actions', name: 'إجراءات', minWidth: 100, flexGrow: 0, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => (
                       <Stack horizontal tokens={{ childrenGap: 4 }} horizontalAlign="center">
                         <DefaultButton text="تعديل" onClick={() => { setEditingContact(item); setContactPanelOpen(true) }} styles={{ root: { minWidth: 50 } }} />
@@ -2835,11 +2836,11 @@ const DamageAssessmentManager: React.FC<{ incidents: Incident[] }> = ({ incident
       <DetailsList
         items={reports}
         columns={[
-          { key: 'incidentTitle', name: 'الحادث', fieldName: 'incidentTitle', minWidth: 120, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: DamageReport) => <div style={{ textAlign: 'center', width: '100%' }}>{item.incidentTitle}</div> },
-          { key: 'date', name: 'التاريخ', fieldName: 'date', minWidth: 80, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: DamageReport) => <div style={{ textAlign: 'center', width: '100%' }}>{item.date}</div> },
-          { key: 'buildingDamage', name: 'أضرار المبنى', fieldName: 'buildingDamage', minWidth: 80, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: DamageReport) => <div style={{ textAlign: 'center', width: '100%' }}>{item.buildingDamage}</div> },
-          { key: 'equipmentDamage', name: 'أضرار المعدات', fieldName: 'equipmentDamage', minWidth: 80, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: DamageReport) => <div style={{ textAlign: 'center', width: '100%' }}>{item.equipmentDamage}</div> },
-          { key: 'status', name: 'الحالة', fieldName: 'status', minWidth: 80, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: DamageReport) => <div style={{ textAlign: 'center', width: '100%' }}>{item.status}</div> },
+          { ...getColumnConfig(ColumnType.MEDIUM_TEXT), key: 'incidentTitle', name: 'الحادث', fieldName: 'incidentTitle', onRender: (item: DamageReport) => <div style={{ textAlign: 'center', width: '100%' }}>{item.incidentTitle}</div> },
+          { ...getColumnConfig(ColumnType.DATE), key: 'date', name: 'التاريخ', fieldName: 'date', onRender: (item: DamageReport) => <div style={{ textAlign: 'center', width: '100%' }}>{item.date}</div> },
+          { ...getColumnConfig(ColumnType.SHORT_TEXT), key: 'buildingDamage', name: 'أضرار المبنى', fieldName: 'buildingDamage', onRender: (item: DamageReport) => <div style={{ textAlign: 'center', width: '100%' }}>{item.buildingDamage}</div> },
+          { ...getColumnConfig(ColumnType.SHORT_TEXT), key: 'equipmentDamage', name: 'أضرار المعدات', fieldName: 'equipmentDamage', onRender: (item: DamageReport) => <div style={{ textAlign: 'center', width: '100%' }}>{item.equipmentDamage}</div> },
+          { ...getColumnConfig(ColumnType.STATUS), key: 'status', name: 'الحالة', fieldName: 'status', onRender: (item: DamageReport) => <div style={{ textAlign: 'center', width: '100%' }}>{item.status}</div> },
           { key: 'actions', name: '', minWidth: 100, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: DamageReport) => (
             <Stack horizontal tokens={{ childrenGap: 4 }} horizontalAlign="center">
               <DefaultButton text="تعديل" onClick={() => { setEditing(item); setForm(item); setPanelOpen(true) }} />
