@@ -108,11 +108,11 @@ export interface Drill {
   Responsible?: string;        // المسؤول عن المتابعة
   Notes?: string;              // ملاحظات
   AcademicYear?: string;       // السنة الدراسية
-  // تقييم المدرسة لفعالية الخطة والإجراءات
-  PlanEffectivenessRating?: number;       // تقييم فعالية الخطة (1-5)
-  ProceduresEffectivenessRating?: number; // تقييم فعالية الإجراءات (1-5)
-  SchoolFeedback?: string;               // ملاحظات وتعليقات المدرسة
-  ImprovementSuggestions?: string;       // مقترحات التحسين
+  // تقييم المدرسة لفعالية الخطة والإجراءات (NOW IN SHAREPOINT!)
+  PlanEffectivenessRating?: number;       // SharePoint: PlanRating (Number 1-5)
+  ProceduresEffectivenessRating?: number; // SharePoint: ProcedureRating (Number 1-5)
+  SchoolFeedback?: string;               // SharePoint: Feedback (Multi-line text)
+  ImprovementSuggestions?: string;       // SharePoint: Suggestions (Multi-line text)
 }
 
 export interface Incident {
@@ -172,6 +172,7 @@ export interface TrainingLog {
   AttendeesNames?: string;
   TrainingDate?: string;
   Status?: string;
+  GeneralNotes?: string;  // Format: "ProgramName + Date" when registration clicked
 }
 
 // AdminDrillPlan is now merged into Drill interface with IsAdminPlan=true
@@ -340,6 +341,11 @@ const transformDrill = (raw: any): Drill => {
     Responsible: raw.Responsible || '',
     Notes: raw.Notes || '',
     AcademicYear: raw.AcademicYear || '',
+    // Evaluation fields (NOW IN SHAREPOINT)
+    PlanEffectivenessRating: raw.PlanRating || undefined,
+    ProceduresEffectivenessRating: raw.ProcedureRating || undefined,
+    SchoolFeedback: raw.Feedback || '',
+    ImprovementSuggestions: raw.Suggestions || '',
   };
 };
 
@@ -499,6 +505,7 @@ const transformTrainingLog = (raw: any): TrainingLog => {
     AttendeesNames: attendeeNames || '',
     TrainingDate: extractChoiceValue(raw.TrainingDate) || '',
     Status: extractChoiceValue(raw.Status) || '',
+    GeneralNotes: extractChoiceValue(raw.GeneralNotes) || '',
   };
 };
 
@@ -883,6 +890,20 @@ export const SharePointService = {
           };
         }
         
+        // Evaluation fields
+        if (drill.PlanEffectivenessRating !== undefined) {
+          data.PlanRating = drill.PlanEffectivenessRating;
+        }
+        if (drill.ProceduresEffectivenessRating !== undefined) {
+          data.ProcedureRating = drill.ProceduresEffectivenessRating;
+        }
+        if (drill.SchoolFeedback) {
+          data.Feedback = drill.SchoolFeedback;
+        }
+        if (drill.ImprovementSuggestions) {
+          data.Suggestions = drill.ImprovementSuggestions;
+        }
+        
         console.log('[SharePoint] Creating drill:', data);
         const result = await SBC_Drills_LogService.create(data);
         
@@ -923,6 +944,20 @@ export const SharePointService = {
             '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Value: drill.TargetGroup,
           };
+        }
+        
+        // Evaluation fields
+        if (drill.PlanEffectivenessRating !== undefined) {
+          data.PlanRating = drill.PlanEffectivenessRating;
+        }
+        if (drill.ProceduresEffectivenessRating !== undefined) {
+          data.ProcedureRating = drill.ProceduresEffectivenessRating;
+        }
+        if (drill.SchoolFeedback !== undefined) {
+          data.Feedback = drill.SchoolFeedback;
+        }
+        if (drill.ImprovementSuggestions !== undefined) {
+          data.Suggestions = drill.ImprovementSuggestions;
         }
         
         console.log('[SharePoint] Updating drill:', id, data);
@@ -1332,13 +1367,20 @@ export const SharePointService = {
     attendeeIds: number[],
     schoolId?: number,
     registrationType?: string,
-    trainingDate?: string
+    trainingDate?: string,
+    programName?: string
   ): Promise<TrainingLog> {
     if (isPowerAppsEnvironment()) {
       try {
+        // Create GeneralNotes: "ProgramName + Date"
+        const generalNotes = programName && trainingDate 
+          ? `${programName} - ${new Date(trainingDate).toLocaleDateString('ar-SA')}`
+          : '';
+        
         const data: any = {
           Title: `تسجيل تدريب - ${schoolName}`,
           TrainingDate: trainingDate || '',
+          GeneralNotes: generalNotes,
         };
         
         // RegistrationType is a choice field

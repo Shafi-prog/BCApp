@@ -95,6 +95,17 @@ const TrainingLog: React.FC = () => {
       fieldName: 'TrainingDate', 
       onRender: (item: TrainingLogType) => renderDate(item.TrainingDate)
     },
+    { 
+      ...getColumnConfig(ColumnType.MEDIUM_TEXT),
+      key: 'GeneralNotes', 
+      name: 'ملاحظات عامة', 
+      fieldName: 'GeneralNotes', 
+      onRender: (item: TrainingLogType) => (
+        <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+          {item.GeneralNotes || '-'}
+        </div>
+      )
+    },
     {
       ...getColumnConfig(ColumnType.ATTACHMENT),
       key: 'attachment',
@@ -272,6 +283,7 @@ const TrainingLog: React.FC = () => {
       const schoolName = user?.schoolName || ''
       const trainingDate = form.TrainingDate || selectedProgram?.Date || new Date().toISOString()
       const registrationType = form.RegistrationType || 'طلب تسجيل'
+      const programName = selectedProgram?.Title || ''
 
       if (editingId) {
         // Update existing record
@@ -285,7 +297,8 @@ const TrainingLog: React.FC = () => {
           attendeeIds,
           user?.schoolId,
           registrationType,
-          trainingDate
+          trainingDate,
+          programName
         )
         setMessage({ type: MessageBarType.success, text: 'تم تسجيل التدريب بنجاح' })
       }
