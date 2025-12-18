@@ -68,27 +68,27 @@ const COLUMN_CONFIGS: Record<ColumnType, ColumnConfig> = {
   },
   
   [ColumnType.SHORT_TEXT]: {
-    minWidth: 80,
+    minWidth: 60,
     flexGrow: 1,
     isResizable: true,
     styles: {
       cellTitle: { 
         justifyContent: 'center', 
         textAlign: 'center',
-        padding: '8px 8px'
+        padding: '4px 8px'
       }
     }
   },
   
   [ColumnType.MEDIUM_TEXT]: {
-    minWidth: 120,
+    minWidth: 100,
     flexGrow: 2,
     isResizable: true,
     styles: {
       cellTitle: { 
         justifyContent: 'center', 
         textAlign: 'center',
-        padding: '8px 12px'
+        padding: '4px 8px'
       }
     }
   },

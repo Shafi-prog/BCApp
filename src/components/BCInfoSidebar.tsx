@@ -4,9 +4,11 @@
  * Contains: RTO/MAO targets, Emergency contacts, Scenarios, Guidelines
  */
 
-import React, { useState } from 'react'
-import { Stack, Text, Icon, DefaultButton, IconButton, Link } from '@fluentui/react'
-import { criticalActivities, criticalSystems, scenarios, externalContacts, disruptionLevels, definitions } from '../data/bcPlanParameters'
+import React, { useState, useEffect } from 'react'
+import { Stack, Text, Icon, DefaultButton, IconButton, Link, PrimaryButton, TextField, Dropdown, IDropdownOption } from '@fluentui/react'
+import { criticalActivities, criticalSystems, scenarios, disruptionLevels, definitions } from '../data/bcPlanParameters'
+import { AdminDataService, AdminContact } from '../services/adminDataService'
+import { useAuth } from '../context/AuthContext'
 
 interface BCInfoSidebarProps {
   isOpen: boolean
@@ -17,6 +19,57 @@ type InfoTab = 'rto' | 'contacts' | 'scenarios' | 'levels' | 'definitions'
 
 const BCInfoSidebar: React.FC<BCInfoSidebarProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<InfoTab>('rto')
+  const [externalContacts, setExternalContacts] = useState<AdminContact[]>([])
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editingContact, setEditingContact] = useState<AdminContact | null>(null)
+  const { user } = useAuth()
+  const isAdmin = user?.type === 'admin'
+
+  // Load external contacts from AdminDataService
+  useEffect(() => {
+    if (isOpen) {
+      loadExternalContacts()
+    }
+  }, [isOpen])
+
+  const loadExternalContacts = async () => {
+    try {
+      const adminService = AdminDataService.getInstance()
+      const contacts = await adminService.getAdminContacts()
+      setExternalContacts(contacts.filter(c => c.category === 'external'))
+    } catch (error) {
+      console.error('Failed to load external contacts:', error)
+    }
+  }
+
+  const handleSaveContact = async (contact: Partial<AdminContact>) => {
+    try {
+      const adminService = AdminDataService.getInstance()
+      if (editingContact?.id) {
+        await adminService.updateAdminContact(editingContact.id, contact)
+      } else {
+        await adminService.createAdminContact({ 
+          ...contact, 
+          category: 'external'
+        } as Omit<AdminContact, 'id'>)
+      }
+      await loadExternalContacts()
+      setEditingContact(null)
+      setIsEditMode(false)
+    } catch (error) {
+      console.error('Failed to save contact:', error)
+    }
+  }
+
+  const handleDeleteContact = async (id: number) => {
+    try {
+      const adminService = AdminDataService.getInstance()
+      await adminService.deleteAdminContact(id)
+      await loadExternalContacts()
+    } catch (error) {
+      console.error('Failed to delete contact:', error)
+    }
+  }
 
   if (!isOpen) return null
 
@@ -123,11 +176,30 @@ const BCInfoSidebar: React.FC<BCInfoSidebarProps> = ({ isOpen, onClose }) => {
         {/* Content */}
         <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
           {activeTab === 'rto' && <RTOContent />}
-          {activeTab === 'contacts' && <ContactsContent />}
+          {activeTab === 'contacts' && (
+            <ContactsContent 
+              contacts={externalContacts}
+              isAdmin={isAdmin}
+              isEditMode={isEditMode}
+              onToggleEditMode={() => setIsEditMode(!isEditMode)}
+              onAddContact={() => setEditingContact({ id: 0, Title: '', role: '', email: '', phone: '', organization: '', category: 'external', notes: '' })}
+              onEditContact={setEditingContact}
+              onDeleteContact={handleDeleteContact}
+            />
+          )}
           {activeTab === 'scenarios' && <ScenariosContent />}
           {activeTab === 'levels' && <LevelsContent />}
           {activeTab === 'definitions' && <DefinitionsContent />}
         </div>
+        
+        {/* Edit Contact Panel */}
+        {editingContact && (
+          <EditContactPanel
+            contact={editingContact}
+            onSave={handleSaveContact}
+            onClose={() => setEditingContact(null)}
+          />
+        )}
 
         {/* Footer */}
         <div style={{
@@ -228,15 +300,52 @@ const RTOContent: React.FC = () => (
 // ============================================
 // Contacts Content
 // ============================================
-const ContactsContent: React.FC = () => (
+interface ContactsContentProps {
+  contacts: AdminContact[]
+  isAdmin: boolean
+  isEditMode: boolean
+  onToggleEditMode: () => void
+  onAddContact: () => void
+  onEditContact: (contact: AdminContact) => void
+  onDeleteContact: (id: number) => void
+}
+
+const ContactsContent: React.FC<ContactsContentProps> = ({ 
+  contacts, 
+  isAdmin, 
+  isEditMode, 
+  onToggleEditMode, 
+  onAddContact, 
+  onEditContact, 
+  onDeleteContact 
+}) => (
   <Stack tokens={{ childrenGap: 16 }}>
+    {/* Admin Controls */}
+    {isAdmin && (
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', marginBottom: 8 }}>
+        <PrimaryButton 
+          text={isEditMode ? "إنهاء التعديل" : "تعديل جهات الاتصال"}
+          iconProps={{ iconName: isEditMode ? 'Accept' : 'Edit' }}
+          onClick={onToggleEditMode}
+        />
+        {isEditMode && (
+          <PrimaryButton 
+            text="إضافة جهة اتصال"
+            iconProps={{ iconName: 'Add' }}
+            onClick={onAddContact}
+            styles={{ root: { backgroundColor: '#107c10' } }}
+          />
+        )}
+      </div>
+    )}
+
     {/* Emergency Contacts */}
     <div className="card" style={{ padding: 12 }}>
       <Text variant="mediumPlus" style={{ fontWeight: 600, color: '#d83b01', marginBottom: 12, display: 'block' }}>
         🚨 أرقام الطوارئ
       </Text>
       <Stack tokens={{ childrenGap: 8 }}>
-        {externalContacts.filter(c => c.phone).map(contact => (
+        {contacts.filter(c => c.phone).map(contact => (
           <div 
             key={contact.id}
             style={{ 
@@ -246,28 +355,47 @@ const ContactsContent: React.FC = () => (
               padding: 12,
               backgroundColor: '#fff5f5',
               borderRadius: 8,
-              border: '1px solid #ffd0d0'
+              border: '1px solid #ffd0d0',
+              position: 'relative'
             }}
           >
             <div>
-              <Text variant="medium" style={{ fontWeight: 600, display: 'block' }}>{contact.entityAr}</Text>
-              <Text variant="small" style={{ color: '#666' }}>{contact.contactPurpose}</Text>
+              <Text variant="medium" style={{ fontWeight: 600, display: 'block' }}>{contact.Title}</Text>
+              <Text variant="small" style={{ color: '#666' }}>{contact.contactScope || contact.notes}</Text>
             </div>
-            <a 
-              href={`tel:${contact.phone}`}
-              style={{
-                fontSize: '1.2rem',
-                fontWeight: 700,
-                color: '#d83b01',
-                textDecoration: 'none',
-                backgroundColor: '#fff',
-                padding: '8px 16px',
-                borderRadius: 8,
-                border: '2px solid #d83b01',
-              }}
-            >
-              📞 {contact.phone}
-            </a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <a 
+                href={`tel:${contact.phone}`}
+                style={{
+                  fontSize: '1.2rem',
+                  fontWeight: 700,
+                  color: '#d83b01',
+                  textDecoration: 'none',
+                  backgroundColor: '#fff',
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: '2px solid #d83b01',
+                }}
+              >
+                📞 {contact.phone}
+              </a>
+              {isEditMode && isAdmin && (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <IconButton
+                    iconProps={{ iconName: 'Edit' }}
+                    title="تعديل"
+                    onClick={() => onEditContact(contact)}
+                    styles={{ root: { color: '#0078d4' } }}
+                  />
+                  <IconButton
+                    iconProps={{ iconName: 'Delete' }}
+                    title="حذف"
+                    onClick={() => onDeleteContact(contact.id)}
+                    styles={{ root: { color: '#d32f2f' } }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </Stack>
@@ -279,19 +407,40 @@ const ContactsContent: React.FC = () => (
         📋 جهات الاتصال الأخرى
       </Text>
       <Stack tokens={{ childrenGap: 8 }}>
-        {externalContacts.filter(c => !c.phone).map(contact => (
+        {contacts.filter(c => !c.phone).map(contact => (
           <div 
             key={contact.id}
             style={{ 
               padding: 10,
               backgroundColor: '#f5f5f5',
               borderRadius: 6,
-              borderRight: '4px solid #0078d4'
+              borderRight: '4px solid #0078d4',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
             }}
           >
-            <Text variant="small" style={{ fontWeight: 600, display: 'block' }}>{contact.entityAr}</Text>
-            <Text variant="tiny" style={{ color: '#666' }}>{contact.contactPurpose}</Text>
-            <Text variant="tiny" style={{ color: '#999', fontStyle: 'italic' }}>التواصل: {contact.contactTiming}</Text>
+            <div>
+              <Text variant="small" style={{ fontWeight: 600, display: 'block' }}>{contact.Title}</Text>
+              <Text variant="tiny" style={{ color: '#666' }}>{contact.contactScope}</Text>
+              <Text variant="tiny" style={{ color: '#999', fontStyle: 'italic' }}>التواصل: {contact.contactTiming}</Text>
+            </div>
+            {isEditMode && isAdmin && (
+              <div style={{ display: 'flex', gap: 4 }}>
+                <IconButton
+                  iconProps={{ iconName: 'Edit' }}
+                  title="تعديل"
+                  onClick={() => onEditContact(contact)}
+                  styles={{ root: { color: '#0078d4' } }}
+                />
+                <IconButton
+                  iconProps={{ iconName: 'Delete' }}
+                  title="حذف"
+                  onClick={() => onDeleteContact(contact.id)}
+                  styles={{ root: { color: '#d32f2f' } }}
+                />
+              </div>
+            )}
           </div>
         ))}
       </Stack>
@@ -482,5 +631,146 @@ const DefinitionsContent: React.FC = () => (
     </div>
   </Stack>
 )
+
+// ============================================
+// Edit Contact Panel
+// ============================================
+interface EditContactPanelProps {
+  contact: AdminContact
+  onSave: (contact: Partial<AdminContact>) => void
+  onClose: () => void
+}
+
+const EditContactPanel: React.FC<EditContactPanelProps> = ({ contact, onSave, onClose }) => {
+  const [form, setForm] = useState<AdminContact>(contact)
+
+  const organizationOptions: IDropdownOption[] = [
+    { key: 'tatweer', text: 'شركة تطوير' },
+    { key: 'it_systems', text: 'الأنظمة وخدمات تقنية المعلومات' },
+    { key: 'infosec', text: 'أمن المعلومات' },
+    { key: 'civil_defense', text: 'الدفاع المدني' },
+    { key: 'police', text: 'الشرطة' },
+    { key: 'ambulance', text: 'الإسعاف' },
+    { key: 'red_crescent', text: 'الهلال الأحمر' },
+    { key: 'ministry', text: 'وزارة التعليم' },
+    { key: 'external', text: 'جهة خارجية أخرى' },
+  ]
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      zIndex: 1000,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <div style={{
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        padding: 24,
+        maxWidth: 600,
+        width: '90%',
+        maxHeight: '90vh',
+        overflow: 'auto',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <Text variant="xLarge" style={{ fontWeight: 600 }}>
+            {contact.id ? 'تعديل جهة الاتصال' : 'إضافة جهة اتصال'}
+          </Text>
+          <IconButton
+            iconProps={{ iconName: 'Cancel' }}
+            onClick={onClose}
+          />
+        </div>
+
+        <Stack tokens={{ childrenGap: 12 }}>
+          <TextField
+            label="الاسم / الجهة"
+            value={form.Title}
+            onChange={(_, val) => setForm({ ...form, Title: val || '' })}
+            required
+          />
+          
+          <Dropdown
+            label="نوع الجهة"
+            selectedKey={form.organization}
+            options={organizationOptions}
+            onChange={(_, opt) => setForm({ ...form, organization: opt?.key as string || '' })}
+          />
+
+          <TextField
+            label="الوظيفة / الدور"
+            value={form.role}
+            onChange={(_, val) => setForm({ ...form, role: val || '' })}
+          />
+
+          <TextField
+            label="رقم الهاتف"
+            value={form.phone}
+            onChange={(_, val) => setForm({ ...form, phone: val || '' })}
+            placeholder="998 أو 997"
+          />
+
+          <TextField
+            label="البريد الإلكتروني"
+            value={form.email}
+            onChange={(_, val) => setForm({ ...form, email: val || '' })}
+          />
+
+          <TextField
+            label="نطاق التواصل"
+            value={form.contactScope}
+            onChange={(_, val) => setForm({ ...form, contactScope: val || '' })}
+            multiline
+            rows={2}
+            placeholder="مشاكل المباني، حوادث الأمن السيبراني، إلخ"
+          />
+
+          <TextField
+            label="توقيت التواصل"
+            value={form.contactTiming}
+            onChange={(_, val) => setForm({ ...form, contactTiming: val || '' })}
+            multiline
+            rows={2}
+            placeholder="عند وجود اضطراب، عند الحريق، إلخ"
+          />
+
+          <TextField
+            label="العضو البديل"
+            value={form.backupMember}
+            onChange={(_, val) => setForm({ ...form, backupMember: val || '' })}
+          />
+
+          <TextField
+            label="ملاحظات"
+            value={form.notes}
+            onChange={(_, val) => setForm({ ...form, notes: val || '' })}
+            multiline
+            rows={3}
+          />
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <PrimaryButton
+              text="حفظ"
+              onClick={() => onSave(form)}
+              styles={{ root: { flex: 1 } }}
+            />
+            <DefaultButton
+              text="إلغاء"
+              onClick={onClose}
+              styles={{ root: { flex: 1 } }}
+            />
+          </div>
+        </Stack>
+      </div>
+    </div>
+  )
+}
 
 export default BCInfoSidebar

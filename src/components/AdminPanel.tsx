@@ -1772,7 +1772,7 @@ const AdminContactForm: React.FC<{ contact: AdminContact | null, onSave: (c: Adm
       
       {/* Internal Contact Fields (matching Word file: م، الاسم، المنصب، رقم الجوال، البريد الإلكتروني) */}
       <TextField label="الاسم *" value={form.Title} onChange={(_, v) => setForm({ ...form, Title: v })} required placeholder="الاسم الكامل" />
-      <TextField label={isExternal ? 'الوظيفة' : 'المنصب'} value={form.role} onChange={(_, v) => setForm({ ...form, role: v })} placeholder={isExternal ? 'مثال: ضابط اتصال' : 'مثال: رئيس وحدة عمليات الطوارئ'} />
+      <TextField label={isExternal ? 'الوظيفة' : 'المنصب'} value={form.role} onChange={(_, v) => setForm({ ...form, role: v })} placeholder={isExternal ? 'مثال: ضابط اتصال' : 'مثال: رئيس وحدة استمرارية العملية التعليمية'} />
       <TextField label="رقم الجوال" value={form.phone} onChange={(_, v) => setForm({ ...form, phone: v })} placeholder="05xxxxxxxx" />
       <TextField label="البريد الإلكتروني" value={form.email} onChange={(_, v) => setForm({ ...form, email: v })} placeholder="email@moe.gov.sa" />
       

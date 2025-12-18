@@ -505,7 +505,7 @@ const transformTrainingLog = (raw: any): TrainingLog => {
     AttendeesNames: attendeeNames || '',
     TrainingDate: extractChoiceValue(raw.TrainingDate) || '',
     Status: extractChoiceValue(raw.Status) || '',
-    GeneralNotes: extractChoiceValue(raw.GeneralNotes) || '',
+    GeneralNotes: raw.GeneralNotes || '',  // Plain text field, not choice
   };
 };
 
