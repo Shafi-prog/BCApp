@@ -26,6 +26,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, TrainingProgram, TrainingLog, TeamMember } from '../services/sharepointService'
 import { Coordination_Programs_CatalogService } from '../generated'
+import { getColumnConfig, ColumnType, renderDate } from '../config/tableConfig'
 
 // Default fallback options (used if SharePoint options can't be loaded)
 const defaultProviderEntityOptions: IDropdownOption[] = [
@@ -485,79 +486,65 @@ const Training: React.FC = () => {
   const getProgramColumns = (): IColumn[] => {
     const cols: IColumn[] = [
       { 
+        ...getColumnConfig(ColumnType.MEDIUM_TEXT),
         key: 'Title', 
         name: 'البرنامج', 
         fieldName: 'Title', 
-        minWidth: 120,
-        flexGrow: 2,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingProgram) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', lineHeight: '1.4', fontSize: '0.85rem' }}>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
             {item.Title}
           </div>
         )
       },
       { 
+        ...getColumnConfig(ColumnType.SHORT_TEXT),
         key: 'ProviderEntity', 
         name: 'الجهة', 
         fieldName: 'ProviderEntity', 
-        minWidth: 100,
-        flexGrow: 1,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingProgram) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem' }}>{item.ProviderEntity || '-'}</div>
-        )
-      },
-      { 
-        key: 'ActivityType', 
-        name: 'النوع', 
-        fieldName: 'ActivityType', 
-        minWidth: 60,
-        flexGrow: 0,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-        onRender: (item: TrainingProgram) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem' }}>{item.ActivityType || '-'}</div>
-        )
-      },
-      { 
-        key: 'TargetAudience', 
-        name: 'الفئة', 
-        fieldName: 'TargetAudience', 
-        minWidth: 150,
-        flexGrow: 3,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-        onRender: (item: TrainingProgram) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem', lineHeight: '1.4' }}>{item.TargetAudience || '-'}</div>
-        )
-      },
-      { 
-        key: 'Date', 
-        name: 'التاريخ', 
-        fieldName: 'Date', 
-        minWidth: 80,
-        flexGrow: 0,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-        onRender: (item: TrainingProgram) => (
-          <div style={{ textAlign: 'center', width: '100%', fontSize: '0.85rem' }}>
-            {item.Date ? new Date(item.Date).toLocaleDateString('ar-SA') : '-'}
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {item.ProviderEntity || '-'}
           </div>
         )
       },
       { 
+        ...getColumnConfig(ColumnType.SHORT_TEXT),
+        key: 'ActivityType', 
+        name: 'النوع', 
+        fieldName: 'ActivityType', 
+        onRender: (item: TrainingProgram) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {item.ActivityType || '-'}
+          </div>
+        )
+      },
+      { 
+        ...getColumnConfig(ColumnType.LONG_TEXT),
+        key: 'TargetAudience', 
+        name: 'الفئة', 
+        fieldName: 'TargetAudience', 
+        onRender: (item: TrainingProgram) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {item.TargetAudience || '-'}
+          </div>
+        )
+      },
+      { 
+        ...getColumnConfig(ColumnType.DATE),
+        key: 'Date', 
+        name: 'التاريخ', 
+        fieldName: 'Date', 
+        onRender: (item: TrainingProgram) => renderDate(item.Date)
+      },
+      { 
+        ...getColumnConfig(ColumnType.SHORT_TEXT),
         key: 'ExecutionMode', 
         name: 'التنفيذ', 
         fieldName: 'ExecutionMode', 
-        minWidth: 70,
-        flexGrow: 0,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingProgram) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.85rem' }}>{item.ExecutionMode || '-'}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {item.ExecutionMode || '-'}
+          </div>
         )
       },
     ]
@@ -566,27 +553,22 @@ const Training: React.FC = () => {
     if (isAdmin) {
       cols.push(
         { 
+          ...getColumnConfig(ColumnType.STATUS),
           key: 'CoordinationStatus', 
           name: 'الحالة', 
           fieldName: 'CoordinationStatus', 
-          minWidth: 60,
-          flexGrow: 1,
-          isResizable: true,
-          styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
           onRender: (item: TrainingProgram) => {
             const status = item.CoordinationStatus || '-'
             const color = status === 'تم التنفيذ' ? '#107c10' : status === 'قيد التنفيذ' ? '#0078d4' : status === 'ملغي' ? '#d83b01' : '#666'
             return (
-              <div style={{ textAlign: 'center', width: '100%', color, fontWeight: 600, fontSize: '0.85rem' }}>{status}</div>
+              <div style={{ textAlign: 'center', width: '100%', color, fontWeight: 600 }}>{status}</div>
             )
           }
         },
         { 
+          ...getColumnConfig(ColumnType.ACTIONS),
           key: 'adminActions', 
           name: 'الإجراءات', 
-          minWidth: 80,
-          flexGrow: 0,
-          styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
           onRender: (item: TrainingProgram) => (
             <Stack horizontal tokens={{ childrenGap: 4 }} style={{ justifyContent: 'center', width: '100%' }}>
               <IconButton
@@ -651,86 +633,69 @@ const Training: React.FC = () => {
     // Admin sees school name
     if (isAdmin) {
       cols.push({ 
+        ...getColumnConfig(ColumnType.MEDIUM_TEXT),
         key: 'SchoolName_Ref', 
         name: 'المدرسة', 
         fieldName: 'SchoolName_Ref', 
-        minWidth: 100, 
-        flexGrow: 2,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingLog) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.SchoolName_Ref || '-'}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {item.SchoolName_Ref || '-'}
+          </div>
         )
       })
     }
 
     cols.push(
       { 
+        ...getColumnConfig(ColumnType.MEDIUM_TEXT),
         key: 'Program_Ref', 
         name: 'البرنامج', 
         fieldName: 'Program_Ref', 
-        minWidth: 100, 
-        flexGrow: 2,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingLog) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', lineHeight: '1.4' }}>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
             {item.Program_Ref || '-'}
           </div>
         )
       },
       { 
+        ...getColumnConfig(ColumnType.SHORT_TEXT),
         key: 'RegistrationType', 
         name: 'نوع التسجيل', 
         fieldName: 'RegistrationType', 
-        minWidth: 70, 
-        flexGrow: 1,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingLog) => (
-          <div style={{ textAlign: 'center', width: '100%' }}>{item.RegistrationType}</div>
+          <div style={{ textAlign: 'center', width: '100%' }}>
+            {item.RegistrationType}
+          </div>
         )
       },
       { 
+        ...getColumnConfig(ColumnType.MULTI_VALUE),
         key: 'AttendeesNames', 
         name: 'الحضور', 
         fieldName: 'AttendeesNames', 
-        minWidth: 100, 
-        flexGrow: 2,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingLog) => {
           let names = item.AttendeesNames;
           if (typeof names === 'object' && names !== null) {
             names = (names as any)?.Value || (names as any)?.results?.join('، ') || '-';
           }
           return (
-            <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', lineHeight: '1.4' }}>
+            <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
               {names || '-'}
             </div>
           );
         }
       },
       { 
+        ...getColumnConfig(ColumnType.DATE),
         key: 'TrainingDate', 
         name: 'تاريخ التدريب', 
         fieldName: 'TrainingDate', 
-        minWidth: 80, 
-        flexGrow: 1,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-        onRender: (item: TrainingLog) => (
-          <div style={{ textAlign: 'center', width: '100%' }}>
-            {item.TrainingDate ? new Date(item.TrainingDate).toLocaleDateString('ar-SA') : '-'}
-          </div>
-        )
+        onRender: (item: TrainingLog) => renderDate(item.TrainingDate)
       },
       { 
+        ...getColumnConfig(ColumnType.ACTIONS),
         key: 'actions', 
         name: 'الإجراءات', 
-        minWidth: 70,
-        flexGrow: 0,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TrainingLog) => (
           <Stack horizontal tokens={{ childrenGap: 8 }} style={{ justifyContent: 'center', width: '100%' }}>
             <IconButton

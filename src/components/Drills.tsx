@@ -19,6 +19,7 @@ import {
 } from '@fluentui/react'
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, Drill, ChoiceOption } from '../services/sharepointService'
+import { getColumnConfig, ColumnType, renderDate } from '../config/tableConfig'
 
 // Default options matching original app
 const defaultDrillHypothesisOptions: IDropdownOption[] = [

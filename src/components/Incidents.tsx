@@ -22,6 +22,7 @@ import { useAuth } from '../context/AuthContext'
 import { SharePointService, Incident } from '../services/sharepointService'
 import { SBC_Incidents_LogService } from '../generated/services/SBC_Incidents_LogService'
 import { mutualOperationPlan } from '../data/mutualOperation'
+import { getColumnConfig, ColumnType, renderDate } from '../config/tableConfig'
 
 // Full risk level list grouped by incident category
 const allRiskLevels = [
@@ -244,49 +245,41 @@ const Incidents: React.FC = () => {
 
   const columns: IColumn[] = [
     { 
+      ...getColumnConfig(ColumnType.MEDIUM_TEXT),
       key: 'Title', 
       name: 'العنوان', 
       fieldName: 'Title', 
-      minWidth: 120, 
-      flexGrow: 2, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: Incident) => (
-        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', lineHeight: '1.4' }}>{item.Title}</div>
+        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+          {item.Title}
+        </div>
       ),
     },
     { 
+      ...getColumnConfig(ColumnType.NUMBER),
       key: 'IncidentNumber', 
       name: 'رقم البلاغ', 
       fieldName: 'IncidentNumber', 
-      minWidth: 70, 
-      flexGrow: 0, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: Incident) => (
         <div style={{ textAlign: 'center', width: '100%' }}>{item.IncidentNumber}</div>
       ),
     },
     { 
+      ...getColumnConfig(ColumnType.SHORT_TEXT),
       key: 'IncidentCategory', 
       name: 'التصنيف', 
       fieldName: 'IncidentCategory', 
-      minWidth: 90, 
-      flexGrow: 1, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: Incident) => (
-        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.IncidentCategory}</div>
+        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+          {item.IncidentCategory}
+        </div>
       ),
     },
     { 
+      ...getColumnConfig(ColumnType.STATUS),
       key: 'RiskLevel', 
       name: 'مستوى الخطر', 
       fieldName: 'RiskLevel', 
-      minWidth: 70,
-      flexGrow: 1,
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: Incident) => (
         <div style={{ textAlign: 'center', width: '100%' }}>
           <span style={{ 
@@ -302,13 +295,10 @@ const Incidents: React.FC = () => {
       )
     },
     { 
+      ...getColumnConfig(ColumnType.SHORT_TEXT),
       key: 'AlertModelType', 
       name: 'المؤشر', 
       fieldName: 'AlertModelType', 
-      minWidth: 60,
-      flexGrow: 1,
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: Incident) => {
         const alertType = item.AlertModelType || ''
         let bgColor = '#666'
@@ -331,36 +321,28 @@ const Incidents: React.FC = () => {
       }
     },
     { 
+      ...getColumnConfig(ColumnType.SHORT_TEXT),
       key: 'ActivatedAlternative', 
       name: 'البديل', 
       fieldName: 'ActivatedAlternative', 
-      minWidth: 100, 
-      flexGrow: 1, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: Incident) => (
-        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.ActivatedAlternative}</div>
+        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+          {item.ActivatedAlternative}
+        </div>
       ),
     },
     { 
+      ...getColumnConfig(ColumnType.DATE),
       key: 'Created', 
       name: 'التاريخ', 
       fieldName: 'Created', 
-      minWidth: 75, 
-      flexGrow: 1, 
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: Incident) => (
-        <div style={{ textAlign: 'center', width: '100%' }}>{item.Created ? new Date(item.Created).toLocaleDateString('ar-SA') : '-'}</div>
-      ),
+      onRender: (item: Incident) => renderDate(item.Created)
     },
     {
+      ...getColumnConfig(ColumnType.ACTIONS),
       key: 'actions',
       name: 'الإجراءات',
       fieldName: 'actions',
-      minWidth: 75,
-      flexGrow: 0,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: Incident) => (
         <Stack horizontal tokens={{ childrenGap: 8 }} horizontalAlign="center">
           <IconButton

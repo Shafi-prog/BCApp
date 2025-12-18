@@ -19,6 +19,7 @@ import {
 } from '@fluentui/react'
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, TeamMember } from '../services/sharepointService'
+import { getColumnConfig, ColumnType } from '../config/tableConfig'
 
 // Job role options matching original app (6 roles)
 const jobRoleOptions = [
@@ -85,90 +86,81 @@ const Team: React.FC = () => {
   const getColumns = (): IColumn[] => {
     const cols: IColumn[] = []
     
-    // Admin sees school name column first - max 80px
+    // Admin sees school name column first
     if (user?.type === 'admin') {
       cols.push({
+        ...getColumnConfig(ColumnType.SHORT_TEXT),
         key: 'SchoolName_Ref',
         name: 'المدرسة',
         fieldName: 'SchoolName_Ref',
-        minWidth: 60,
-        maxWidth: 80,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TeamMember) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', fontSize: '0.8rem', lineHeight: '1.3', overflow: 'hidden' }}>{item.SchoolName_Ref || '-'}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {item.SchoolName_Ref || '-'}
+          </div>
         ),
       })
     }
 
     cols.push(
       { 
+        ...getColumnConfig(ColumnType.MEDIUM_TEXT),
         key: 'Title', 
         name: 'الاسم', 
         fieldName: 'Title', 
-        minWidth: 110, 
-        flexGrow: 2, 
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TeamMember) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.Title}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {item.Title}
+          </div>
         ),
       },
       { 
+        ...getColumnConfig(ColumnType.MEDIUM_TEXT),
         key: 'JobRole', 
         name: 'الوظيفة', 
         fieldName: 'JobRole', 
-        minWidth: 120, 
-        flexGrow: 2, 
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TeamMember) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.JobRole}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {item.JobRole}
+          </div>
         ),
       },
       { 
+        ...getColumnConfig(ColumnType.SHORT_TEXT),
         key: 'MembershipType', 
         name: 'نوع العضوية', 
         fieldName: 'MembershipType', 
-        minWidth: 90, 
-        flexGrow: 1, 
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TeamMember) => (
-          <div style={{ textAlign: 'center', width: '100%' }}>{item.MembershipType}</div>
+          <div style={{ textAlign: 'center', width: '100%' }}>
+            {item.MembershipType}
+          </div>
         ),
       },
       { 
+        ...getColumnConfig(ColumnType.EMAIL),
         key: 'MemberEmail', 
         name: 'البريد الإلكتروني', 
         fieldName: 'MemberEmail', 
-        minWidth: 140, 
-        flexGrow: 2, 
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TeamMember) => (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.MemberEmail}</div>
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {item.MemberEmail}
+          </div>
         ),
       },
       { 
+        ...getColumnConfig(ColumnType.PHONE),
         key: 'MemberMobile', 
         name: 'الجوال', 
         fieldName: 'MemberMobile', 
-        minWidth: 85, 
-        flexGrow: 1, 
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TeamMember) => (
-          <div style={{ textAlign: 'center', width: '100%' }}>{item.MemberMobile}</div>
+          <div style={{ textAlign: 'center', width: '100%' }}>
+            {item.MemberMobile}
+          </div>
         ),
       },
       {
+        ...getColumnConfig(ColumnType.ATTACHMENT),
         key: 'attachment',
         name: 'المرفقات',
-        minWidth: 65,
-        flexGrow: 0,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TeamMember) => {
           // Use DispForm.aspx?ID=X to open exact item in SharePoint
           const itemLink = `https://saudimoe.sharepoint.com/sites/em/Lists/BC_Teams_Members/DispForm.aspx?ID=${item.Id}`
@@ -214,13 +206,10 @@ const Team: React.FC = () => {
         },
       },
       {
+        ...getColumnConfig(ColumnType.ACTIONS),
         key: 'actions',
         name: 'الإجراءات',
         fieldName: 'actions',
-        minWidth: 75,
-        flexGrow: 0,
-        isResizable: true,
-        styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
         onRender: (item: TeamMember) => (
           <Stack horizontal tokens={{ childrenGap: 8 }} horizontalAlign="center">
             <IconButton
