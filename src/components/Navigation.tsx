@@ -163,7 +163,10 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
                 { name: 'سجل التدريبات', url: '#/training-log', key: '/training-log', icon: 'ClipboardList' },
                 { name: 'سجل التمارين الفرضية', url: '#/drills', key: '/drills', icon: 'TaskList' },
                 { name: 'انقطاع في العملية التعليمية', url: '#/incidents', key: '/incidents', icon: 'ShieldAlert' },
-                ...(user?.type === 'admin' ? [{ name: 'لوحة إدارة BC', url: '#/admin', key: '/admin', icon: 'Settings' }] : [])
+                ...(user?.type === 'admin' ? [
+                  { name: 'لوحة إدارة BC', url: '#/admin', key: '/admin', icon: 'Settings' },
+                  { name: '🔍 تشخيص الحقول المنسدلة', url: '#/diagnostic', key: '/diagnostic', icon: 'TestParameter' }
+                ] : [])
               ]
             }
           ]}
