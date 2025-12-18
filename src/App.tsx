@@ -13,11 +13,9 @@ import SchoolInfo from './components/SchoolInfo'
 import AdminPanel from './components/AdminPanel'
 import BCPlan from './components/BCPlan'
 import ConnectionTest from './components/ConnectionTest'
-import DiagnosticDropdownValues from './components/DiagnosticDropdownValues'
 
 function AppContent() {
   const { user } = useAuth()
-  const [navOpen, setNavOpen] = useState(false)
 
   if (!user) {
     return <Login />
@@ -25,8 +23,7 @@ function AppContent() {
 
   return (
     <div className="app-layout">
-      <div className={`nav-overlay ${navOpen ? 'open' : ''}`} onClick={() => setNavOpen(false)} />
-      <Navigation isOpen={navOpen} onClose={() => setNavOpen(false)} />
+      <Navigation isOpen={true} onClose={() => {}} />
       <main style={{ flex: 1 }}>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -38,7 +35,6 @@ function AppContent() {
           <Route path="/incidents" element={<Incidents />} />
           <Route path="/schoolinfo" element={<SchoolInfo />} />
           <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/diagnostic" element={<DiagnosticDropdownValues />} />
           <Route path="/test-connection" element={<ConnectionTest />} />
           <Route path="*" element={<div style={{ padding: 20 }}>الصفحة غير موجودة</div>} />
         </Routes>

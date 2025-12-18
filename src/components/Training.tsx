@@ -56,9 +56,7 @@ const defaultTargetAudienceOptions: IDropdownOption[] = [
 
 const defaultExecutionModeOptions: IDropdownOption[] = [
   { key: 'حضوري', text: 'حضوري' },
-  { key: 'تعليم عن بعد', text: 'تعليم عن بعد' },
   { key: 'عن بعد', text: 'عن بعد' },
-  { key: 'تعليم مدمج', text: 'تعليم مدمج' },
   { key: 'مدمج', text: 'مدمج' },
 ]
 
@@ -285,6 +283,7 @@ const Training: React.FC = () => {
       const registrationType = getRegistrationType(selectedProgram.Date)
       const trainingDate = selectedProgram.Date || new Date().toISOString()
       const schoolName = user?.schoolName || 'Unknown School'
+      const programName = selectedProgram.Title
 
       await SharePointService.registerForTraining(
         schoolName,
@@ -292,15 +291,17 @@ const Training: React.FC = () => {
         attendeeIds,
         user?.schoolId,
         registrationType,
-        trainingDate
+        trainingDate,
+        programName
       )
 
       setSuccessMessage('تم التسجيل بنجاح')
       setPanelOpen(false)
       loadTrainingLog()
-    } catch (e) {
-      console.error(e)
-      setErrorMessage('فشل التسجيل')
+    } catch (e: any) {
+      console.error('Registration error:', e)
+      const errorMsg = e?.message || e?.error || JSON.stringify(e)
+      setErrorMessage(`فشل التسجيل: ${errorMsg}`)
     } finally {
       setSaving(false)
     }

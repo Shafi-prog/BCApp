@@ -365,28 +365,94 @@ const AdminPanel: React.FC = () => {
     localStorage.setItem('bc_dr_checklist', JSON.stringify(data))
   }
 
-  // Save admin contacts - now uses AdminDataService
-  const saveAdminContacts = async (data: AdminContact[]) => {
-    setAdminContacts(data)
-    // Note: For bulk updates, we still use localStorage as fallback
-    // Individual create/update/delete operations go through AdminDataService
-    localStorage.setItem('bc_admin_contacts', JSON.stringify(data))
+  // Save admin contacts - uses AdminDataService for individual operations
+  const saveAdminContact = async (contact: AdminContact, isEdit: boolean) => {
+    try {
+      if (isEdit) {
+        await AdminDataService.updateAdminContact(contact.id, contact)
+      } else {
+        await AdminDataService.createAdminContact(contact)
+      }
+      // Reload contacts from SharePoint
+      const contacts = await AdminDataService.getAdminContacts()
+      setAdminContacts(contacts)
+      setMessage({ type: MessageBarType.success, text: isEdit ? 'تم تحديث جهة الاتصال بنجاح' : 'تم إضافة جهة الاتصال بنجاح' })
+    } catch (e: any) {
+      console.error('Error saving admin contact:', e)
+      setMessage({ type: MessageBarType.error, text: 'فشل حفظ جهة الاتصال: ' + (e.message || 'خطأ غير معروف') })
+    }
   }
 
-  // Save BC Plan documents - now uses AdminDataService
-  const saveBCPlanDocuments = async (data: BCPlanDocument[]) => {
-    setBCPlanDocuments(data)
-    // Note: For bulk updates, we still use localStorage as fallback
-    // Individual create/update/delete operations go through AdminDataService
-    localStorage.setItem('bc_plan_documents', JSON.stringify(data))
+  const deleteAdminContact = async (id: number) => {
+    try {
+      await AdminDataService.deleteAdminContact(id)
+      const contacts = await AdminDataService.getAdminContacts()
+      setAdminContacts(contacts)
+      setMessage({ type: MessageBarType.success, text: 'تم حذف جهة الاتصال بنجاح' })
+    } catch (e: any) {
+      console.error('Error deleting admin contact:', e)
+      setMessage({ type: MessageBarType.error, text: 'فشل حذف جهة الاتصال: ' + (e.message || 'خطأ غير معروف') })
+    }
   }
 
-  // Save incident evaluations - now uses AdminDataService
-  const saveIncidentEvaluations = async (data: IncidentEvaluation[]) => {
-    setIncidentEvaluations(data)
-    // Note: For bulk updates, we still use localStorage as fallback
-    // Individual create/update/delete operations go through AdminDataService
-    localStorage.setItem('bc_incident_evaluations', JSON.stringify(data))
+  // Save BC Plan documents - uses AdminDataService for individual operations
+  const saveBCPlanDocument = async (doc: BCPlanDocument, isEdit: boolean) => {
+    try {
+      if (isEdit) {
+        await AdminDataService.updateBCPlanDocument(doc.id, doc)
+      } else {
+        await AdminDataService.createBCPlanDocument(doc)
+      }
+      // Reload documents from SharePoint
+      const planDocs = await AdminDataService.getBCPlanDocuments()
+      setBCPlanDocuments(planDocs)
+      setMessage({ type: MessageBarType.success, text: isEdit ? 'تم تحديث المستند بنجاح' : 'تم إضافة المستند بنجاح' })
+    } catch (e: any) {
+      console.error('Error saving BC plan document:', e)
+      setMessage({ type: MessageBarType.error, text: 'فشل حفظ المستند: ' + (e.message || 'خطأ غير معروف') })
+    }
+  }
+
+  const deleteBCPlanDocument = async (id: number) => {
+    try {
+      await AdminDataService.deleteBCPlanDocument(id)
+      const planDocs = await AdminDataService.getBCPlanDocuments()
+      setBCPlanDocuments(planDocs)
+      setMessage({ type: MessageBarType.success, text: 'تم حذف المستند بنجاح' })
+    } catch (e: any) {
+      console.error('Error deleting BC plan document:', e)
+      setMessage({ type: MessageBarType.error, text: 'فشل حذف المستند: ' + (e.message || 'خطأ غير معروف') })
+    }
+  }
+
+  // Save incident evaluations - uses AdminDataService for individual operations
+  const saveIncidentEvaluation = async (evaluation: IncidentEvaluation, isEdit: boolean) => {
+    try {
+      if (isEdit) {
+        await AdminDataService.updateIncidentEvaluation(evaluation.id, evaluation)
+      } else {
+        await AdminDataService.createIncidentEvaluation(evaluation)
+      }
+      // Reload evaluations from SharePoint
+      const evaluations = await AdminDataService.getIncidentEvaluations()
+      setIncidentEvaluations(evaluations)
+      setMessage({ type: MessageBarType.success, text: isEdit ? 'تم تحديث التقييم بنجاح' : 'تم إضافة التقييم بنجاح' })
+    } catch (e: any) {
+      console.error('Error saving incident evaluation:', e)
+      setMessage({ type: MessageBarType.error, text: 'فشل حفظ التقييم: ' + (e.message || 'خطأ غير معروف') })
+    }
+  }
+
+  const deleteIncidentEvaluation = async (id: number) => {
+    try {
+      await AdminDataService.deleteIncidentEvaluation(id)
+      const evaluations = await AdminDataService.getIncidentEvaluations()
+      setIncidentEvaluations(evaluations)
+      setMessage({ type: MessageBarType.success, text: 'تم حذف التقييم بنجاح' })
+    } catch (e: any) {
+      console.error('Error deleting incident evaluation:', e)
+      setMessage({ type: MessageBarType.error, text: 'فشل حذف التقييم: ' + (e.message || 'خطأ غير معروف') })
+    }
   }
 
   // Export data to JSON (all data now comes from SharePoint)
@@ -1278,8 +1344,8 @@ const AdminPanel: React.FC = () => {
                     { ...getColumnConfig(ColumnType.EMAIL), key: 'email', name: 'البريد الإلكتروني', fieldName: 'email', onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%' }}>{item.email || '-'}</div> },
                     { key: 'actions', name: 'إجراءات', minWidth: 100, flexGrow: 0, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => (
                       <Stack horizontal tokens={{ childrenGap: 4 }} horizontalAlign="center">
-                        <DefaultButton text="تعديل" onClick={() => { setEditingContact(item); setContactPanelOpen(true) }} styles={{ root: { minWidth: 50 } }} />
-                        <DefaultButton text="حذف" onClick={() => saveAdminContacts(adminContacts.filter(c => c.id !== item.id))} styles={{ root: { minWidth: 50, color: '#d32f2f' } }} />
+                        <IconButton iconProps={{ iconName: 'Edit' }} title="تعديل" onClick={() => { setEditingContact(item); setContactPanelOpen(true) }} styles={{ root: { color: '#0078d4' } }} />
+                        <IconButton iconProps={{ iconName: 'Delete' }} title="حذف" onClick={() => deleteAdminContact(item.id)} styles={{ root: { color: '#d83b01' } }} />
                       </Stack>
                     )}
                   ]}
@@ -1507,8 +1573,8 @@ const AdminPanel: React.FC = () => {
                             )}
                           </div>
                           <Stack horizontal tokens={{ childrenGap: 4 }}>
-                            <DefaultButton text="تعديل" onClick={() => { setEditingBCPlan(doc); setBCPlanPanelOpen(true) }} styles={{ root: { minWidth: 50 } }} />
-                            <DefaultButton text="حذف" onClick={() => saveBCPlanDocuments(bcPlanDocuments.filter(d => d.id !== doc.id))} styles={{ root: { minWidth: 50, color: '#d32f2f' } }} />
+                            <IconButton iconProps={{ iconName: 'Edit' }} title="تعديل" onClick={() => { setEditingBCPlan(doc); setBCPlanPanelOpen(true) }} styles={{ root: { color: '#0078d4' } }} />
+                            <IconButton iconProps={{ iconName: 'Delete' }} title="حذف" onClick={() => deleteBCPlanDocument(doc.id)} styles={{ root: { color: '#d83b01' } }} />
                           </Stack>
                         </div>
                       </div>
@@ -1629,8 +1695,8 @@ const AdminPanel: React.FC = () => {
                     )},
                     { key: 'actions', name: 'إجراءات', minWidth: 100, flexGrow: 0, styles: { cellTitle: { justifyContent: 'center' } }, onRender: (item: IncidentEvaluation) => (
                       <Stack horizontal tokens={{ childrenGap: 4 }} horizontalAlign="center">
-                        <DefaultButton text="تعديل" onClick={() => { setEditingEvaluation(item); setEvaluationPanelOpen(true) }} styles={{ root: { minWidth: 50 } }} />
-                        <DefaultButton text="حذف" onClick={() => saveIncidentEvaluations(incidentEvaluations.filter(e => e.id !== item.id))} styles={{ root: { minWidth: 50, color: '#d32f2f' } }} />
+                        <IconButton iconProps={{ iconName: 'Edit' }} title="تعديل" onClick={() => { setEditingEvaluation(item); setEvaluationPanelOpen(true) }} styles={{ root: { color: '#0078d4' } }} />
+                        <IconButton iconProps={{ iconName: 'Delete' }} title="حذف" onClick={() => deleteIncidentEvaluation(item.id)} styles={{ root: { color: '#d83b01' } }} />
                       </Stack>
                     )}
                   ]}
@@ -1686,7 +1752,7 @@ const AdminPanel: React.FC = () => {
 
       {/* Admin Contact Panel */}
       <Panel isOpen={contactPanelOpen} onDismiss={() => setContactPanelOpen(false)} headerText={editingContact ? 'تعديل جهة اتصال' : 'إضافة جهة اتصال'} type={PanelType.medium}>
-        <AdminContactForm contact={editingContact} onSave={(c) => { saveAdminContacts(editingContact ? adminContacts.map(x => x.id === c.id ? c : x) : [...adminContacts, { ...c, id: Date.now() }]); setContactPanelOpen(false) }} />
+        <AdminContactForm contact={editingContact} onSave={async (c) => { await saveAdminContact(c, !!editingContact); setContactPanelOpen(false); setEditingContact(null) }} />
       </Panel>
 
       {/* Test Plan Panel */}
@@ -1696,12 +1762,12 @@ const AdminPanel: React.FC = () => {
 
       {/* BC Plan Document Panel */}
       <Panel isOpen={bcPlanPanelOpen} onDismiss={() => setBCPlanPanelOpen(false)} headerText={editingBCPlan ? 'تعديل مستند' : 'إضافة مستند خطة BC'} type={PanelType.medium}>
-        <BCPlanDocumentForm document={editingBCPlan} onSave={(d) => { saveBCPlanDocuments(editingBCPlan ? bcPlanDocuments.map(x => x.id === d.id ? d : x) : [...bcPlanDocuments, { ...d, id: Date.now() }]); setBCPlanPanelOpen(false) }} />
+        <BCPlanDocumentForm document={editingBCPlan} onSave={async (d) => { await saveBCPlanDocument(d, !!editingBCPlan); setBCPlanPanelOpen(false); setEditingBCPlan(null) }} />
       </Panel>
 
       {/* Evaluation Panel */}
       <Panel isOpen={evaluationPanelOpen} onDismiss={() => setEvaluationPanelOpen(false)} headerText={editingEvaluation ? 'تعديل تقييم' : 'إضافة تقييم حادث'} type={PanelType.medium}>
-        <IncidentEvaluationForm evaluation={editingEvaluation} incidents={incidents} onSave={(e) => { saveIncidentEvaluations(editingEvaluation ? incidentEvaluations.map(x => x.id === e.id ? x : e) : [...incidentEvaluations, { ...e, id: Date.now() }]); setEvaluationPanelOpen(false) }} />
+        <IncidentEvaluationForm evaluation={editingEvaluation} incidents={incidents} onSave={async (e) => { await saveIncidentEvaluation(e, !!editingEvaluation); setEvaluationPanelOpen(false); setEditingEvaluation(null) }} />
       </Panel>
     </div>
   )
@@ -2814,17 +2880,50 @@ const SchoolLessonsAnalysis: React.FC<{ incidents: Incident[]; drills: Drill[] }
 // Damage Assessment Manager Component
 interface DamageReport { id: number; incidentTitle: string; date: string; buildingDamage: string; equipmentDamage: string; dataLoss: string; estimatedCost: string; recoveryTime: string; status: string; notes: string }
 const DamageAssessmentManager: React.FC<{ incidents: Incident[] }> = ({ incidents }) => {
-  const [reports, setReports] = useState<DamageReport[]>(() => {
-    const saved = localStorage.getItem('bc_damage_reports')
-    return saved ? JSON.parse(saved) : []
-  })
+  const [reports, setReports] = useState<DamageReport[]>([])
   const [panelOpen, setPanelOpen] = useState(false)
   const [editing, setEditing] = useState<DamageReport | null>(null)
   const [form, setForm] = useState<Partial<DamageReport>>({ incidentTitle: '', date: '', buildingDamage: 'لا يوجد', equipmentDamage: 'لا يوجد', dataLoss: 'لا يوجد', estimatedCost: '', recoveryTime: '', status: 'قيد التقييم', notes: '' })
+  const [message, setMessage] = useState<{ type: MessageBarType; text: string } | null>(null)
 
-  const saveReports = (data: DamageReport[]) => {
-    setReports(data)
-    localStorage.setItem('bc_damage_reports', JSON.stringify(data))
+  // Load damage reports from SharePoint on mount
+  useEffect(() => {
+    loadReports()
+  }, [])
+
+  const loadReports = async () => {
+    try {
+      const data = await AdminDataService.getDamageReports()
+      setReports(data)
+    } catch (e) {
+      console.error('Error loading damage reports:', e)
+    }
+  }
+
+  const saveReport = async (report: DamageReport, isEdit: boolean) => {
+    try {
+      if (isEdit) {
+        await AdminDataService.updateDamageReport(report.id, report)
+      } else {
+        await AdminDataService.createDamageReport(report)
+      }
+      await loadReports()
+      setMessage({ type: MessageBarType.success, text: isEdit ? 'تم تحديث تقرير الأضرار بنجاح' : 'تم إضافة تقرير الأضرار بنجاح' })
+    } catch (e: any) {
+      console.error('Error saving damage report:', e)
+      setMessage({ type: MessageBarType.error, text: 'فشل حفظ تقرير الأضرار: ' + (e.message || 'خطأ غير معروف') })
+    }
+  }
+
+  const deleteReport = async (id: number) => {
+    try {
+      await AdminDataService.deleteDamageReport(id)
+      await loadReports()
+      setMessage({ type: MessageBarType.success, text: 'تم حذف تقرير الأضرار بنجاح' })
+    } catch (e: any) {
+      console.error('Error deleting damage report:', e)
+      setMessage({ type: MessageBarType.error, text: 'فشل حذف تقرير الأضرار: ' + (e.message || 'خطأ غير معروف') })
+    }
   }
 
   const damageOptions = [{ key: 'لا يوجد', text: 'لا يوجد' }, { key: 'طفيف', text: 'طفيف' }, { key: 'متوسط', text: 'متوسط' }, { key: 'كبير', text: 'كبير' }, { key: 'كلي', text: 'كلي' }]
@@ -2832,6 +2931,7 @@ const DamageAssessmentManager: React.FC<{ incidents: Incident[] }> = ({ incident
 
   return (
     <div>
+      {message && <MessageBar messageBarType={message.type} onDismiss={() => setMessage(null)} style={{ marginBottom: 16 }}>{message.text}</MessageBar>}
       <PrimaryButton text="إضافة تقرير تقييم" iconProps={{ iconName: 'Add' }} onClick={() => { setEditing(null); setForm({ incidentTitle: '', date: new Date().toISOString().split('T')[0], buildingDamage: 'لا يوجد', equipmentDamage: 'لا يوجد', dataLoss: 'لا يوجد', estimatedCost: '', recoveryTime: '', status: 'قيد التقييم', notes: '' }); setPanelOpen(true) }} style={{ marginBottom: 16 }} />
       <DetailsList
         items={reports}
@@ -2843,8 +2943,8 @@ const DamageAssessmentManager: React.FC<{ incidents: Incident[] }> = ({ incident
           { ...getColumnConfig(ColumnType.STATUS), key: 'status', name: 'الحالة', fieldName: 'status', onRender: (item: DamageReport) => <div style={{ textAlign: 'center', width: '100%' }}>{item.status}</div> },
           { key: 'actions', name: '', minWidth: 100, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: DamageReport) => (
             <Stack horizontal tokens={{ childrenGap: 4 }} horizontalAlign="center">
-              <DefaultButton text="تعديل" onClick={() => { setEditing(item); setForm(item); setPanelOpen(true) }} />
-              <DefaultButton text="حذف" onClick={() => saveReports(reports.filter(r => r.id !== item.id))} />
+              <IconButton iconProps={{ iconName: 'Edit' }} title="تعديل" onClick={() => { setEditing(item); setForm(item); setPanelOpen(true) }} styles={{ root: { color: '#0078d4' } }} />
+              <IconButton iconProps={{ iconName: 'Delete' }} title="حذف" onClick={() => deleteReport(item.id)} styles={{ root: { color: '#d83b01' } }} />
             </Stack>
           )}
         ]}
@@ -2865,10 +2965,12 @@ const DamageAssessmentManager: React.FC<{ incidents: Incident[] }> = ({ incident
           <TextField label="الوقت المتوقع للاستعادة" value={form.recoveryTime} onChange={(_, v) => setForm({ ...form, recoveryTime: v })} placeholder="مثال: 24 ساعة" />
           <Dropdown label="حالة التقييم" selectedKey={form.status} options={statusOptions} onChange={(_, opt) => setForm({ ...form, status: opt?.key as string })} />
           <TextField label="ملاحظات" multiline rows={3} value={form.notes} onChange={(_, v) => setForm({ ...form, notes: v })} />
-          <PrimaryButton text="حفظ" onClick={() => { 
+          <PrimaryButton text="حفظ" onClick={async () => { 
             if (form.incidentTitle) { 
-              saveReports(editing ? reports.map(r => r.id === editing.id ? { ...form as DamageReport, id: editing.id } : r) : [...reports, { ...form as DamageReport, id: Date.now() }])
-              setPanelOpen(false) 
+              const report = editing ? { ...form as DamageReport, id: editing.id } : { ...form as DamageReport, id: Date.now() }
+              await saveReport(report, !!editing)
+              setPanelOpen(false)
+              setEditing(null)
             }
           }} disabled={!form.incidentTitle} />
         </Stack>

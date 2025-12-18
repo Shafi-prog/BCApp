@@ -3,6 +3,7 @@ import { Nav, INavStyles, DefaultButton, Text, Icon, IconButton } from '@fluentu
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import BCInfoSidebar from './BCInfoSidebar'
+import SupportingDocsSidebar from './SupportingDocsSidebar'
 
 interface LeaderboardEntry {
   rank: number
@@ -43,6 +44,7 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [showBCInfo, setShowBCInfo] = useState(false)
+  const [showSupportingDocs, setShowSupportingDocs] = useState(false)
 
   // Load leaderboard from localStorage
   useEffect(() => {
@@ -164,8 +166,7 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
                 { name: 'سجل التمارين الفرضية', url: '#/drills', key: '/drills', icon: 'TaskList' },
                 { name: 'انقطاع في العملية التعليمية', url: '#/incidents', key: '/incidents', icon: 'ShieldAlert' },
                 ...(user?.type === 'admin' ? [
-                  { name: 'لوحة إدارة BC', url: '#/admin', key: '/admin', icon: 'Settings' },
-                  { name: '🔍 تشخيص الحقول المنسدلة', url: '#/diagnostic', key: '/diagnostic', icon: 'TestParameter' }
+                  { name: 'لوحة إدارة BC', url: '#/admin', key: '/admin', icon: 'Settings' }
                 ] : [])
               ]
             }
@@ -270,25 +271,38 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
         </div>
       )}
 
-      {/* BC Info Button - For Schools (Quick Reference) */}
-      {user?.type !== 'admin' && (
-        <div style={{ padding: '12px 16px', borderTop: '1px solid #e1dfdd' }}>
-          <DefaultButton
-            text="📖 المرجع السريع (RTO/جهات الاتصال)"
-            iconProps={{ iconName: 'Info' }}
-            onClick={() => setShowBCInfo(true)}
-            styles={{
-              root: { 
-                width: '100%', 
-                backgroundColor: '#e6f2ff',
-                border: '1px solid #0078d4',
-              },
-              label: { color: '#0078d4', fontWeight: 600, fontSize: '0.8rem' },
-              icon: { color: '#0078d4' },
-            }}
-          />
-        </div>
-      )}
+      {/* BC Info Button - Quick Reference (available for all users, editable by admin) */}
+      <div style={{ padding: '12px 16px', borderTop: '1px solid #e1dfdd' }}>
+        <DefaultButton
+          text="📖 المرجع السريع (RTO/جهات الاتصال)"
+          iconProps={{ iconName: 'Info' }}
+          onClick={() => setShowBCInfo(true)}
+          styles={{
+            root: { 
+              width: '100%', 
+              backgroundColor: '#e6f2ff',
+              border: '1px solid #0078d4',
+              marginBottom: 8,
+            },
+            label: { color: '#0078d4', fontWeight: 600, fontSize: '0.8rem' },
+            icon: { color: '#0078d4' },
+          }}
+        />
+        <DefaultButton
+          text="📚 المستندات المساندة"
+          iconProps={{ iconName: 'DocumentSet' }}
+          onClick={() => setShowSupportingDocs(true)}
+          styles={{
+            root: { 
+              width: '100%', 
+              backgroundColor: '#f3e6ff',
+              border: '1px solid #8764b8',
+            },
+            label: { color: '#8764b8', fontWeight: 600, fontSize: '0.8rem' },
+            icon: { color: '#8764b8' },
+          }}
+        />
+      </div>
 
       {/* Logout Button */}
       <div style={{ padding: '16px', borderTop: '1px solid #e1dfdd' }}>
@@ -305,6 +319,9 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
 
       {/* BC Info Sidebar */}
       <BCInfoSidebar isOpen={showBCInfo} onClose={() => setShowBCInfo(false)} />
+
+      {/* Supporting Documents Sidebar */}
+      <SupportingDocsSidebar isOpen={showSupportingDocs} onClose={() => setShowSupportingDocs(false)} />
     </div>
   )
 }

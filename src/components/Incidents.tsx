@@ -755,6 +755,67 @@ const Incidents: React.FC = () => {
             styles={{ root: { marginTop: 12 } }}
           />
           
+          {/* Show alternative school dropdown when "التشغيل المتبادل" is selected in ActionTaken */}
+          {form.ActionTaken === 'التشغيل المتبادل' && (
+            <div style={{ 
+              backgroundColor: '#f0f9ff', 
+              padding: 16, 
+              borderRadius: 8, 
+              marginTop: 12,
+              border: '1px solid #0078d4' 
+            }}>
+              <h4 style={{ margin: '0 0 12px 0', color: '#0078d4' }}>🏫 المدارس البديلة من خطة التشغيل المتبادل</h4>
+              {alternativeSchools.length > 0 ? (
+                <>
+                  <Dropdown
+                    label="اختر المدرسة البديلة"
+                    selectedKey={form.AltLocation}
+                    options={alternativeSchools.map((alt, idx) => ({
+                      key: alt.schoolName,
+                      text: `${idx + 1}. ${alt.schoolName} (${alt.sector}) - ${alt.distanceKm} كم`,
+                      data: alt
+                    }))}
+                    onChange={(_, option) => setForm({ ...form, AltLocation: option?.key as string || '' })}
+                    placeholder="اختر المدرسة البديلة"
+                    styles={{ root: { marginBottom: 12 } }}
+                  />
+                  {form.AltLocation && (
+                    <div style={{ 
+                      backgroundColor: '#e8f5e9', 
+                      padding: 12, 
+                      borderRadius: 8,
+                      fontSize: '0.9rem'
+                    }}>
+                      {(() => {
+                        const selectedSchool = alternativeSchools.find(s => s.schoolName === form.AltLocation)
+                        return selectedSchool ? (
+                          <>
+                            <div><strong>📍 القطاع:</strong> {selectedSchool.sector}</div>
+                            <div><strong>📏 المسافة:</strong> {selectedSchool.distanceKm} كم</div>
+                            <div><strong>👤 مدير/ة المدرسة:</strong> {selectedSchool.principalName}</div>
+                            <div><strong>📞 رقم الهاتف:</strong> {selectedSchool.principalPhone}</div>
+                          </>
+                        ) : null
+                      })()}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ padding: 12, textAlign: 'center', color: '#666' }}>
+                  ⚠️ لا توجد مدارس بديلة محددة لهذه المدرسة في خطة التشغيل المتبادل
+                  <Dropdown
+                    label="أو اختر من قائمة المدارس"
+                    selectedKey={form.AltLocation}
+                    options={schoolOptions}
+                    onChange={(_, option) => setForm({ ...form, AltLocation: option?.key as string || '' })}
+                    placeholder="اختر المدرسة البديلة"
+                    styles={{ root: { marginTop: 12 } }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          
           {/* 11. CommunicationDone - التواصل مع أولياء الأمور */}
           <Toggle
             label="التواصل مع أولياء الأمور"

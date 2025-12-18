@@ -100,11 +100,17 @@ const TrainingLog: React.FC = () => {
       key: 'GeneralNotes', 
       name: 'ملاحظات عامة', 
       fieldName: 'GeneralNotes', 
-      onRender: (item: TrainingLogType) => (
-        <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
-          {item.GeneralNotes || '-'}
-        </div>
-      )
+      onRender: (item: TrainingLogType) => {
+        // If GeneralNotes is empty, show "Program Name - Date"
+        const displayText = item.GeneralNotes || (item.Program_Ref && item.TrainingDate 
+          ? `${item.Program_Ref} - ${new Date(item.TrainingDate).toLocaleDateString('ar-SA')}`
+          : '-');
+        return (
+          <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {displayText}
+          </div>
+        );
+      }
     },
     {
       ...getColumnConfig(ColumnType.ATTACHMENT),

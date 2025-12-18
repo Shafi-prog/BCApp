@@ -554,6 +554,7 @@ const actionTakenOptions: ChoiceOption[] = [
   { key: "إسعاف", text: "إسعاف" },
   { key: "إطفاء", text: "إطفاء" },
   { key: "إبلاغ الجهات", text: "إبلاغ الجهات المختصة" },
+  { key: "التشغيل المتبادل", text: "التشغيل المتبادل" },
   { key: "أخرى", text: "أخرى" },
 ];
 
@@ -1379,14 +1380,21 @@ export const SharePointService = {
         
         const data: any = {
           Title: `تسجيل تدريب - ${schoolName}`,
-          TrainingDate: trainingDate || '',
-          GeneralNotes: generalNotes,
         };
+        
+        // Add TrainingDate if provided
+        if (trainingDate) {
+          data.TrainingDate = trainingDate;
+        }
+        
+        // Add GeneralNotes if we have it
+        if (generalNotes) {
+          data.GeneralNotes = generalNotes;
+        }
         
         // RegistrationType is a choice field
         if (registrationType) {
           data.RegistrationType = {
-            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Value: registrationType,
           };
         }
@@ -1394,7 +1402,6 @@ export const SharePointService = {
         // SchoolName_Ref is a lookup field
         if (schoolId) {
           data.SchoolName_Ref = {
-            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Id: schoolId,
           };
         }
@@ -1402,16 +1409,13 @@ export const SharePointService = {
         // Program_Ref is a lookup field
         if (programId) {
           data.Program_Ref = {
-            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Id: programId,
           };
         }
         
-        // AttendeesNames is a multi-select lookup field - needs array format with odata.type header
-        if (attendeeIds.length > 0) {
-          data['AttendeesNames@odata.type'] = '#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference)';
+        // AttendeesNames is a multi-select lookup field
+        if (attendeeIds && attendeeIds.length > 0) {
           data.AttendeesNames = attendeeIds.map(id => ({
-            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Id: id,
           }));
         }
