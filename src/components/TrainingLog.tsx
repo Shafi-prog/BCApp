@@ -22,6 +22,7 @@ import {
 } from '@fluentui/react'
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, TrainingLog as TrainingLogType, TrainingProgram, TeamMember } from '../services/sharepointService'
+import { getColumnConfig, ColumnType, renderChoice, renderDate, renderMultiValue } from '../config/tableConfig.tsx'
 
 // Only valid SharePoint RegistrationType values
 const registrationTypeOptions: IDropdownOption[] = [
@@ -67,73 +68,37 @@ const TrainingLog: React.FC = () => {
 
   const columns: IColumn[] = [
     { 
+      ...getColumnConfig(ColumnType.MEDIUM_TEXT),
       key: 'Program_Ref', 
       name: 'البرنامج', 
       fieldName: 'Program_Ref', 
-      minWidth: 120, 
-      flexGrow: 2,
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingLogType) => (
-        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', lineHeight: '1.4' }}>
-          {typeof item.Program_Ref === 'object' ? (item.Program_Ref as any)?.Value || '-' : (item.Program_Ref || '-')}
-        </div>
-      )
+      onRender: (item: TrainingLogType) => renderChoice(item.Program_Ref)
     },
     { 
+      ...getColumnConfig(ColumnType.SHORT_TEXT),
       key: 'RegistrationType', 
       name: 'نوع التسجيل', 
       fieldName: 'RegistrationType', 
-      minWidth: 90, 
-      flexGrow: 0,
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingLogType) => (
-        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', lineHeight: '1.3' }}>
-          {typeof item.RegistrationType === 'object' ? (item.RegistrationType as any)?.Value || '-' : (item.RegistrationType || '-')}
-        </div>
-      )
+      onRender: (item: TrainingLogType) => renderChoice(item.RegistrationType)
     },
     { 
+      ...getColumnConfig(ColumnType.MULTI_VALUE),
       key: 'AttendeesNames', 
       name: 'أسماء الحضور', 
       fieldName: 'AttendeesNames', 
-      minWidth: 150, 
-      flexGrow: 3,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingLogType) => {
-        let names = item.AttendeesNames;
-        if (typeof names === 'object' && names !== null) {
-          names = (names as any)?.Value || (names as any)?.results?.join('، ') || '-';
-        }
-        return (
-          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word', lineHeight: '1.4' }}>
-            {names || '-'}
-          </div>
-        );
-      }
+      onRender: (item: TrainingLogType) => renderMultiValue(item.AttendeesNames)
     },
     { 
+      ...getColumnConfig(ColumnType.DATE),
       key: 'TrainingDate', 
       name: 'تاريخ التدريب', 
       fieldName: 'TrainingDate', 
-      minWidth: 80, 
-      flexGrow: 0,
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
-      onRender: (item: TrainingLogType) => (
-        <div style={{ textAlign: 'center', width: '100%' }}>
-          {item.TrainingDate ? new Date(item.TrainingDate).toLocaleDateString('ar-SA') : '-'}
-        </div>
-      )
+      onRender: (item: TrainingLogType) => renderDate(item.TrainingDate)
     },
     {
+      ...getColumnConfig(ColumnType.ATTACHMENT),
       key: 'attachment',
       name: 'المرفق',
-      minWidth: 60,
-      flexGrow: 0,
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: TrainingLogType) => (
         <div style={{ textAlign: 'center', width: '100%' }}>
           <a
@@ -154,13 +119,9 @@ const TrainingLog: React.FC = () => {
       ),
     },
     {
+      ...getColumnConfig(ColumnType.ACTIONS),
       key: 'actions',
       name: 'الإجراءات',
-      fieldName: 'actions',
-      minWidth: 75,
-      flexGrow: 0,
-      isResizable: true,
-      styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } },
       onRender: (item: TrainingLogType) => (
         <Stack horizontal tokens={{ childrenGap: 8 }} horizontalAlign="center">
           <IconButton
