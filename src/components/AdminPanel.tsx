@@ -8,9 +8,11 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, SchoolInfo, TeamMember, Drill, Incident, TrainingLog } from '../services/sharepointService'
 import { AdminDataService } from '../services/adminDataService'
+import { AnnouncementService, Announcement } from '../services/announcementService'
 import { mutualOperationPlan, SchoolAlternatives } from '../data/mutualOperation'
 import BCTasksDashboard from './BCTasksDashboard'
 import { getColumnConfig, ColumnType, renderDate } from '../config/tableConfig'
+import { sanitizeString, sanitizeHTML, isValidEmail, isValidSaudiPhone, isValidDate, formatSaudiPhone } from '../utils/security'
 
 // Interfaces
 // Admin Contacts - for admin's own contact list (not school teams)
@@ -158,6 +160,7 @@ const AdminPanel: React.FC = () => {
   const [adminContacts, setAdminContacts] = useState<AdminContact[]>([])
   const [bcPlanDocuments, setBCPlanDocuments] = useState<BCPlanDocument[]>([])
   const [incidentEvaluations, setIncidentEvaluations] = useState<IncidentEvaluation[]>([])
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
   
   // Panel states
   const [testPlanPanelOpen, setTestPlanPanelOpen] = useState(false)
@@ -168,6 +171,8 @@ const AdminPanel: React.FC = () => {
   const [editingBCPlan, setEditingBCPlan] = useState<BCPlanDocument | null>(null)
   const [evaluationPanelOpen, setEvaluationPanelOpen] = useState(false)
   const [editingEvaluation, setEditingEvaluation] = useState<IncidentEvaluation | null>(null)
+  const [announcementPanelOpen, setAnnouncementPanelOpen] = useState(false)
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null)
   // Scenario editing state
   const [scenarioPanelOpen, setScenarioPanelOpen] = useState(false)
   const [editingScenario, setEditingScenario] = useState<{ id: number; title: string; description: string; actions: string[] } | null>(null)
@@ -202,24 +207,24 @@ const AdminPanel: React.FC = () => {
 
   const loadLocalData = async () => {
     try {
-      // Load DR checklist from SharePoint/localStorage
+      // Load DR checklist from SharePoint
       const drItems = await AdminDataService.getDRChecklist()
       if (drItems.length > 0) setDRChecklist(drItems)
       else initializeDRChecklist()
       
-      // Load admin contacts from SharePoint/localStorage
+      // Load admin contacts from SharePoint
       const contacts = await AdminDataService.getAdminContacts()
       setAdminContacts(contacts)
       
-      // Load BC Plan documents from SharePoint/localStorage
+      // Load BC Plan documents from SharePoint
       const planDocs = await AdminDataService.getBCPlanDocuments()
       setBCPlanDocuments(planDocs)
       
-      // Load incident evaluations from SharePoint/localStorage
+      // Load incident evaluations from SharePoint
       const evaluations = await AdminDataService.getIncidentEvaluations()
       setIncidentEvaluations(evaluations)
       
-      // Load test plans from SharePoint/localStorage
+      // Load test plans from SharePoint
       try {
         const plans = await AdminDataService.getTestPlans()
         setTestPlans(plans)
@@ -227,15 +232,19 @@ const AdminPanel: React.FC = () => {
         console.error('Error loading test plans:', e)
       }
       
-      // Load shared BC Plan from SharePoint/localStorage
+      // Load shared BC Plan from SharePoint
       const bcPlan = await AdminDataService.getSharedBCPlan()
       if (bcPlan) setSharedBCPlan(bcPlan)
       else initializeSharedBCPlan()
       
-      // Load Plan Review (Task 7) from SharePoint/localStorage
+      // Load Plan Review (Task 7) from SharePoint
       const review = await AdminDataService.getPlanReview()
       if (review) setPlanReview(review)
       else initializePlanReview()
+      
+      // Load announcements
+      const announcementsData = await AnnouncementService.getAnnouncements()
+      setAnnouncements(announcementsData)
     } catch (e) {
       console.error('Error loading local data:', e)
       initializeDRChecklist()
@@ -243,7 +252,7 @@ const AdminPanel: React.FC = () => {
   }
 
   // Initialize Plan Review (Task 7)
-  const initializePlanReview = () => {
+  const initializePlanReview = async () => {
     const defaultReview: PlanReview = {
       id: 1,
       task7_1_complete: false,
@@ -252,13 +261,29 @@ const AdminPanel: React.FC = () => {
       lastUpdated: new Date().toISOString()
     }
     setPlanReview(defaultReview)
-    localStorage.setItem('bc_plan_review', JSON.stringify(defaultReview))
+    // Save to SharePoint (no localStorage for security compliance)
+    try {
+      await AdminDataService.savePlanReview(defaultReview)
+    } catch (e) {
+      console.error('Error saving default plan review to SharePoint:', e)
+    }
   }
 
   // Save Plan Review
   const savePlanReview = async (data: PlanReview) => {
     try {
-      const updated = { ...data, lastUpdated: new Date().toISOString() }
+      // Auto-mark الجزء 7.3 مكتملًا عند اكتمال الحقول الرئيسية (اسم ملف الإجراءات + تاريخ الاعتماد + الجهة المعتمدة)
+      const autoTask7_3_Complete = Boolean(
+        data.proceduresFileName &&
+        data.approvalDate &&
+        data.approvedBy
+      )
+
+      const updated = {
+        ...data,
+        task7_3_complete: autoTask7_3_Complete || data.task7_3_complete,
+        lastUpdated: new Date().toISOString(),
+      }
       await AdminDataService.savePlanReview(updated)
       setPlanReview(updated)
       setMessage({ type: MessageBarType.success, text: 'تم حفظ بيانات المراجعة وإجراءات الاستجابة' })
@@ -291,7 +316,10 @@ const AdminPanel: React.FC = () => {
       isPublished: false
     }
     setSharedBCPlan(defaultPlan)
-    localStorage.setItem('bc_shared_plan', JSON.stringify(defaultPlan))
+    // Save to SharePoint (no localStorage for security compliance)
+    AdminDataService.saveSharedBCPlan(defaultPlan).catch(e => {
+      console.error('Error saving default BC plan to SharePoint:', e)
+    })
   }
 
   const saveSharedBCPlan = async (plan: SharedBCPlan) => {
@@ -306,7 +334,7 @@ const AdminPanel: React.FC = () => {
     }
   }
 
-  const initializeDRChecklist = () => {
+  const initializeDRChecklist = async () => {
     const defaultChecklist: DRCheckItem[] = [
       { id: 1, category: 'البيانات', Title: 'النسخ الاحتياطي للبيانات', status: 'not_ready', lastChecked: '', notes: '' },
       { id: 2, category: 'البيانات', Title: 'اختبار استعادة البيانات', status: 'not_ready', lastChecked: '', notes: '' },
@@ -321,48 +349,84 @@ const AdminPanel: React.FC = () => {
       { id: 11, category: 'الفرق', Title: 'تدريب الفرق على الخطة', status: 'not_ready', lastChecked: '', notes: '' },
     ]
     setDRChecklist(defaultChecklist)
-    localStorage.setItem('bc_dr_checklist', JSON.stringify(defaultChecklist))
+    // Create initial checklist items in SharePoint when list is empty
+    try {
+      const createdItems: DRCheckItem[] = []
+      for (const item of defaultChecklist) {
+        const created = await AdminDataService.createDRCheckItem({
+          Title: item.Title,
+          category: item.category,
+          status: item.status,
+          lastChecked: '',
+          notes: '',
+        })
+        createdItems.push(created)
+      }
+      setDRChecklist(createdItems)
+      console.log('[AdminPanel] DR checklist initialized and saved to SharePoint')
+    } catch (e) {
+      console.error('[AdminPanel] Error initializing DR checklist in SharePoint:', e)
+    }
   }
 
   const saveTestPlans = async (data: TestPlan[]) => {
     setTestPlans(data)
-    // Save to SharePoint service (SBC_Drills_Log with IsAdminPlan=true)
+    // Save yearly test plans to BC_Test_Plans list via AdminDataService
     try {
-      // Clear existing admin plans and save new
-      const existing = await SharePointService.getAdminDrillPlans()
-      for (const plan of existing) {
-        if (plan.Id) await SharePointService.deleteAdminDrillPlan(plan.Id)
+      // Load existing plans from SharePoint
+      const existing = await AdminDataService.getTestPlans()
+
+      // Delete plans that were removed in the UI
+      for (const oldPlan of existing) {
+        if (!data.find(p => p.id === oldPlan.id)) {
+          await AdminDataService.deleteTestPlan(oldPlan.id)
+        }
       }
+
+      // Create or update current plans
       for (const plan of data) {
-        await SharePointService.createAdminDrillPlan({
-          Title: plan.title,
-          DrillHypothesis: plan.hypothesis,
-          SpecificEvent: plan.specificEvent || '',
-          TargetGroup: plan.targetGroup || '',
-          StartDate: plan.startDate || '',
-          EndDate: plan.endDate || '',
-          Quarter: data.indexOf(plan) + 1,
-          PlanStatus: plan.status,
-          Responsible: plan.responsible,
-          Notes: plan.notes,
-          AcademicYear: new Date().getFullYear().toString(),
-          IsAdminPlan: true,
-        })
+        if (!plan.id || !existing.find(p => p.id === plan.id)) {
+          // New plan
+          await AdminDataService.createTestPlan({
+            title: plan.title,
+            hypothesis: plan.hypothesis,
+            specificEvent: plan.specificEvent,
+            targetGroup: plan.targetGroup,
+            startDate: plan.startDate,
+            endDate: plan.endDate,
+            status: plan.status,
+            responsible: plan.responsible,
+            notes: plan.notes,
+          })
+        } else {
+          // Existing plan – update
+          await AdminDataService.updateTestPlan(plan.id, {
+            title: plan.title,
+            hypothesis: plan.hypothesis,
+            specificEvent: plan.specificEvent,
+            targetGroup: plan.targetGroup,
+            startDate: plan.startDate,
+            endDate: plan.endDate,
+            status: plan.status,
+            responsible: plan.responsible,
+            notes: plan.notes,
+          })
+        }
       }
-      setMessage({ type: MessageBarType.success, text: 'تم حفظ خطة التمارين بنجاح في SharePoint' })
+
+      // Refresh from SharePoint to keep IDs in sync
+      const refreshed = await AdminDataService.getTestPlans()
+      setTestPlans(refreshed)
+
+      setMessage({ type: MessageBarType.success, text: 'تم حفظ خطة التمارين السنوية في قائمة BC_Test_Plans بنجاح' })
     } catch (e) {
-      console.error('Error saving drill plans to SharePoint:', e)
-      // Fallback to localStorage
-      localStorage.setItem('bc_test_plans', JSON.stringify(data))
-      setMessage({ type: MessageBarType.warning, text: 'تم الحفظ محلياً - سيتم المزامنة لاحقاً' })
+      console.error('[AdminPanel] Error saving test plans to BC_Test_Plans:', e)
+      setMessage({ type: MessageBarType.error, text: 'فشل حفظ خطة التمارين - يرجى المحاولة مرة أخرى' })
     }
   }
 
-  const saveDRChecklist = async (data: DRCheckItem[]) => {
+  const saveDRChecklist = (data: DRCheckItem[]) => {
     setDRChecklist(data)
-    // Note: For bulk updates, we still use localStorage as fallback
-    // Individual item updates go through AdminDataService
-    localStorage.setItem('bc_dr_checklist', JSON.stringify(data))
   }
 
   // Save admin contacts - uses AdminDataService for individual operations
@@ -647,7 +711,7 @@ const AdminPanel: React.FC = () => {
 
       <Pivot selectedKey={activeTab} onLinkClick={(item) => setActiveTab(item?.props.itemKey || 'tasks25')}>
         {/* Tab 1: BC Tasks Dashboard - 25 Tasks (Main Dashboard) */}
-        <PivotItem headerText="📊 لوحة المهام الـ25" itemKey="tasks25" itemIcon="ViewDashboard">
+        <PivotItem headerText="لوحة المهام الـ25" itemKey="tasks25" itemIcon="ViewDashboard">
           <BCTasksDashboard
             schools={schools}
             teamMembers={teamMembers}
@@ -671,7 +735,7 @@ const AdminPanel: React.FC = () => {
               {[
                 { title: 'إجمالي المدارس', value: stats.totalSchools, icon: 'Org', color: '#008752', navigate: 'home', tooltip: 'عرض قائمة المدارس' },
                 { title: 'مدارس لديها فرق', value: stats.schoolsWithTeams, icon: 'Group', color: '#0078d4', navigate: 'team', tooltip: 'عرض فرق الأمن والسلامة' },
-                { title: 'مدارس نفذت تمارين', value: stats.schoolsWithDrills, icon: 'TaskList', color: '#107c10', navigate: 'drills', tooltip: 'عرض سجل التمارين' },
+                { title: 'مدارس نفذت تمارين', value: stats.schoolsWithDrills, icon: 'CheckList', color: '#107c10', navigate: 'drills', tooltip: 'عرض سجل التمارين' },
                 { title: 'مدارس لديها تدريبات', value: stats.schoolsWithTraining, icon: 'ReadingMode', color: '#5c2d91', navigate: 'training', tooltip: 'عرض سجل التدريبات' },
                 { title: 'أعضاء الفرق', value: stats.totalTeamMembers, icon: 'People', color: '#0078d4', navigate: 'team', tooltip: 'عرض أعضاء الفرق' },
                 { title: 'التمارين المنفذة', value: stats.totalDrills, icon: 'CheckList', color: '#107c10', navigate: 'drills', tooltip: 'عرض التمارين المنفذة' },
@@ -723,7 +787,7 @@ const AdminPanel: React.FC = () => {
         </PivotItem>
 
         {/* Tab 1.5: BC Plan Sharing - Task 1 & Task 7 */}
-        <PivotItem headerText="📋 المهمة 1 و 7: الخطط والاستجابة" itemKey="bcplan" itemIcon="Share">
+        <PivotItem headerText="المهمة 1 و 7: الخطط والاستجابة" itemKey="bcplan" itemIcon="Share">
           <div style={{ padding: '20px 0' }}>
             {/* Task Status Summary */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
@@ -849,14 +913,14 @@ const AdminPanel: React.FC = () => {
               
               <h4 style={{ color: '#323130', marginBottom: 12 }}>🎭 سيناريوهات الاضطراب</h4>
               <div style={{ display: 'grid', gap: 12, marginBottom: 20 }}>
-                {sharedBCPlan?.scenarios.map((scenario, idx) => (
+                {(sharedBCPlan?.scenarios || []).map((scenario, idx) => (
                   <div key={scenario.id} style={{ padding: 12, backgroundColor: '#f3f2f1', borderRadius: 8 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div style={{ flex: 1 }}>
                         <strong style={{ color: '#008752' }}>{idx + 1}. {scenario.title}</strong>
                         <p style={{ margin: '8px 0', color: '#605e5c', fontSize: 13 }}>{scenario.description}</p>
                         <div style={{ fontSize: 12, color: '#323130' }}>
-                          <strong>الإجراءات:</strong> {scenario.actions.join(' ← ')}
+                          <strong>الإجراءات:</strong> {(scenario.actions || []).join(' ← ')}
                         </div>
                       </div>
                       <IconButton
@@ -978,7 +1042,7 @@ const AdminPanel: React.FC = () => {
                     سجل النشر (الجزء 1.4)
                   </h4>
                   <div style={{ display: 'grid', gap: 8 }}>
-                    {sharedBCPlan.publishHistory.slice().reverse().map((h, idx) => (
+                    {(sharedBCPlan.publishHistory || []).slice().reverse().map((h, idx) => (
                       <div key={idx} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: 8, backgroundColor: '#fff', borderRadius: 6, fontSize: '0.85rem' }}>
                         <span style={{ backgroundColor: '#e3f2fd', padding: '2px 8px', borderRadius: 4, color: '#1565c0', fontWeight: 600 }}>{h.version}</span>
                         <span style={{ color: '#666' }}>{new Date(h.date).toLocaleString('ar-SA')}</span>
@@ -1072,7 +1136,7 @@ const AdminPanel: React.FC = () => {
               <div style={{ backgroundColor: '#fff3e0', padding: 16, borderRadius: 8, marginBottom: 16, border: '1px solid #ffcc80' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <h4 style={{ color: '#ef6c00', margin: 0 }}>
-                    <Icon iconName="TaskList" style={{ marginLeft: 8 }} />
+                    <Icon iconName="CheckList" style={{ marginLeft: 8 }} />
                     الجزء 7.2: إجراءات الاستجابة للاضطرابات
                   </h4>
                   <Checkbox 
@@ -1085,7 +1149,7 @@ const AdminPanel: React.FC = () => {
                 <p style={{ color: '#666', fontSize: '0.85rem', marginBottom: 12 }}>
                   توثيق إجراءات الاستجابة لكل سيناريو من السيناريوهات الخمسة:
                 </p>
-                {sharedBCPlan?.scenarios.map((scenario, idx) => (
+                {(sharedBCPlan?.scenarios || []).map((scenario, idx) => (
                   <TextField
                     key={scenario.id}
                     label={`إجراءات الاستجابة - ${scenario.title}`}
@@ -1342,6 +1406,25 @@ const AdminPanel: React.FC = () => {
                     }},
                     { ...getColumnConfig(ColumnType.PHONE), key: 'phone', name: 'رقم الجوال', fieldName: 'phone', onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%', direction: 'ltr' }}>{item.phone || '-'}</div> },
                     { ...getColumnConfig(ColumnType.EMAIL), key: 'email', name: 'البريد الإلكتروني', fieldName: 'email', onRender: (item: AdminContact) => <div style={{ textAlign: 'center', width: '100%' }}>{item.email || '-'}</div> },
+                    { key: 'visible', name: 'في المرجع السريع', minWidth: 120, maxWidth: 120, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => (
+                      <div style={{ textAlign: 'center', width: '100%' }}>
+                        <Toggle 
+                          checked={item.isVisibleToSchools || false}
+                          onChange={async (_, checked) => {
+                            try {
+                              await AdminDataService.updateAdminContact(item.id, { isVisibleToSchools: checked })
+                              const contacts = await AdminDataService.getAdminContacts()
+                              setAdminContacts(contacts)
+                            } catch (e) {
+                              console.error('Error updating contact visibility:', e)
+                              setMessage({ type: MessageBarType.error, text: 'فشل تحديث حالة الظهور' })
+                            }
+                          }}
+                          onText="نعم"
+                          offText="لا"
+                        />
+                      </div>
+                    )},
                     { key: 'actions', name: 'إجراءات', minWidth: 100, flexGrow: 0, styles: { cellTitle: { justifyContent: 'center', textAlign: 'center' } }, onRender: (item: AdminContact) => (
                       <Stack horizontal tokens={{ childrenGap: 4 }} horizontalAlign="center">
                         <IconButton iconProps={{ iconName: 'Edit' }} title="تعديل" onClick={() => { setEditingContact(item); setContactPanelOpen(true) }} styles={{ root: { color: '#0078d4' } }} />
@@ -1388,6 +1471,214 @@ const AdminPanel: React.FC = () => {
           </div>
         </PivotItem>
 
+        {/* Tab: Notifications Management */}
+        <PivotItem headerText="الإشعارات والتنبيهات" itemKey="notifications" itemIcon="Ringer">
+          <div style={{ padding: '20px 0' }}>
+            <Stack horizontal horizontalAlign="space-between" style={{ marginBottom: 16 }}>
+              <div>
+                <h3 style={{ margin: 0 }}>إدارة الإشعارات للمدارس</h3>
+                <Text variant="small" style={{ color: '#666' }}>
+                  إنشاء وإدارة الإشعارات المهمة التي ستصل للمدارس
+                </Text>
+              </div>
+              <PrimaryButton
+                text="إشعار جديد"
+                iconProps={{ iconName: 'Add' }}
+                onClick={() => {
+                  setEditingAnnouncement(null)
+                  setAnnouncementPanelOpen(true)
+                }}
+              />
+            </Stack>
+
+            <MessageBar messageBarType={MessageBarType.info} styles={{ root: { marginBottom: 16 } }}>
+              الإشعارات ستظهر للمدارس في أيقونة الجرس (🔔) أعلى التطبيق. يمكنك إرسال إشعارات لجميع المدارس أو مدارس محددة.
+            </MessageBar>
+
+            {/* Announcements Table */}
+            <div className="card" style={{ padding: 20 }}>
+              <DetailsList
+                items={announcements.sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime())}
+                columns={[
+                  {
+                    key: 'priority',
+                    name: 'الأولوية',
+                    minWidth: 80,
+                    maxWidth: 100,
+                    onRender: (item: Announcement) => {
+                      const icons = {
+                        critical: { icon: '🚨', color: '#d83b01', label: 'عاجل' },
+                        urgent: { icon: '⚠️', color: '#ff8c00', label: 'مهم' },
+                        normal: { icon: '📢', color: '#0078d4', label: 'عادي' }
+                      }
+                      const p = icons[item.priority]
+                      return (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: p.color, fontWeight: 600 }}>
+                          {p.icon} {p.label}
+                        </span>
+                      )
+                    }
+                  },
+                  {
+                    key: 'Title',
+                    name: 'العنوان',
+                    minWidth: 200,
+                    maxWidth: 300,
+                    isMultiline: true,
+                    onRender: (item: Announcement) => <strong>{item.Title}</strong>
+                  },
+                  {
+                    key: 'message',
+                    name: 'الرسالة',
+                    minWidth: 300,
+                    maxWidth: 400,
+                    isMultiline: true,
+                    onRender: (item: Announcement) => (
+                      <div style={{ whiteSpace: 'pre-wrap', maxHeight: 60, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.message.length > 150 ? item.message.substring(0, 150) + '...' : item.message}
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'targetAudience',
+                    name: 'الفئة المستهدفة',
+                    minWidth: 120,
+                    maxWidth: 150,
+                    onRender: (item: Announcement) => (
+                      <span>
+                        {item.targetAudience === 'all' ? 'جميع المدارس' : `${item.targetSchools?.length || 0} مدرسة`}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'publishDate',
+                    name: 'تاريخ النشر',
+                    minWidth: 120,
+                    maxWidth: 150,
+                    onRender: (item: Announcement) => renderDate(item.publishDate)
+                  },
+                  {
+                    key: 'isActive',
+                    name: 'الحالة',
+                    minWidth: 80,
+                    maxWidth: 100,
+                    onRender: (item: Announcement) => {
+                      const now = new Date()
+                      const expired = item.expiryDate && new Date(item.expiryDate) < now
+                      return (
+                        <span style={{ color: expired ? '#999' : item.isActive ? '#107c10' : '#d83b01' }}>
+                          {expired ? '⏱️ منتهي' : item.isActive ? '✅ نشط' : '⏸️ متوقف'}
+                        </span>
+                      )
+                    }
+                  },
+                  {
+                    key: 'actions',
+                    name: 'الإجراءات',
+                    minWidth: 120,
+                    maxWidth: 150,
+                    onRender: (item: Announcement) => (
+                      <Stack horizontal tokens={{ childrenGap: 8 }}>
+                        <IconButton
+                          iconProps={{ iconName: 'Edit' }}
+                          title="تعديل"
+                          onClick={() => {
+                            setEditingAnnouncement(item)
+                            setAnnouncementPanelOpen(true)
+                          }}
+                        />
+                        <IconButton
+                          iconProps={{ iconName: item.isActive ? 'CirclePause' : 'Play' }}
+                          title={item.isActive ? 'إيقاف' : 'تنشيط'}
+                          onClick={async () => {
+                            try {
+                              await AnnouncementService.updateAnnouncement(item.id, { isActive: !item.isActive })
+                              const updated = await AnnouncementService.getAnnouncements()
+                              setAnnouncements(updated)
+                              setMessage({
+                                type: MessageBarType.success,
+                                text: item.isActive ? 'تم إيقاف الإشعار' : 'تم تنشيط الإشعار'
+                              })
+                            } catch (e) {
+                              setMessage({ type: MessageBarType.error, text: 'حدث خطأ' })
+                            }
+                          }}
+                        />
+                        <IconButton
+                          iconProps={{ iconName: 'Delete' }}
+                          title="حذف"
+                          onClick={async () => {
+                            if (window.confirm('هل أنت متأكد من حذف هذا الإشعار؟')) {
+                              try {
+                                await AnnouncementService.deleteAnnouncement(item.id)
+                                const updated = await AnnouncementService.getAnnouncements()
+                                setAnnouncements(updated)
+                                setMessage({ type: MessageBarType.success, text: 'تم حذف الإشعار' })
+                              } catch (e) {
+                                setMessage({ type: MessageBarType.error, text: 'حدث خطأ في الحذف' })
+                              }
+                            }
+                          }}
+                        />
+                      </Stack>
+                    )
+                  }
+                ]}
+                layoutMode={DetailsListLayoutMode.justified}
+                selectionMode={SelectionMode.none}
+              />
+
+              {announcements.length === 0 && (
+                <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>
+                  <Icon iconName="Ringer" style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }} />
+                  <Text variant="large" block>لا توجد إشعارات</Text>
+                  <Text variant="small" block style={{ marginTop: 8 }}>
+                    اضغط على "إشعار جديد" لإنشاء أول إشعار للمدارس
+                  </Text>
+                </div>
+              )}
+            </div>
+
+            {/* Announcement Form Panel */}
+            <Panel
+              isOpen={announcementPanelOpen}
+              onDismiss={() => {
+                setAnnouncementPanelOpen(false)
+                setEditingAnnouncement(null)
+              }}
+              type={PanelType.medium}
+              headerText={editingAnnouncement ? 'تعديل إشعار' : 'إشعار جديد'}
+              closeButtonAriaLabel="إغلاق"
+            >
+              <AnnouncementForm
+                announcement={editingAnnouncement}
+                schools={schools}
+                onSave={async (announcement) => {
+                  try {
+                    if (editingAnnouncement) {
+                      await AnnouncementService.updateAnnouncement(editingAnnouncement.id, announcement)
+                      setMessage({ type: MessageBarType.success, text: 'تم تحديث الإشعار' })
+                    } else {
+                      await AnnouncementService.createAnnouncement(announcement as Omit<Announcement, 'id'>)
+                      setMessage({ type: MessageBarType.success, text: 'تم إنشاء الإشعار' })
+                    }
+                    const updated = await AnnouncementService.getAnnouncements()
+                    setAnnouncements(updated)
+                    setAnnouncementPanelOpen(false)
+                    setEditingAnnouncement(null)
+                  } catch (e) {
+                    setMessage({ type: MessageBarType.error, text: 'حدث خطأ في الحفظ' })
+                  }
+                }}
+                onCancel={() => {
+                  setAnnouncementPanelOpen(false)
+                  setEditingAnnouncement(null)
+                }}
+              />
+            </Panel>
+          </div>
+        </PivotItem>
+
         {/* Tab 5: DR Checklist */}
         <PivotItem headerText="جاهزية DR" itemKey="dr" itemIcon="CloudUpload">
           <div style={{ padding: '20px 0' }}>
@@ -1406,15 +1697,24 @@ const AdminPanel: React.FC = () => {
                           { key: 'not_ready', text: '❌ غير جاهز' }
                         ]}
                         onChange={(_, opt) => {
-                          const updated = drChecklist.map(d => d.id === item.id ? { ...d, status: opt?.key as any, lastChecked: new Date().toISOString().split('T')[0] } : d)
+                          const newStatus = opt?.key as any
+                          const today = new Date().toISOString().split('T')[0]
+                          const updated = drChecklist.map(d => d.id === item.id ? { ...d, status: newStatus, lastChecked: today } : d)
                           saveDRChecklist(updated)
+                          AdminDataService.updateDRCheckItem(item.id, { status: newStatus, lastChecked: today }).catch(e => {
+                            console.error('Error updating DR checklist item status in SharePoint:', e)
+                          })
                         }}
                         styles={{ root: { width: 120 } }}
                       />
                       <span style={{ flex: 1 }}>{item.Title}</span>
                       <TextField placeholder="ملاحظات" value={item.notes} onChange={(_, v) => {
-                        const updated = drChecklist.map(d => d.id === item.id ? { ...d, notes: v || '' } : d)
+                        const newNotes = v || ''
+                        const updated = drChecklist.map(d => d.id === item.id ? { ...d, notes: newNotes } : d)
                         saveDRChecklist(updated)
+                        AdminDataService.updateDRCheckItem(item.id, { notes: newNotes }).catch(e => {
+                          console.error('Error updating DR checklist item notes in SharePoint:', e)
+                        })
                       }} styles={{ root: { width: 200 } }} />
                     </div>
                   ))}
@@ -1425,7 +1725,7 @@ const AdminPanel: React.FC = () => {
         </PivotItem>
 
         {/* Tab 6: Lessons Learned - from SharePoint Incidents */}
-        <PivotItem headerText="الدروس المستفادة" itemKey="lessons" itemIcon="LightBulb">
+        <PivotItem headerText="الدروس المستفادة" itemKey="lessons" itemIcon="Lightbulb">
           <div style={{ padding: '20px 0' }}>
             {/* Schools Lessons - from Incidents */}
             <SchoolLessonsAnalysis incidents={incidents} drills={drills} />
@@ -1444,7 +1744,7 @@ const AdminPanel: React.FC = () => {
                   <div style={{ color: '#666', fontSize: '0.85rem' }}>إجمالي الحوادث المسجلة</div>
                 </div>
                 <div style={{ background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)', padding: 16, borderRadius: 8, textAlign: 'center' }}>
-                  <Icon iconName="LightBulb" style={{ fontSize: 24, color: '#2e7d32', marginBottom: 8 }} />
+                  <Icon iconName="Lightbulb" style={{ fontSize: 24, color: '#2e7d32', marginBottom: 8 }} />
                   <div style={{ fontSize: 28, fontWeight: 'bold', color: '#2e7d32' }}>{incidents.filter(i => i.LessonsLearned).length}</div>
                   <div style={{ color: '#666', fontSize: '0.85rem' }}>حوادث بدروس مستفادة</div>
                 </div>
@@ -1816,7 +2116,7 @@ const AdminContactForm: React.FC<{ contact: AdminContact | null, onSave: (c: Adm
       <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
         <DefaultButton 
           text="جهة اتصال داخلية" 
-          iconProps={{ iconName: 'Building' }}
+          iconProps={{ iconName: 'CityNext' }}
           primary={form.category === 'internal'}
           onClick={() => setForm({ ...form, category: 'internal', organization: 'operations' })}
         />
@@ -1871,7 +2171,49 @@ const AdminContactForm: React.FC<{ contact: AdminContact | null, onSave: (c: Adm
       )}
       
       <TextField label="ملاحظات" multiline rows={2} value={form.notes} onChange={(_, v) => setForm({ ...form, notes: v })} />
-      <PrimaryButton text="حفظ" onClick={() => onSave(form as AdminContact)} disabled={!form.Title || !form.organization} />
+      
+      {/* Visibility Toggle */}
+      <div style={{ backgroundColor: '#f0f8ff', padding: 16, borderRadius: 8, marginTop: 8 }}>
+        <Checkbox 
+          label="🔖 إظهار جهة الاتصال هذه في المرجع السريع للمدارس"
+          checked={form.isVisibleToSchools || false}
+          onChange={(_, checked) => setForm({ ...form, isVisibleToSchools: checked })}
+          styles={{ text: { fontWeight: 600 } }}
+        />
+        <Text variant="small" style={{ color: '#666', marginTop: 4, display: 'block' }}>
+          عند التفعيل، ستظهر جهة الاتصال للمدارس في المرجع السريع. وإلا ستبقى مخفية وتظهر فقط في لوحة الإدارة.
+        </Text>
+      </div>
+      
+      <PrimaryButton 
+        text="حفظ" 
+        onClick={() => {
+          // Validate inputs before saving
+          const sanitizedContact = {
+            ...form,
+            Title: sanitizeString(form.Title || '', 200),
+            role: sanitizeString(form.role || '', 200),
+            email: form.email && isValidEmail(form.email) ? form.email : '',
+            phone: form.phone && isValidSaudiPhone(form.phone) ? formatSaudiPhone(form.phone) : form.phone,
+            notes: sanitizeHTML(form.notes || ''),
+            contactScope: sanitizeString(form.contactScope || '', 500),
+            backupMember: sanitizeString(form.backupMember || '', 200)
+          } as AdminContact;
+          
+          if (!sanitizedContact.Title || !sanitizedContact.organization) {
+            alert('يرجى ملء الحقول المطلوبة');
+            return;
+          }
+          
+          if (sanitizedContact.email && !isValidEmail(sanitizedContact.email)) {
+            alert('البريد الإلكتروني غير صحيح');
+            return;
+          }
+          
+          onSave(sanitizedContact);
+        }} 
+        disabled={!form.Title || !form.organization} 
+      />
     </Stack>
   )
 }
@@ -2635,7 +2977,7 @@ const SchoolLessonsAnalysis: React.FC<{ incidents: Incident[]; drills: Drill[] }
   return (
     <div>
       <h3 style={{ color: '#008752', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Icon iconName="LightBulb" />
+        <Icon iconName="Lightbulb" />
         توثيق الدروس المستفادة من الاضطرابات
       </h3>
 
@@ -2675,7 +3017,7 @@ const SchoolLessonsAnalysis: React.FC<{ incidents: Incident[]; drills: Drill[] }
         />
         <DefaultButton 
           text={`التمارين (${drills.length})`}
-          iconProps={{ iconName: 'Running' }}
+          iconProps={{ iconName: 'People' }}
           primary={viewMode === 'drills'}
           onClick={() => setViewMode('drills')}
         />
@@ -2867,7 +3209,7 @@ const SchoolLessonsAnalysis: React.FC<{ incidents: Incident[]; drills: Drill[] }
             </div>
           ) : (
             <div style={{ padding: 40, textAlign: 'center', color: '#666' }}>
-              <Icon iconName="Running" style={{ fontSize: 48, marginBottom: 12, color: '#ccc' }} />
+              <Icon iconName="People" style={{ fontSize: 48, marginBottom: 12, color: '#ccc' }} />
               <div>لا توجد تمارين مسجلة</div>
             </div>
           )}
@@ -2976,6 +3318,150 @@ const DamageAssessmentManager: React.FC<{ incidents: Incident[] }> = ({ incident
         </Stack>
       </Panel>
     </div>
+  )
+}
+
+// Announcement Form Component
+interface AnnouncementFormProps {
+  announcement: Announcement | null
+  schools: Array<{ SchoolName: string; Id: number }>
+  onSave: (announcement: Partial<Announcement>) => void
+  onCancel: () => void
+}
+
+const AnnouncementForm: React.FC<AnnouncementFormProps> = ({ announcement, schools, onSave, onCancel }) => {
+  const [form, setForm] = useState({
+    Title: announcement?.Title || '',
+    message: announcement?.message || '',
+    priority: announcement?.priority || 'normal',
+    targetAudience: announcement?.targetAudience || 'all',
+    targetSchools: announcement?.targetSchools || [],
+    publishDate: announcement?.publishDate || new Date().toISOString(),
+    expiryDate: announcement?.expiryDate || '',
+    isActive: announcement?.isActive ?? true,
+    attachmentUrl: announcement?.attachmentUrl || ''
+  })
+
+  const [selectedSchoolsText, setSelectedSchoolsText] = useState(
+    announcement?.targetSchools?.join('\n') || ''
+  )
+
+  return (
+    <Stack tokens={{ childrenGap: 16 }} style={{ padding: '20px 0' }}>
+      <TextField
+        label="عنوان الإشعار"
+        required
+        value={form.Title}
+        onChange={(_, v) => setForm({ ...form, Title: v || '' })}
+        placeholder="مثال: تحديث مهم في خطة الطوارئ"
+      />
+
+      <TextField
+        label="نص الإشعار"
+        required
+        multiline
+        rows={5}
+        value={form.message}
+        onChange={(_, v) => setForm({ ...form, message: v || '' })}
+        placeholder="اكتب نص الإشعار هنا..."
+      />
+
+      <Dropdown
+        label="الأولوية"
+        required
+        selectedKey={form.priority}
+        options={[
+          { key: 'normal', text: '📢 عادي - إشعار عام' },
+          { key: 'urgent', text: '⚠️ مهم - يتطلب الانتباه' },
+          { key: 'critical', text: '🚨 عاجل - يتطلب إجراء فوري' }
+        ]}
+        onChange={(_, opt) => setForm({ ...form, priority: opt?.key as any })}
+      />
+
+      <Dropdown
+        label="الفئة المستهدفة"
+        required
+        selectedKey={form.targetAudience}
+        options={[
+          { key: 'all', text: 'جميع المدارس' },
+          { key: 'specific', text: 'مدارس محددة' }
+        ]}
+        onChange={(_, opt) => {
+          setForm({ ...form, targetAudience: opt?.key as any })
+          if (opt?.key === 'all') {
+            setSelectedSchoolsText('')
+            setForm({ ...form, targetAudience: 'all', targetSchools: [] })
+          }
+        }}
+      />
+
+      {form.targetAudience === 'specific' && (
+        <div>
+          <Label required>المدارس المستهدفة</Label>
+          <MessageBar messageBarType={MessageBarType.info} styles={{ root: { marginBottom: 8 } }}>
+            اكتب اسم كل مدرسة في سطر منفصل
+          </MessageBar>
+          <TextField
+            multiline
+            rows={6}
+            value={selectedSchoolsText}
+            onChange={(_, v) => {
+              setSelectedSchoolsText(v || '')
+              const schoolsArray = v?.split('\n').map(s => s.trim()).filter(s => s.length > 0) || []
+              setForm({ ...form, targetSchools: schoolsArray })
+            }}
+            placeholder="مدرسة ابن خلدون الابتدائية&#10;مدرسة الفارابي الثانوية&#10;مدرسة الجاحظ المتوسطة"
+          />
+          <Text variant="small" style={{ color: '#666', marginTop: 4 }}>
+            عدد المدارس المحددة: {form.targetSchools.length}
+          </Text>
+        </div>
+      )}
+
+      <DatePicker
+        label="تاريخ النشر"
+        value={new Date(form.publishDate)}
+        onSelectDate={(date) => setForm({ ...form, publishDate: date?.toISOString() || new Date().toISOString() })}
+        formatDate={(date) => date?.toLocaleDateString('ar-SA') || ''}
+      />
+
+      <DatePicker
+        label="تاريخ انتهاء الصلاحية (اختياري)"
+        value={form.expiryDate ? new Date(form.expiryDate) : undefined}
+        onSelectDate={(date) => setForm({ ...form, expiryDate: date?.toISOString() || '' })}
+        formatDate={(date) => date?.toLocaleDateString('ar-SA') || ''}
+        placeholder="اترك فارغاً إذا كان الإشعار دائماً"
+      />
+
+      <TextField
+        label="رابط مرفق (اختياري)"
+        value={form.attachmentUrl}
+        onChange={(_, v) => setForm({ ...form, attachmentUrl: v || '' })}
+        placeholder="https://example.com/document.pdf"
+      />
+
+      <Toggle
+        label="الإشعار نشط"
+        checked={form.isActive}
+        onText="نعم"
+        offText="لا"
+        onChange={(_, checked) => setForm({ ...form, isActive: checked || false })}
+      />
+
+      <MessageBar messageBarType={MessageBarType.warning}>
+        <strong>تنبيه:</strong> بعد حفظ الإشعار، سيظهر فوراً للمدارس المستهدفة في أيقونة الجرس 🔔
+      </MessageBar>
+
+      <Stack horizontal tokens={{ childrenGap: 12 }} style={{ marginTop: 16 }}>
+        <PrimaryButton
+          text="حفظ الإشعار"
+          iconProps={{ iconName: 'Save' }}
+          onClick={() => onSave(form)}
+          disabled={!form.Title || !form.message}
+        />
+        <DefaultButton text="إلغاء" onClick={onCancel} />
+      </Stack>
+    </Stack>
   )
 }
 

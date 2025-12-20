@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { Stack, Text, Icon, DefaultButton, IconButton, Link, PrimaryButton, TextField, Dropdown, IDropdownOption } from '@fluentui/react'
+import { Stack, Text, Icon, DefaultButton, IconButton, Link, PrimaryButton, TextField, Dropdown, IDropdownOption, MessageBar, MessageBarType } from '@fluentui/react'
 import { criticalActivities, criticalSystems, scenarios, disruptionLevels, definitions } from '../data/bcPlanParameters'
 import { AdminDataService, AdminContact } from '../services/adminDataService'
 import { useAuth } from '../context/AuthContext'
@@ -19,26 +19,27 @@ type InfoTab = 'rto' | 'contacts' | 'scenarios' | 'levels' | 'definitions'
 
 const BCInfoSidebar: React.FC<BCInfoSidebarProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<InfoTab>('rto')
-  const [externalContacts, setExternalContacts] = useState<AdminContact[]>([])
+  const [allContacts, setAllContacts] = useState<AdminContact[]>([])
   const [isEditMode, setIsEditMode] = useState(false)
   const [editingContact, setEditingContact] = useState<AdminContact | null>(null)
   const { user } = useAuth()
   const isAdmin = user?.type === 'admin'
 
-  // Load external contacts from AdminDataService
+  // Load all contacts (both internal and external) from AdminDataService
   useEffect(() => {
     if (isOpen) {
-      loadExternalContacts()
+      loadAllContacts()
     }
   }, [isOpen])
 
-  const loadExternalContacts = async () => {
+  const loadAllContacts = async () => {
     try {
       const adminService = AdminDataService.getInstance()
       const contacts = await adminService.getAdminContacts()
-      setExternalContacts(contacts.filter(c => c.category === 'external'))
+      // Show only contacts marked as visible to schools (unless admin is viewing)
+      setAllContacts(isAdmin ? contacts : contacts.filter(c => c.isVisibleToSchools))
     } catch (error) {
-      console.error('Failed to load external contacts:', error)
+      console.error('Failed to load contacts:', error)
     }
   }
 
@@ -48,12 +49,13 @@ const BCInfoSidebar: React.FC<BCInfoSidebarProps> = ({ isOpen, onClose }) => {
       if (editingContact?.id) {
         await adminService.updateAdminContact(editingContact.id, contact)
       } else {
+        // Determine category based on user selection or default to external
         await adminService.createAdminContact({ 
           ...contact, 
-          category: 'external'
+          category: contact.category || 'external'
         } as Omit<AdminContact, 'id'>)
       }
-      await loadExternalContacts()
+      await loadAllContacts()
       setEditingContact(null)
       setIsEditMode(false)
     } catch (error) {
@@ -62,10 +64,11 @@ const BCInfoSidebar: React.FC<BCInfoSidebarProps> = ({ isOpen, onClose }) => {
   }
 
   const handleDeleteContact = async (id: number) => {
+    if (!window.confirm('هل أنت متأكد من حذف جهة الاتصال هذه؟')) return
     try {
       const adminService = AdminDataService.getInstance()
       await adminService.deleteAdminContact(id)
-      await loadExternalContacts()
+      await loadAllContacts()
     } catch (error) {
       console.error('Failed to delete contact:', error)
     }
@@ -178,7 +181,7 @@ const BCInfoSidebar: React.FC<BCInfoSidebarProps> = ({ isOpen, onClose }) => {
           {activeTab === 'rto' && <RTOContent />}
           {activeTab === 'contacts' && (
             <ContactsContent 
-              contacts={externalContacts}
+              contacts={allContacts}
               isAdmin={isAdmin}
               isEditMode={isEditMode}
               onToggleEditMode={() => setIsEditMode(!isEditMode)}
@@ -300,6 +303,91 @@ const RTOContent: React.FC = () => (
 // ============================================
 // Contacts Content
 // ============================================
+// ============================================
+// Contact Item Component
+// ============================================
+interface ContactItemProps {
+  contact: AdminContact
+  isEditMode: boolean
+  isAdmin: boolean
+  onEditContact: (contact: AdminContact) => void
+  onDeleteContact: (id: number) => void
+  bgColor: string
+  borderColor: string
+  isEmergency?: boolean
+}
+
+const ContactItem: React.FC<ContactItemProps> = ({
+  contact,
+  isEditMode,
+  isAdmin,
+  onEditContact,
+  onDeleteContact,
+  bgColor,
+  borderColor,
+  isEmergency = false
+}) => (
+  <div 
+    style={{ 
+      display: 'flex', 
+      justifyContent: 'space-between', 
+      alignItems: 'center',
+      padding: 12,
+      backgroundColor: bgColor,
+      borderRadius: 8,
+      border: `1px solid ${borderColor}`,
+    }}
+  >
+    <div style={{ flex: 1 }}>
+      <Text variant="medium" style={{ fontWeight: 600, display: 'block' }}>{contact.Title}</Text>
+      {contact.role && <Text variant="small" style={{ color: '#666' }}>{contact.role}</Text>}
+      {contact.contactScope && <Text variant="small" style={{ color: '#666' }}>{contact.contactScope}</Text>}
+      {contact.email && <Text variant="tiny" style={{ color: '#999' }}>📧 {contact.email}</Text>}
+    </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {isEmergency && contact.phone && (
+        <a 
+          href={`tel:${contact.phone}`}
+          style={{
+            fontSize: '1.2rem',
+            fontWeight: 700,
+            color: '#d83b01',
+            textDecoration: 'none',
+            backgroundColor: '#fff',
+            padding: '8px 16px',
+            borderRadius: 8,
+            border: '2px solid #d83b01',
+          }}
+        >
+          📞 {contact.phone}
+        </a>
+      )}
+      {!isEmergency && contact.phone && (
+        <Text style={{ fontWeight: 600, color: '#0078d4' }}>📞 {contact.phone}</Text>
+      )}
+      {isEditMode && isAdmin && (
+        <div style={{ display: 'flex', gap: 4 }}>
+          <IconButton
+            iconProps={{ iconName: 'Edit' }}
+            title="تعديل"
+            onClick={() => onEditContact(contact)}
+            styles={{ root: { color: '#0078d4' } }}
+          />
+          <IconButton
+            iconProps={{ iconName: 'Delete' }}
+            title="حذف"
+            onClick={() => onDeleteContact(contact.id)}
+            styles={{ root: { color: '#d32f2f' } }}
+          />
+        </div>
+      )}
+    </div>
+  </div>
+)
+
+// ============================================
+// Contacts Content
+// ============================================
 interface ContactsContentProps {
   contacts: AdminContact[]
   isAdmin: boolean
@@ -318,146 +406,129 @@ const ContactsContent: React.FC<ContactsContentProps> = ({
   onAddContact, 
   onEditContact, 
   onDeleteContact 
-}) => (
-  <Stack tokens={{ childrenGap: 16 }}>
-    {/* Admin Controls */}
-    {isAdmin && (
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', marginBottom: 8 }}>
-        <PrimaryButton 
-          text={isEditMode ? "إنهاء التعديل" : "تعديل جهات الاتصال"}
-          iconProps={{ iconName: isEditMode ? 'Accept' : 'Edit' }}
-          onClick={onToggleEditMode}
-        />
-        {isEditMode && (
+}) => {
+  const internalContacts = contacts.filter(c => c.category === 'internal')
+  const externalContacts = contacts.filter(c => c.category === 'external')
+  
+  return (
+    <Stack tokens={{ childrenGap: 16 }}>
+      {/* Admin Info Message */}
+      {isAdmin && (
+        <MessageBar messageBarType={MessageBarType.info}>
+          💡 <strong>للمسؤول:</strong> يتم عرض جميع جهات الاتصال هنا. المدارس ترى فقط الجهات المحددة في لوحة الإدارة (عمود "في المرجع السريع").
+        </MessageBar>
+      )}
+
+      {/* Admin Controls */}
+      {isAdmin && (
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', marginBottom: 8 }}>
           <PrimaryButton 
-            text="إضافة جهة اتصال"
-            iconProps={{ iconName: 'Add' }}
-            onClick={onAddContact}
-            styles={{ root: { backgroundColor: '#107c10' } }}
+            text={isEditMode ? "إنهاء التعديل" : "تعديل جهات الاتصال"}
+            iconProps={{ iconName: isEditMode ? 'Accept' : 'Edit' }}
+            onClick={onToggleEditMode}
           />
-        )}
+          {isEditMode && (
+            <PrimaryButton 
+              text="إضافة جهة اتصال"
+              iconProps={{ iconName: 'Add' }}
+              onClick={onAddContact}
+              styles={{ root: { backgroundColor: '#107c10' } }}
+            />
+          )}
+        </div>
+      )}
+
+      {/* No contacts message for schools */}
+      {!isAdmin && contacts.length === 0 && (
+        <div style={{ padding: 40, textAlign: 'center', color: '#666', backgroundColor: '#fafafa', borderRadius: 8 }}>
+          <Icon iconName="ContactList" style={{ fontSize: 48, marginBottom: 12, color: '#ccc' }} />
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>لا توجد جهات اتصال متاحة حالياً</div>
+          <div style={{ fontSize: '0.85rem' }}>سيتم إضافة جهات الاتصال من قبل إدارة التعليم</div>
+        </div>
+      )}
+
+      {/* Internal Contacts */}
+      {internalContacts.length > 0 && (
+        <div className="card" style={{ padding: 12, backgroundColor: '#e8f4fd' }}>
+          <Text variant="mediumPlus" style={{ fontWeight: 600, color: '#0078d4', marginBottom: 12, display: 'block' }}>
+            🏢 جهات الاتصال الداخلية (إدارة التعليم)
+          </Text>
+          <Stack tokens={{ childrenGap: 8 }}>
+            {internalContacts.map(contact => (
+              <ContactItem 
+                key={contact.id}
+                contact={contact}
+                isEditMode={isEditMode}
+                isAdmin={isAdmin}
+                onEditContact={onEditContact}
+                onDeleteContact={onDeleteContact}
+                bgColor="#fff"
+                borderColor="#0078d4"
+              />
+            ))}
+          </Stack>
+        </div>
+      )}
+
+      {/* External Emergency Contacts */}
+      {externalContacts.filter(c => c.phone).length > 0 && (
+        <div className="card" style={{ padding: 12 }}>
+          <Text variant="mediumPlus" style={{ fontWeight: 600, color: '#d83b01', marginBottom: 12, display: 'block' }}>
+            🚨 أرقام الطوارئ الخارجية
+          </Text>
+          <Stack tokens={{ childrenGap: 8 }}>
+            {externalContacts.filter(c => c.phone).map(contact => (
+              <ContactItem 
+                key={contact.id}
+                contact={contact}
+                isEditMode={isEditMode}
+                isAdmin={isAdmin}
+                onEditContact={onEditContact}
+                onDeleteContact={onDeleteContact}
+                bgColor="#fff5f5"
+                borderColor="#ffd0d0"
+                isEmergency
+              />
+            ))}
+          </Stack>
+        </div>
+      )}
+
+      {/* Other External Contacts */}
+      {externalContacts.filter(c => !c.phone).length > 0 && (
+        <div className="card" style={{ padding: 12 }}>
+          <Text variant="mediumPlus" style={{ fontWeight: 600, color: '#107c10', marginBottom: 12, display: 'block' }}>
+            📋 جهات الاتصال الخارجية الأخرى
+          </Text>
+          <Stack tokens={{ childrenGap: 8 }}>
+            {externalContacts.filter(c => !c.phone).map(contact => (
+              <ContactItem 
+                key={contact.id}
+                contact={contact}
+                isEditMode={isEditMode}
+                isAdmin={isAdmin}
+                onEditContact={onEditContact}
+                onDeleteContact={onDeleteContact}
+                bgColor="#f5f5f5"
+                borderColor="#107c10"
+              />
+            ))}
+          </Stack>
+        </div>
+      )}
+      {/* Contact Tips */}
+      <div style={{ padding: 12, backgroundColor: '#e6f7ff', borderRadius: 8, fontSize: '0.75rem' }}>
+        <strong>💡 نصائح التواصل:</strong>
+        <ul style={{ margin: '8px 0 0', paddingRight: 20 }}>
+          <li>عند الطوارئ: اتصل بالدفاع المدني أولاً (998)</li>
+          <li>تأكد من سلامة الجميع قبل الإبلاغ</li>
+          <li>وثق الحادث فوراً في نظام البلاغات</li>
+          <li>أبلغ إدارة التعليم خلال ساعة من الحادث</li>
+        </ul>
       </div>
-    )}
-
-    {/* Emergency Contacts */}
-    <div className="card" style={{ padding: 12 }}>
-      <Text variant="mediumPlus" style={{ fontWeight: 600, color: '#d83b01', marginBottom: 12, display: 'block' }}>
-        🚨 أرقام الطوارئ
-      </Text>
-      <Stack tokens={{ childrenGap: 8 }}>
-        {contacts.filter(c => c.phone).map(contact => (
-          <div 
-            key={contact.id}
-            style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              padding: 12,
-              backgroundColor: '#fff5f5',
-              borderRadius: 8,
-              border: '1px solid #ffd0d0',
-              position: 'relative'
-            }}
-          >
-            <div>
-              <Text variant="medium" style={{ fontWeight: 600, display: 'block' }}>{contact.Title}</Text>
-              <Text variant="small" style={{ color: '#666' }}>{contact.contactScope || contact.notes}</Text>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <a 
-                href={`tel:${contact.phone}`}
-                style={{
-                  fontSize: '1.2rem',
-                  fontWeight: 700,
-                  color: '#d83b01',
-                  textDecoration: 'none',
-                  backgroundColor: '#fff',
-                  padding: '8px 16px',
-                  borderRadius: 8,
-                  border: '2px solid #d83b01',
-                }}
-              >
-                📞 {contact.phone}
-              </a>
-              {isEditMode && isAdmin && (
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <IconButton
-                    iconProps={{ iconName: 'Edit' }}
-                    title="تعديل"
-                    onClick={() => onEditContact(contact)}
-                    styles={{ root: { color: '#0078d4' } }}
-                  />
-                  <IconButton
-                    iconProps={{ iconName: 'Delete' }}
-                    title="حذف"
-                    onClick={() => onDeleteContact(contact.id)}
-                    styles={{ root: { color: '#d32f2f' } }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </Stack>
-    </div>
-
-    {/* Other Contacts */}
-    <div className="card" style={{ padding: 12 }}>
-      <Text variant="mediumPlus" style={{ fontWeight: 600, color: '#0078d4', marginBottom: 12, display: 'block' }}>
-        📋 جهات الاتصال الأخرى
-      </Text>
-      <Stack tokens={{ childrenGap: 8 }}>
-        {contacts.filter(c => !c.phone).map(contact => (
-          <div 
-            key={contact.id}
-            style={{ 
-              padding: 10,
-              backgroundColor: '#f5f5f5',
-              borderRadius: 6,
-              borderRight: '4px solid #0078d4',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}
-          >
-            <div>
-              <Text variant="small" style={{ fontWeight: 600, display: 'block' }}>{contact.Title}</Text>
-              <Text variant="tiny" style={{ color: '#666' }}>{contact.contactScope}</Text>
-              <Text variant="tiny" style={{ color: '#999', fontStyle: 'italic' }}>التواصل: {contact.contactTiming}</Text>
-            </div>
-            {isEditMode && isAdmin && (
-              <div style={{ display: 'flex', gap: 4 }}>
-                <IconButton
-                  iconProps={{ iconName: 'Edit' }}
-                  title="تعديل"
-                  onClick={() => onEditContact(contact)}
-                  styles={{ root: { color: '#0078d4' } }}
-                />
-                <IconButton
-                  iconProps={{ iconName: 'Delete' }}
-                  title="حذف"
-                  onClick={() => onDeleteContact(contact.id)}
-                  styles={{ root: { color: '#d32f2f' } }}
-                />
-              </div>
-            )}
-          </div>
-        ))}
-      </Stack>
-    </div>
-
-    {/* Contact Tips */}
-    <div style={{ padding: 12, backgroundColor: '#e6f7ff', borderRadius: 8, fontSize: '0.75rem' }}>
-      <strong>💡 نصائح التواصل:</strong>
-      <ul style={{ margin: '8px 0 0', paddingRight: 20 }}>
-        <li>عند الطوارئ: اتصل بالدفاع المدني أولاً (998)</li>
-        <li>تأكد من سلامة الجميع قبل الإبلاغ</li>
-        <li>وثق الحادث فوراً في نظام البلاغات</li>
-        <li>أبلغ إدارة التعليم خلال ساعة من الحادث</li>
-      </ul>
-    </div>
-  </Stack>
-)
+    </Stack>
+  )
+}
 
 // ============================================
 // Scenarios Content
@@ -644,6 +715,11 @@ interface EditContactPanelProps {
 const EditContactPanel: React.FC<EditContactPanelProps> = ({ contact, onSave, onClose }) => {
   const [form, setForm] = useState<AdminContact>(contact)
 
+  const categoryOptions: IDropdownOption[] = [
+    { key: 'internal', text: 'داخلي (إدارة التعليم)' },
+    { key: 'external', text: 'خارجي' },
+  ]
+
   const organizationOptions: IDropdownOption[] = [
     { key: 'tatweer', text: 'شركة تطوير' },
     { key: 'it_systems', text: 'الأنظمة وخدمات تقنية المعلومات' },
@@ -690,6 +766,14 @@ const EditContactPanel: React.FC<EditContactPanelProps> = ({ contact, onSave, on
         </div>
 
         <Stack tokens={{ childrenGap: 12 }}>
+          <Dropdown
+            label="التصنيف"
+            selectedKey={form.category}
+            options={categoryOptions}
+            onChange={(_, opt) => setForm({ ...form, category: opt?.key as 'internal' | 'external' })}
+            required
+          />
+
           <TextField
             label="الاسم / الجهة"
             value={form.Title}

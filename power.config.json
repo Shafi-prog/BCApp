@@ -30,7 +30,8 @@
         "bc_damage_reports",
         "bc_plan_review",
         "bc_plan_scenarios",
-        "bc_mutual_operation"
+        "bc_mutual_operation",
+        "bc_announcements_schema"
       ],
       "isOnPremiseConnection": false,
       "bypassConsent": false,
@@ -84,6 +85,9 @@
             },
             "bc_mutual_operation": {
               "tableName": "BC_Mutual_Operation"
+            },
+            "bc_announcements_schema": {
+              "tableName": "BC_Announcements_Schema"
             }
           }
         }

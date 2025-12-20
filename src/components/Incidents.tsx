@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   DetailsList,
   DetailsListLayoutMode,
@@ -21,7 +21,6 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, Incident } from '../services/sharepointService'
 import { SBC_Incidents_LogService } from '../generated/services/SBC_Incidents_LogService'
-import { mutualOperationPlan } from '../data/mutualOperation'
 import { getColumnConfig, ColumnType, renderDate } from '../config/tableConfig'
 
 // Full risk level list grouped by incident category
@@ -117,14 +116,6 @@ const Incidents: React.FC = () => {
   const [actionTakenOptions, setActionTakenOptions] = useState<IDropdownOption[]>([])
   const [altLocationOptions, setAltLocationOptions] = useState<IDropdownOption[]>([])
   const [schoolOptions, setSchoolOptions] = useState<IDropdownOption[]>([])
-  const [mutualSchoolOptions, setMutualSchoolOptions] = useState<IDropdownOption[]>([])
-  
-  // Get alternative schools from mutual operation plan based on current school
-  const alternativeSchools = useMemo(() => {
-    if (!user?.schoolName) return []
-    const schoolData = mutualOperationPlan.find(s => s.schoolName === user.schoolName)
-    return schoolData?.alternatives || []
-  }, [user?.schoolName])
   
   const [form, setForm] = useState<Partial<Incident>>({
     Title: '',
@@ -157,7 +148,7 @@ const Incidents: React.FC = () => {
   // Load dropdown options from SharePoint
   const loadDropdownOptions = async () => {
     try {
-      console.log('Loading dropdown options from SharePoint...')
+      console.log('[Incidents] Loading dropdown options from SharePoint...')
       
       const [
         incidentCategoryRes,
@@ -177,34 +168,28 @@ const Incidents: React.FC = () => {
         SBC_Incidents_LogService.getReferencedEntity('', 'AltLocation'),
       ])
 
-      if (incidentCategoryRes.data) {
-        const opts = toDropdownOptions((incidentCategoryRes.data as any)?.value)
-        if (opts.length > 0) setIncidentCategoryOptions(opts)
+      // Process each dropdown and log results
+      const processField = (fieldName: string, res: any, setter: (opts: IDropdownOption[]) => void) => {
+        if (res.data) {
+          const opts = toDropdownOptions((res.data as any)?.value)
+          if (opts.length > 0) {
+            console.log(`[Incidents] ✓ Loaded ${opts.length} options for ${fieldName}:`, opts.map(o => o.text))
+            setter(opts)
+          } else {
+            console.warn(`[Incidents] ⚠ ZERO VALUES for ${fieldName} from SharePoint!`)
+          }
+        } else {
+          console.warn(`[Incidents] ⚠ No data returned for ${fieldName}`)
+        }
       }
-      if (riskLevelRes.data) {
-        const opts = toDropdownOptions((riskLevelRes.data as any)?.value)
-        if (opts.length > 0) setRiskLevelOptions(opts)
-      }
-      if (alertModelTypeRes.data) {
-        const opts = toDropdownOptions((alertModelTypeRes.data as any)?.value)
-        if (opts.length > 0) setAlertModelTypeOptions(opts)
-      }
-      if (activatedAlternativeRes.data) {
-        const opts = toDropdownOptions((activatedAlternativeRes.data as any)?.value)
-        if (opts.length > 0) setActivatedAlternativeOptions(opts)
-      }
-      if (coordinatedEntitiesRes.data) {
-        const opts = toDropdownOptions((coordinatedEntitiesRes.data as any)?.value)
-        if (opts.length > 0) setCoordinatedEntitiesOptions(opts)
-      }
-      if (actionTakenRes.data) {
-        const opts = toDropdownOptions((actionTakenRes.data as any)?.value)
-        if (opts.length > 0) setActionTakenOptions(opts)
-      }
-      if (altLocationRes.data) {
-        const opts = toDropdownOptions((altLocationRes.data as any)?.value)
-        if (opts.length > 0) setAltLocationOptions(opts)
-      }
+
+      processField('IncidentCategory', incidentCategoryRes, setIncidentCategoryOptions)
+      processField('RiskLevel', riskLevelRes, setRiskLevelOptions)
+      processField('AlertModelType', alertModelTypeRes, setAlertModelTypeOptions)
+      processField('ActivatedAlternative', activatedAlternativeRes, setActivatedAlternativeOptions)
+      processField('CoordinatedEntities', coordinatedEntitiesRes, setCoordinatedEntitiesOptions)
+      processField('ActionTaken', actionTakenRes, setActionTakenOptions)
+      processField('AltLocation', altLocationRes, setAltLocationOptions)
       
       // Load schools for AltLocation dropdown (when "مدرسة بديلة" is selected)
       try {
@@ -243,8 +228,26 @@ const Incidents: React.FC = () => {
     }
   }
 
-  const columns: IColumn[] = [
-    { 
+  // Build columns - admin sees school name column
+  const getColumns = (): IColumn[] => {
+    const cols: IColumn[] = []
+    
+    // Admin sees school name column first
+    if (user?.type === 'admin') {
+      cols.push({
+        ...getColumnConfig(ColumnType.SHORT_TEXT),
+        key: 'SchoolName_Ref',
+        name: 'المدرسة',
+        fieldName: 'SchoolName_Ref',
+        onRender: (item: Incident) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {item.SchoolName_Ref || '-'}
+          </div>
+        ),
+      })
+    }
+    
+    cols.push({ 
       ...getColumnConfig(ColumnType.MEDIUM_TEXT),
       key: 'Title', 
       name: 'العنوان', 
@@ -381,8 +384,12 @@ const Incidents: React.FC = () => {
           />
         </Stack>
       ),
-    },
-  ]
+    })
+    
+    return cols
+  }
+
+  const columns = getColumns()
 
   useEffect(() => {
     loadIncidents()
@@ -587,26 +594,8 @@ const Incidents: React.FC = () => {
             styles={{ root: { marginTop: 12 } }}
           />
           
-          {/* 3. ActivatedAlternative - البديل المفعل */}
-          <Dropdown
-            label="البديل المفعل"
-            selectedKey={form.ActivatedAlternative}
-            options={activatedAlternativeOptions}
-            onChange={(_, option) => {
-              const newValue = option?.key as string || ''
-              // Clear AltLocation if not selecting "مدرسة بديلة"
-              if (newValue !== 'مدرسة بديلة') {
-                setForm({ ...form, ActivatedAlternative: newValue, AltLocation: '' })
-              } else {
-                setForm({ ...form, ActivatedAlternative: newValue })
-              }
-            }}
-            styles={{ root: { marginTop: 12 } }}
-            placeholder="اختر البديل المفعل"
-          />
-          
-          {/* Show alternative school dropdown when "مدرسة بديلة" is selected */}
-          {form.ActivatedAlternative === 'مدرسة بديلة' && (
+          {/* 3. المدارس البديلة (تظهر عند اختيار إجراء تشغيل بديل) */}
+          {(form.ActionTaken === 'التشغيل المتبادل' || form.ActionTaken === 'التشغيل المبتادل مقر بديل') && (
             <div style={{ 
               backgroundColor: '#f0f9ff', 
               padding: 16, 
@@ -614,55 +603,23 @@ const Incidents: React.FC = () => {
               marginTop: 12,
               border: '1px solid #0078d4' 
             }}>
-              <h4 style={{ margin: '0 0 12px 0', color: '#0078d4' }}>🏫 المدارس البديلة من خطة التشغيل المتبادل</h4>
-              {alternativeSchools.length > 0 ? (
-                <>
-                  <Dropdown
-                    label="اختر المدرسة البديلة"
-                    selectedKey={form.AltLocation}
-                    options={alternativeSchools.map((alt, idx) => ({
-                      key: alt.schoolName,
-                      text: `${idx + 1}. ${alt.schoolName} (${alt.sector}) - ${alt.distanceKm} كم`,
-                      data: alt
-                    }))}
-                    onChange={(_, option) => setForm({ ...form, AltLocation: option?.key as string || '' })}
-                    placeholder="اختر المدرسة البديلة"
-                    styles={{ root: { marginBottom: 12 } }}
-                  />
-                  {form.AltLocation && (
-                    <div style={{ 
-                      backgroundColor: '#e8f5e9', 
-                      padding: 12, 
-                      borderRadius: 8,
-                      fontSize: '0.9rem'
-                    }}>
-                      {(() => {
-                        const selectedSchool = alternativeSchools.find(s => s.schoolName === form.AltLocation)
-                        return selectedSchool ? (
-                          <>
-                            <div><strong>📍 القطاع:</strong> {selectedSchool.sector}</div>
-                            <div><strong>📏 المسافة:</strong> {selectedSchool.distanceKm} كم</div>
-                            <div><strong>👤 مدير/ة المدرسة:</strong> {selectedSchool.principalName}</div>
-                            <div><strong>📞 رقم الهاتف:</strong> {selectedSchool.principalPhone}</div>
-                          </>
-                        ) : null
-                      })()}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div style={{ padding: 12, textAlign: 'center', color: '#666' }}>
-                  ⚠️ لا توجد مدارس بديلة محددة لهذه المدرسة في خطة التشغيل المتبادل
-                  <Dropdown
-                    label="أو اختر من قائمة المدارس"
-                    selectedKey={form.AltLocation}
-                    options={schoolOptions}
-                    onChange={(_, option) => setForm({ ...form, AltLocation: option?.key as string || '' })}
-                    placeholder="اختر المدرسة البديلة"
-                    styles={{ root: { marginTop: 12 } }}
-                  />
-                </div>
-              )}
+              <h4 style={{ margin: '0 0 12px 0', color: '#0078d4' }}>🏫 البديل المفعل - اختيار المدرسة البديلة من بيانات SchoolInfo</h4>
+              <Dropdown
+                label="البديل المفعل (المدرسة البديلة)"
+                selectedKey={form.AltLocation}
+                options={schoolOptions}
+                onChange={(_, option) => {
+                  const altSchool = option?.key as string || ''
+                  setForm({ 
+                    ...form, 
+                    AltLocation: altSchool,
+                    // نحفظ البديل المفعل كـ "مدرسة بديلة" للتوافق مع SharePoint
+                    ActivatedAlternative: altSchool ? 'مدرسة بديلة' : ''
+                  })
+                }}
+                placeholder="اختر المدرسة البديلة"
+                styles={{ root: { marginTop: 12 } }}
+              />
             </div>
           )}
           
@@ -746,75 +703,34 @@ const Incidents: React.FC = () => {
             required
           />
           
-          {/* 10. ActionTaken - الإجراء المتخذ */}
+          {/* 10. ActionTaken - الإجراء المتخذ (المحرك الرئيسي لظهور البديل المفعل) */}
           <Dropdown
             label="الإجراء المتخذ"
             selectedKey={form.ActionTaken}
             options={actionTakenOptions}
-            onChange={(_, option) => setForm({ ...form, ActionTaken: option?.key as string || '' })}
+            onChange={(_, option) => {
+              const action = option?.key as string || ''
+              // عندما يكون الإجراء تشغيل بديل لمقر بديل، نظهر حقل البديل المفعل
+              const isAltAction = action === 'التشغيل المتبادل' || action === 'التشغيل المبتادل مقر بديل'
+              if (isAltAction) {
+                setForm({ 
+                  ...form, 
+                  ActionTaken: action,
+                  // نضبط البديل المفعل إلى "مدرسة بديلة" ليظهر في التقارير
+                  ActivatedAlternative: 'مدرسة بديلة'
+                })
+              } else {
+                // في غير ذلك، نخفي البديل ونفرغ الحقول المرتبطة به
+                setForm({ 
+                  ...form, 
+                  ActionTaken: action,
+                  ActivatedAlternative: '',
+                  AltLocation: ''
+                })
+              }
+            }}
             styles={{ root: { marginTop: 12 } }}
           />
-          
-          {/* Show alternative school dropdown when "التشغيل المتبادل" is selected in ActionTaken */}
-          {form.ActionTaken === 'التشغيل المتبادل' && (
-            <div style={{ 
-              backgroundColor: '#f0f9ff', 
-              padding: 16, 
-              borderRadius: 8, 
-              marginTop: 12,
-              border: '1px solid #0078d4' 
-            }}>
-              <h4 style={{ margin: '0 0 12px 0', color: '#0078d4' }}>🏫 المدارس البديلة من خطة التشغيل المتبادل</h4>
-              {alternativeSchools.length > 0 ? (
-                <>
-                  <Dropdown
-                    label="اختر المدرسة البديلة"
-                    selectedKey={form.AltLocation}
-                    options={alternativeSchools.map((alt, idx) => ({
-                      key: alt.schoolName,
-                      text: `${idx + 1}. ${alt.schoolName} (${alt.sector}) - ${alt.distanceKm} كم`,
-                      data: alt
-                    }))}
-                    onChange={(_, option) => setForm({ ...form, AltLocation: option?.key as string || '' })}
-                    placeholder="اختر المدرسة البديلة"
-                    styles={{ root: { marginBottom: 12 } }}
-                  />
-                  {form.AltLocation && (
-                    <div style={{ 
-                      backgroundColor: '#e8f5e9', 
-                      padding: 12, 
-                      borderRadius: 8,
-                      fontSize: '0.9rem'
-                    }}>
-                      {(() => {
-                        const selectedSchool = alternativeSchools.find(s => s.schoolName === form.AltLocation)
-                        return selectedSchool ? (
-                          <>
-                            <div><strong>📍 القطاع:</strong> {selectedSchool.sector}</div>
-                            <div><strong>📏 المسافة:</strong> {selectedSchool.distanceKm} كم</div>
-                            <div><strong>👤 مدير/ة المدرسة:</strong> {selectedSchool.principalName}</div>
-                            <div><strong>📞 رقم الهاتف:</strong> {selectedSchool.principalPhone}</div>
-                          </>
-                        ) : null
-                      })()}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div style={{ padding: 12, textAlign: 'center', color: '#666' }}>
-                  ⚠️ لا توجد مدارس بديلة محددة لهذه المدرسة في خطة التشغيل المتبادل
-                  <Dropdown
-                    label="أو اختر من قائمة المدارس"
-                    selectedKey={form.AltLocation}
-                    options={schoolOptions}
-                    onChange={(_, option) => setForm({ ...form, AltLocation: option?.key as string || '' })}
-                    placeholder="اختر المدرسة البديلة"
-                    styles={{ root: { marginTop: 12 } }}
-                  />
-                </div>
-              )}
-            </div>
-          )}
           
           {/* 11. CommunicationDone - التواصل مع أولياء الأمور */}
           <Toggle

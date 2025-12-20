@@ -5,6 +5,7 @@
 
 // Models
 export * as BC_Admin_ContactsModel from './models/BC_Admin_ContactsModel';
+export * as BC_Announcements_SchemaModel from './models/BC_Announcements_SchemaModel';
 export * as BC_Damage_ReportsModel from './models/BC_Damage_ReportsModel';
 export * as BC_DR_ChecklistModel from './models/BC_DR_ChecklistModel';
 export * as BC_Incident_EvaluationsModel from './models/BC_Incident_EvaluationsModel';
@@ -25,6 +26,7 @@ export * as SharePointModel from './models/SharePointModel';
 
 // Services
 export * from './services/BC_Admin_ContactsService';
+export * from './services/BC_Announcements_SchemaService';
 export * from './services/BC_Damage_ReportsService';
 export * from './services/BC_DR_ChecklistService';
 export * from './services/BC_Incident_EvaluationsService';

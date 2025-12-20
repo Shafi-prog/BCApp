@@ -101,9 +101,10 @@ const TrainingLog: React.FC = () => {
       name: 'ملاحظات عامة', 
       fieldName: 'GeneralNotes', 
       onRender: (item: TrainingLogType) => {
-        // If GeneralNotes is empty, show "Program Name - Date"
-        const displayText = item.GeneralNotes || (item.Program_Ref && item.TrainingDate 
-          ? `${item.Program_Ref} - ${new Date(item.TrainingDate).toLocaleDateString('ar-SA')}`
+        // Display GeneralNotes (Program Name + Registration Date)
+        // Fallback to computed value if GeneralNotes is empty
+        const displayText = item.GeneralNotes || (item.Program_Ref && item.Created
+          ? `${item.Program_Ref} - ${new Date(item.Created).toLocaleDateString('ar-SA')}`
           : '-');
         return (
           <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>

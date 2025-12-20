@@ -12,6 +12,7 @@ import Login from './components/Login'
 import SchoolInfo from './components/SchoolInfo'
 import AdminPanel from './components/AdminPanel'
 import BCPlan from './components/BCPlan'
+import BCQuickReference from './components/BCQuickReference'
 import ConnectionTest from './components/ConnectionTest'
 
 function AppContent() {
@@ -28,6 +29,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/bcplan" element={<BCPlan />} />
+          <Route path="/bc-quick-reference" element={<BCQuickReference />} />
           <Route path="/team" element={<Team />} />
           <Route path="/training" element={<Training />} />
           <Route path="/training-log" element={<TrainingLog />} />

@@ -104,6 +104,70 @@ const Login: React.FC = () => {
     login({ type: 'admin' })
   }
 
+  const handleForgotPassword = async () => {
+    if (!selectedSchool) {
+      setError('يرجى اختيار المدرسة أولاً')
+      return
+    }
+
+    const school = schools.find(s => s.SchoolName === selectedSchool)
+    if (!school) {
+      setError('المدرسة المختارة غير موجودة')
+      return
+    }
+
+    // For now, just show a message without calling external API
+    // TODO: Configure Power Automate flow and update the URL
+    const requestData = {
+      schoolName: selectedSchool,
+      principalName: school.PrincipalName,
+      principalEmail: school.principalEmail,
+      principalPhone: school.PrincipalPhone,
+      principalId: principalId || 'غير محدد',
+      requestDate: new Date().toLocaleString('ar-SA')
+    }
+
+    // Log the request for debugging
+    console.log('Forgot Password Request:', requestData)
+
+    // Show success message (will actually work once Power Automate is configured)
+    alert(`طلب استعادة كلمة المرور
+
+المدرسة: ${selectedSchool}
+المدير/ة: ${school.PrincipalName}
+الهاتف: ${school.PrincipalPhone}
+
+سيتم التواصل معك قريباً من قبل الإدارة.
+
+ملاحظة: لتفعيل الإرسال التلقائي، يجب إعداد Power Automate Flow.`)
+    setError('')
+
+    /* Uncomment this when Power Automate Flow is ready:
+    try {
+      setLoading(true)
+      const flowUrl = 'YOUR_POWER_AUTOMATE_FLOW_URL_HERE'
+      
+      const response = await fetch(flowUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData)
+      })
+
+      if (response.ok) {
+        setError('')
+        alert('تم إرسال طلب استعادة كلمة المرور. سيتم التواصل معك قريباً.')
+      } else {
+        throw new Error(`HTTP ${response.status}`)
+      }
+    } catch (e) {
+      console.error('Error sending forgot password request:', e)
+      setError('حدث خطأ في إرسال الطلب. يرجى التواصل مع الإدارة مباشرة.')
+    } finally {
+      setLoading(false)
+    }
+    */
+  }
+
   const filteredSchools: IDropdownOption[] = useMemo(() =>
     schools
       .filter(s => 
@@ -257,6 +321,11 @@ const Login: React.FC = () => {
                     placeholder="أدخل رقم الهوية (10 أرقام)"
                     required
                     canRevealPassword
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && selectedSchool && principalId) {
+                        handleSchoolLogin()
+                      }
+                    }}
                   />
                   <Stack horizontal tokens={{ childrenGap: 12 }} style={{ marginTop: '8px' }}>
                     <PrimaryButton
@@ -274,6 +343,20 @@ const Login: React.FC = () => {
                       styles={{ root: { height: '44px', borderRadius: '6px' } }}
                     />
                   </Stack>
+                  <DefaultButton
+                    text="🔑 نسيت كلمة المرور؟"
+                    onClick={handleForgotPassword}
+                    styles={{ 
+                      root: { 
+                        height: '40px', 
+                        borderRadius: '6px',
+                        marginTop: '8px',
+                        borderColor: '#0078d4',
+                        color: '#0078d4'
+                      } 
+                    }}
+                    disabled={!selectedSchool || loading}
+                  />
                 </Stack>
               )}
             </Stack>
@@ -305,6 +388,11 @@ const Login: React.FC = () => {
                   placeholder="أدخل كلمة المرور"
                   required
                   canRevealPassword
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && adminPassword) {
+                      handleAdminLogin()
+                    }
+                  }}
                 />
                 <Stack horizontal tokens={{ childrenGap: 12 }} style={{ marginTop: '8px' }}>
                   <PrimaryButton

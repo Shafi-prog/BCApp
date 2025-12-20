@@ -19,9 +19,20 @@ import {
 } from '@fluentui/react'
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, Drill, ChoiceOption } from '../services/sharepointService'
+import { SBC_Drills_LogService } from '../generated'
+import { AdminDataService } from '../services/adminDataService'
 import { getColumnConfig, ColumnType, renderDate } from '../config/tableConfig'
 
-// Default options matching original app
+// Helper function to convert SharePoint choice values to dropdown options
+const toDropdownOptions = (values: any[]): IDropdownOption[] => {
+  if (!Array.isArray(values)) return []
+  return values.map((v: any) => {
+    const text = typeof v === 'string' ? v : (v.Value || v.text || String(v))
+    return { key: text, text }
+  })
+}
+
+// Default options matching original app (used as fallback)
 const defaultDrillHypothesisOptions: IDropdownOption[] = [
   { key: "الفرضية الأولى: تعذر استخدام المبنى المدرسي (كلي/جزئي).", text: "الفرضية الأولى: تعذر استخدام المبنى المدرسي (كلي/جزئي)." },
   { key: "الفرضية الثانية: تعطل الأنظمة والمنصات التعليمية (مدرستي/تيمز).", text: "الفرضية الثانية: تعطل الأنظمة والمنصات التعليمية (مدرستي/تيمز)." },
@@ -49,6 +60,7 @@ const Drills: React.FC = () => {
   const [showCustomInput, setShowCustomInput] = useState(false)
   const [customTargetGroup, setCustomTargetGroup] = useState('')
   const [targetGroupOptions, setTargetGroupOptions] = useState<IDropdownOption[]>([...defaultTargetGroupOptions])
+  const [drillHypothesisOptions, setDrillHypothesisOptions] = useState<IDropdownOption[]>([...defaultDrillHypothesisOptions])
   const [form, setForm] = useState<Partial<Drill>>({
     Title: '',
     DrillHypothesis: '',
@@ -267,34 +279,78 @@ const Drills: React.FC = () => {
   // Load yearly drill plan from SharePoint service (secure storage)
   const [yearlyPlan, setYearlyPlan] = useState<any[]>([])
   
+  // Load dropdown options from SharePoint choice fields
+  const loadDropdownOptions = async () => {
+    console.log('[Drills] Loading dropdown options from SharePoint...')
+    
+    // Helper to load a choice field and convert to dropdown options
+    const loadChoiceField = async (fieldName: string, defaultOptions: IDropdownOption[]): Promise<IDropdownOption[]> => {
+      try {
+        const result = await SBC_Drills_LogService.getReferencedEntity('', fieldName)
+        // SharePoint returns {data: {value: [...]}} format
+        const values = (result.data as any)?.value
+        if (values && Array.isArray(values)) {
+          const options = toDropdownOptions(values)
+          if (options.length > 0) {
+            console.log(`[Drills] ✓ Loaded ${options.length} options for ${fieldName}:`, options.map(o => o.text))
+            return options
+          } else {
+            console.warn(`[Drills] ⚠ ZERO VALUES for ${fieldName} from SharePoint!`)
+          }
+        } else {
+          console.warn(`[Drills] ⚠ No array data for ${fieldName}`)
+        }
+        console.warn(`[Drills] Using defaults for ${fieldName}`)
+        return defaultOptions
+      } catch (e) {
+        console.error(`[Drills] Error loading ${fieldName}:`, e)
+        return defaultOptions
+      }
+    }
+    
+    try {
+      // Load all choice fields in parallel
+      const [hypothesis, target] = await Promise.all([
+        loadChoiceField('DrillHypothesis', defaultDrillHypothesisOptions),
+        loadChoiceField('TargetGroup', defaultTargetGroupOptions),
+      ])
+      
+      setDrillHypothesisOptions(hypothesis)
+      setTargetGroupOptions(target)
+      
+      console.log('[Drills] All dropdown options loaded successfully')
+    } catch (e) {
+      console.error('[Drills] Error loading dropdown options:', e)
+      setErrorMessage('تعذر تحميل خيارات القوائم المنسدلة من SharePoint')
+    }
+  }
+  
   useEffect(() => {
     loadDrills()
     loadYearlyPlan()
+    loadDropdownOptions()
   }, [user])
 
   const loadYearlyPlan = async () => {
     try {
-      // Load from SharePoint service (secure)
-      const plans = await SharePointService.getAdminDrillPlans()
+      // Load yearly test plans from BC_Test_Plans via AdminDataService
+      const plans = await AdminDataService.getTestPlans()
       setYearlyPlan(plans.map(p => ({
-        id: p.Id,
-        title: p.Title,
-        hypothesis: p.DrillHypothesis || '',
-        specificEvent: p.SpecificEvent || '',
-        targetGroup: p.TargetGroup || '',
-        startDate: p.StartDate || '',
-        endDate: p.EndDate || '',
-        status: p.PlanStatus || '',
-        responsible: p.Responsible || '',
-        notes: p.Notes || '',
+        id: p.id,
+        title: p.title,
+        hypothesis: p.hypothesis,
+        specificEvent: p.specificEvent,
+        targetGroup: p.targetGroup,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        status: p.status,
+        responsible: p.responsible,
+        notes: p.notes,
       })))
     } catch (e) {
-      console.error('Error loading yearly plan:', e)
-      // Fallback to localStorage for backwards compatibility
-      const savedPlan = localStorage.getItem('bc_test_plans')
-      if (savedPlan) {
-        setYearlyPlan(JSON.parse(savedPlan))
-      }
+      console.error('Error loading yearly plan from BC_Test_Plans:', e)
+      // No localStorage fallback for security compliance
+      setYearlyPlan([])
     }
   }
 
@@ -369,6 +425,8 @@ const Drills: React.FC = () => {
   const onClose = () => {
     setPanelOpen(false)
     setIsEditing(false)
+    setCurrentPlan(null)
+    setErrorMessage('')
   }
 
   // Add custom target group
@@ -436,8 +494,22 @@ const Drills: React.FC = () => {
       }
       await loadDrills()
       onClose()
-    } catch (e) {
-      setMessage({ type: MessageBarType.error, text: `فشل الحفظ: ${e}` })
+    } catch (e: any) {
+      let errorMsg = 'خطأ غير معروف'
+      if (e?.message) {
+        errorMsg = e.message
+      } else if (e?.error) {
+        errorMsg = typeof e.error === 'string' ? e.error : JSON.stringify(e.error)
+      } else if (typeof e === 'string') {
+        errorMsg = e
+      } else {
+        try {
+          errorMsg = JSON.stringify(e)
+        } catch {
+          errorMsg = String(e)
+        }
+      }
+      setMessage({ type: MessageBarType.error, text: `فشل الحفظ: ${errorMsg}` })
     } finally {
       setLoading(false)
     }
@@ -672,7 +744,7 @@ const Drills: React.FC = () => {
           <Dropdown
             label="فرضية التمرين *"
             selectedKey={form.DrillHypothesis}
-            options={defaultDrillHypothesisOptions}
+            options={drillHypothesisOptions}
             onChange={(_, option) => setForm({ ...form, DrillHypothesis: option?.key as string || '' })}
             required
             styles={{ root: { marginTop: 16 } }}

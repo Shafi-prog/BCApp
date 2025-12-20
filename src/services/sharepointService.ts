@@ -108,11 +108,11 @@ export interface Drill {
   Responsible?: string;        // المسؤول عن المتابعة
   Notes?: string;              // ملاحظات
   AcademicYear?: string;       // السنة الدراسية
-  // تقييم المدرسة لفعالية الخطة والإجراءات (NOW IN SHAREPOINT!)
-  PlanEffectivenessRating?: number;       // SharePoint: PlanRating (Number 1-5)
-  ProceduresEffectivenessRating?: number; // SharePoint: ProcedureRating (Number 1-5)
-  SchoolFeedback?: string;               // SharePoint: Feedback (Multi-line text)
-  ImprovementSuggestions?: string;       // SharePoint: Suggestions (Multi-line text)
+  // تقييم المدرسة لفعالية الخطة والإجراءات
+  PlanEffectivenessRating?: number;       // Number field in SharePoint
+  ProceduresEffectivenessRating?: number; // Number field in SharePoint
+  SchoolFeedback?: string;                // Multi-line text in SharePoint
+  ImprovementSuggestions?: string;        // Multi-line text in SharePoint
 }
 
 export interface Incident {
@@ -172,7 +172,8 @@ export interface TrainingLog {
   AttendeesNames?: string;
   TrainingDate?: string;
   Status?: string;
-  GeneralNotes?: string;  // Format: "ProgramName + Date" when registration clicked
+  Created?: string;  // Date when school clicked registration button
+  GeneralNotes?: string;  // From SharePoint if exists, else computed from Program_Ref + Created
 }
 
 // AdminDrillPlan is now merged into Drill interface with IsAdminPlan=true
@@ -341,11 +342,11 @@ const transformDrill = (raw: any): Drill => {
     Responsible: raw.Responsible || '',
     Notes: raw.Notes || '',
     AcademicYear: raw.AcademicYear || '',
-    // Evaluation fields (NOW IN SHAREPOINT)
-    PlanEffectivenessRating: raw.PlanRating || undefined,
-    ProceduresEffectivenessRating: raw.ProcedureRating || undefined,
-    SchoolFeedback: raw.Feedback || '',
-    ImprovementSuggestions: raw.Suggestions || '',
+    // Evaluation fields - exact SharePoint column names
+    PlanEffectivenessRating: raw.PlanEffectivenessRating || undefined,
+    ProceduresEffectivenessRating: raw.ProceduresEffectivenessRating || undefined,
+    SchoolFeedback: raw.SchoolFeedback || '',
+    ImprovementSuggestions: raw.ImprovementSuggestions || '',
   };
 };
 
@@ -494,10 +495,14 @@ const transformTrainingLog = (raw: any): TrainingLog => {
     attendeeNames = extractMultiChoiceValues(raw.Attendees);
   }
   
+  // GeneralNotes is stored in Title field
+  const title = extractChoiceValue(raw.Title) || '';
+  const programName = extractChoiceValue(raw.Program_Ref) || '';
+  
   return {
     Id: raw.ID || raw.Id || 0,
-    Title: extractChoiceValue(raw.Title) || '',
-    Program_Ref: extractChoiceValue(raw.Program_Ref) || '',
+    Title: title,
+    Program_Ref: programName,
     Program_RefId: raw['Program_Ref#Id'] || raw.Program_RefId,
     SchoolName_Ref: extractChoiceValue(raw.SchoolName_Ref) || '',
     SchoolName_RefId: raw['SchoolName_Ref#Id'] || raw.SchoolName_RefId,
@@ -505,7 +510,8 @@ const transformTrainingLog = (raw: any): TrainingLog => {
     AttendeesNames: attendeeNames || '',
     TrainingDate: extractChoiceValue(raw.TrainingDate) || '',
     Status: extractChoiceValue(raw.Status) || '',
-    GeneralNotes: raw.GeneralNotes || '',  // Plain text field, not choice
+    Created: raw.Created || '',
+    GeneralNotes: title,  // GeneralNotes is stored in Title field
   };
 };
 
@@ -890,19 +896,48 @@ export const SharePointService = {
             Value: drill.TargetGroup,
           };
         }
+
+        // Admin plan fields
+        if (drill.IsAdminPlan) {
+          data.IsAdminPlan = true;
+        }
+        if (drill.StartDate) {
+          data.StartDate = drill.StartDate;
+        }
+        if (drill.EndDate) {
+          data.EndDate = drill.EndDate;
+        }
+        if (drill.PlanStatus) {
+          data.PlanStatus = {
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+            Value: drill.PlanStatus,
+          };
+        }
+        if (drill.Quarter !== undefined) {
+          data.Quarter = drill.Quarter;
+        }
+        if (drill.Responsible) {
+          data.Responsible = drill.Responsible;
+        }
+        if (drill.Notes) {
+          data.Notes = drill.Notes;
+        }
+        if (drill.AcademicYear) {
+          data.AcademicYear = drill.AcademicYear;
+        }
         
-        // Evaluation fields
+        // Evaluation fields - using exact SharePoint column names
         if (drill.PlanEffectivenessRating !== undefined) {
-          data.PlanRating = drill.PlanEffectivenessRating;
+          data.PlanEffectivenessRating = drill.PlanEffectivenessRating;
         }
         if (drill.ProceduresEffectivenessRating !== undefined) {
-          data.ProcedureRating = drill.ProceduresEffectivenessRating;
+          data.ProceduresEffectivenessRating = drill.ProceduresEffectivenessRating;
         }
         if (drill.SchoolFeedback) {
-          data.Feedback = drill.SchoolFeedback;
+          data.SchoolFeedback = drill.SchoolFeedback;
         }
         if (drill.ImprovementSuggestions) {
-          data.Suggestions = drill.ImprovementSuggestions;
+          data.ImprovementSuggestions = drill.ImprovementSuggestions;
         }
         
         console.log('[SharePoint] Creating drill:', data);
@@ -911,10 +946,17 @@ export const SharePointService = {
         if (result.success && result.data) {
           return transformDrill(result.data);
         }
-        throw new Error(String(result.error) || 'Failed to create drill');
+        // Handle error properly - extract message from error object
+        const errorMsg = result.error 
+          ? (typeof result.error === 'string' ? result.error : 
+             (result.error as any)?.message || JSON.stringify(result.error))
+          : 'فشل في إنشاء التمرين الفرضي';
+        throw new Error(errorMsg);
       } catch (e: any) {
         console.error('[SharePoint] Error creating drill:', e);
-        throw e;
+        // Re-throw with proper error message
+        const message = e?.message || (typeof e === 'string' ? e : JSON.stringify(e));
+        throw new Error(message);
       }
     }
     
@@ -946,19 +988,48 @@ export const SharePointService = {
             Value: drill.TargetGroup,
           };
         }
+
+        // Admin plan fields
+        if (drill.IsAdminPlan !== undefined) {
+          data.IsAdminPlan = drill.IsAdminPlan === true;
+        }
+        if (drill.StartDate) {
+          data.StartDate = drill.StartDate;
+        }
+        if (drill.EndDate) {
+          data.EndDate = drill.EndDate;
+        }
+        if (drill.PlanStatus) {
+          data.PlanStatus = {
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+            Value: drill.PlanStatus,
+          };
+        }
+        if (drill.Quarter !== undefined) {
+          data.Quarter = drill.Quarter;
+        }
+        if (drill.Responsible !== undefined) {
+          data.Responsible = drill.Responsible;
+        }
+        if (drill.Notes !== undefined) {
+          data.Notes = drill.Notes;
+        }
+        if (drill.AcademicYear !== undefined) {
+          data.AcademicYear = drill.AcademicYear;
+        }
         
-        // Evaluation fields
+        // Evaluation fields - using exact SharePoint column names
         if (drill.PlanEffectivenessRating !== undefined) {
-          data.PlanRating = drill.PlanEffectivenessRating;
+          data.PlanEffectivenessRating = drill.PlanEffectivenessRating;
         }
         if (drill.ProceduresEffectivenessRating !== undefined) {
-          data.ProcedureRating = drill.ProceduresEffectivenessRating;
+          data.ProceduresEffectivenessRating = drill.ProceduresEffectivenessRating;
         }
         if (drill.SchoolFeedback !== undefined) {
-          data.Feedback = drill.SchoolFeedback;
+          data.SchoolFeedback = drill.SchoolFeedback;
         }
         if (drill.ImprovementSuggestions !== undefined) {
-          data.Suggestions = drill.ImprovementSuggestions;
+          data.ImprovementSuggestions = drill.ImprovementSuggestions;
         }
         
         console.log('[SharePoint] Updating drill:', id, data);
@@ -1373,13 +1444,13 @@ export const SharePointService = {
   ): Promise<TrainingLog> {
     if (isPowerAppsEnvironment()) {
       try {
-        // Create GeneralNotes: "ProgramName + Date"
-        const generalNotes = programName && trainingDate 
-          ? `${programName} - ${new Date(trainingDate).toLocaleDateString('ar-SA')}`
-          : '';
+        // Title field stores the GeneralNotes content (program name + date)
+        const generalNotes = programName 
+          ? `${programName} - ${new Date().toLocaleDateString('ar-SA')}`
+          : `تسجيل تدريب - ${schoolName}`;
         
         const data: any = {
-          Title: `تسجيل تدريب - ${schoolName}`,
+          Title: generalNotes,
         };
         
         // Add TrainingDate if provided
@@ -1387,14 +1458,10 @@ export const SharePointService = {
           data.TrainingDate = trainingDate;
         }
         
-        // Add GeneralNotes if we have it
-        if (generalNotes) {
-          data.GeneralNotes = generalNotes;
-        }
-        
         // RegistrationType is a choice field
         if (registrationType) {
           data.RegistrationType = {
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Value: registrationType,
           };
         }
@@ -1402,6 +1469,7 @@ export const SharePointService = {
         // SchoolName_Ref is a lookup field
         if (schoolId) {
           data.SchoolName_Ref = {
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Id: schoolId,
           };
         }
@@ -1409,16 +1477,23 @@ export const SharePointService = {
         // Program_Ref is a lookup field
         if (programId) {
           data.Program_Ref = {
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Id: programId,
           };
         }
         
         // AttendeesNames is a multi-select lookup field
         if (attendeeIds && attendeeIds.length > 0) {
+          data['AttendeesNames@odata.type'] = '#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference)';
           data.AttendeesNames = attendeeIds.map(id => ({
+            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Id: id,
           }));
         }
+        
+        // NOTE: GeneralNotes is NOT in the Power SDK schema.
+        // The app computes it from Program_Ref + Created date on read.
+        // If you added the column to SharePoint, run pac code add-data-source to refresh schema.
         
         console.log('[SharePoint] Creating training registration:', data);
         const result = await School_Training_LogService.create(data);
@@ -1426,10 +1501,17 @@ export const SharePointService = {
         if (result.success && result.data) {
           return transformTrainingLog(result.data);
         }
-        throw new Error(String(result.error) || 'Failed to register for training');
+        // Handle error properly - extract message from error object
+        const errorMsg = result.error 
+          ? (typeof result.error === 'string' ? result.error : 
+             (result.error as any)?.message || JSON.stringify(result.error))
+          : 'Failed to register for training';
+        throw new Error(errorMsg);
       } catch (e: any) {
         console.error('[SharePoint] Error registering for training:', e);
-        throw e;
+        // Re-throw with proper error message
+        const message = e?.message || (typeof e === 'string' ? e : JSON.stringify(e));
+        throw new Error(message);
       }
     }
     
@@ -1513,9 +1595,8 @@ export const SharePointService = {
       return adminPlans;
     } catch (e: any) {
       console.error('[SharePoint] Error loading admin drill plans:', e);
-      // Fallback to localStorage for backwards compatibility
-      const localData = localStorage.getItem('bc_admin_drill_plans_sp');
-      return localData ? JSON.parse(localData) : [];
+      // No localStorage fallback - return empty array for security compliance
+      return [];
     }
   },
   

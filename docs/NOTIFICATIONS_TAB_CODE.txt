@@ -1,0 +1,211 @@
+// Notifications Management Tab Content - To be inserted in AdminPanel.tsx after Contacts tab
+
+/* Add this right after the Contacts PivotItem closes (around line 1407) */
+
+        {/* Tab: Notifications Management */}
+        <PivotItem headerText="🔔 الإشعارات والتنبيهات" itemKey="notifications" itemIcon="Ringer">
+          <div style={{ padding: '20px 0' }}>
+            <Stack horizontal horizontalAlign="space-between" style={{ marginBottom: 16 }}>
+              <div>
+                <h3 style={{ margin: 0 }}>إدارة الإشعارات للمدارس</h3>
+                <Text variant="small" style={{ color: '#666' }}>
+                  إنشاء وإدارة الإشعارات المهمة التي ستصل للمدارس
+                </Text>
+              </div>
+              <PrimaryButton
+                text="إشعار جديد"
+                iconProps={{ iconName: 'Add' }}
+                onClick={() => {
+                  setEditingAnnouncement(null)
+                  setAnnouncementPanelOpen(true)
+                }}
+              />
+            </Stack>
+
+            <MessageBar messageBarType={MessageBarType.info} styles={{ root: { marginBottom: 16 }}>
+              الإشعارات ستظهر للمدارس في أيقونة الجرس (🔔) أعلى التطبيق. يمكنك إرسال إشعارات لجميع المدارس أو مدارس محددة.
+            </MessageBar>
+
+            {/* Announcements Table */}
+            <div className="card" style={{ padding: 20 }}>
+              <DetailsList
+                items={announcements.sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime())}
+                columns={[
+                  {
+                    key: 'priority',
+                    name: 'الأولوية',
+                    minWidth: 80,
+                    maxWidth: 100,
+                    onRender: (item: Announcement) => {
+                      const icons = {
+                        critical: { icon: '🚨', color: '#d83b01', label: 'عاجل' },
+                        urgent: { icon: '⚠️', color: '#ff8c00', label: 'مهم' },
+                        normal: { icon: '📢', color: '#0078d4', label: 'عادي' }
+                      }
+                      const p = icons[item.priority]
+                      return (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: p.color, fontWeight: 600 }}>
+                          {p.icon} {p.label}
+                        </span>
+                      )
+                    }
+                  },
+                  {
+                    key: 'Title',
+                    name: 'العنوان',
+                    minWidth: 200,
+                    maxWidth: 300,
+                    isMultiline: true,
+                    onRender: (item: Announcement) => <strong>{item.Title}</strong>
+                  },
+                  {
+                    key: 'message',
+                    name: 'الرسالة',
+                    minWidth: 300,
+                    maxWidth: 400,
+                    isMultiline: true,
+                    onRender: (item: Announcement) => (
+                      <div style={{ whiteSpace: 'pre-wrap', maxHeight: 60, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.message.length > 150 ? item.message.substring(0, 150) + '...' : item.message}
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'targetAudience',
+                    name: 'الفئة المستهدفة',
+                    minWidth: 120,
+                    maxWidth: 150,
+                    onRender: (item: Announcement) => (
+                      <span>
+                        {item.targetAudience === 'all' ? 'جميع المدارس' : `${item.targetSchools?.length || 0} مدرسة`}
+                      </span>
+                    )
+                  },
+                  {
+                    key: 'publishDate',
+                    name: 'تاريخ النشر',
+                    minWidth: 120,
+                    maxWidth: 150,
+                    onRender: (item: Announcement) => renderDate(item.publishDate)
+                  },
+                  {
+                    key: 'isActive',
+                    name: 'الحالة',
+                    minWidth: 80,
+                    maxWidth: 100,
+                    onRender: (item: Announcement) => {
+                      const now = new Date()
+                      const expired = item.expiryDate && new Date(item.expiryDate) < now
+                      return (
+                        <span style={{ color: expired ? '#999' : item.isActive ? '#107c10' : '#d83b01' }}>
+                          {expired ? '⏱️ منتهي' : item.isActive ? '✅ نشط' : '⏸️ متوقف'}
+                        </span>
+                      )
+                    }
+                  },
+                  {
+                    key: 'actions',
+                    name: 'الإجراءات',
+                    minWidth: 120,
+                    maxWidth: 150,
+                    onRender: (item: Announcement) => (
+                      <Stack horizontal tokens={{ childrenGap: 8 }}>
+                        <IconButton
+                          iconProps={{ iconName: 'Edit' }}
+                          title="تعديل"
+                          onClick={() => {
+                            setEditingAnnouncement(item)
+                            setAnnouncementPanelOpen(true)
+                          }}
+                        />
+                        <IconButton
+                          iconProps={{ iconName: item.isActive ? 'CirclePause' : 'Play' }}
+                          title={item.isActive ? 'إيقاف' : 'تنشيط'}
+                          onClick={async () => {
+                            try {
+                              await AnnouncementService.updateAnnouncement(item.id, { isActive: !item.isActive })
+                              const updated = await AnnouncementService.getAnnouncements()
+                              setAnnouncements(updated)
+                              setMessage({
+                                type: MessageBarType.success,
+                                text: item.isActive ? 'تم إيقاف الإشعار' : 'تم تنشيط الإشعار'
+                              })
+                            } catch (e) {
+                              setMessage({ type: MessageBarType.error, text: 'حدث خطأ' })
+                            }
+                          }}
+                        />
+                        <IconButton
+                          iconProps={{ iconName: 'Delete' }}
+                          title="حذف"
+                          onClick={async () => {
+                            if (window.confirm('هل أنت متأكد من حذف هذا الإشعار؟')) {
+                              try {
+                                await AnnouncementService.deleteAnnouncement(item.id)
+                                const updated = await AnnouncementService.getAnnouncements()
+                                setAnnouncements(updated)
+                                setMessage({ type: MessageBarType.success, text: 'تم حذف الإشعار' })
+                              } catch (e) {
+                                setMessage({ type: MessageBarType.error, text: 'حدث خطأ في الحذف' })
+                              }
+                            }
+                          }}
+                        />
+                      </Stack>
+                    )
+                  }
+                ]}
+                layoutMode={DetailsListLayoutMode.justified}
+                selectionMode={SelectionMode.none}
+              />
+
+              {announcements.length === 0 && (
+                <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>
+                  <Icon iconName="Ringer" style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }} />
+                  <Text variant="large" block>لا توجد إشعارات</Text>
+                  <Text variant="small" block style={{ marginTop: 8 }}>
+                    اضغط على "إشعار جديد" لإنشاء أول إشعار للمدارس
+                  </Text>
+                </div>
+              )}
+            </div>
+
+            {/* Announcement Form Panel */}
+            <Panel
+              isOpen={announcementPanelOpen}
+              onDismiss={() => {
+                setAnnouncementPanelOpen(false)
+                setEditingAnnouncement(null)
+              }}
+              type={PanelType.medium}
+              headerText={editingAnnouncement ? 'تعديل إشعار' : 'إشعار جديد'}
+              closeButtonAriaLabel="إغلاق"
+            >
+              <AnnouncementForm
+                announcement={editingAnnouncement}
+                schools={schools}
+                onSave={async (announcement) => {
+                  try {
+                    if (editingAnnouncement) {
+                      await AnnouncementService.updateAnnouncement(editingAnnouncement.id, announcement)
+                      setMessage({ type: MessageBarType.success, text: 'تم تحديث الإشعار' })
+                    } else {
+                      await AnnouncementService.createAnnouncement(announcement as Omit<Announcement, 'id'>)
+                      setMessage({ type: MessageBarType.success, text: 'تم إنشاء الإشعار' })
+                    }
+                    const updated = await AnnouncementService.getAnnouncements()
+                    setAnnouncements(updated)
+                    setAnnouncementPanelOpen(false)
+                    setEditingAnnouncement(null)
+                  } catch (e) {
+                    setMessage({ type: MessageBarType.error, text: 'حدث خطأ في الحفظ' })
+                  }
+                }}
+                onCancel={() => {
+                  setAnnouncementPanelOpen(false)
+                  setEditingAnnouncement(null)
+                }}
+              />
+            </Panel>
+          </div>
+        </PivotItem>

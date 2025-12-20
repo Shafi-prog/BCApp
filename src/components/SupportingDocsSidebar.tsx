@@ -193,8 +193,12 @@ const SupportingDocsSidebar: React.FC<SupportingDocsSidebarProps> = ({ isOpen, o
                           text="تحميل المستند"
                           iconProps={{ iconName: 'Download' }}
                           onClick={() => {
-                            // In a real implementation, this would download from SharePoint
-                            alert(`تحميل المستند: ${doc.fileName}\n\nملاحظة: يتطلب التكامل مع SharePoint Document Library`)
+                            // إذا كان اسم الملف رابط SharePoint/URL، افتحه مباشرة للتحميل
+                            if (doc.fileName.startsWith('http')) {
+                              window.open(doc.fileName, '_blank')
+                            } else {
+                              alert(`تحميل المستند: ${doc.fileName}\n\nملاحظة: قم برفع الملف لمكتبة SharePoint واستخدم الرابط هنا لتمكين التحميل من المدارس`)
+                            }
                           }}
                           styles={{
                             root: {

@@ -121,7 +121,7 @@ const BCTasksDashboard: React.FC<BCTasksDashboardProps> = ({
         <StatCard 
           title="إجمالي المهام" 
           value={stats.total} 
-          icon="TaskList" 
+          icon="CheckList" 
           color="#0078d4" 
         />
         <StatCard 
@@ -689,7 +689,7 @@ function calculateTaskProgress(
   else if ([2, 16, 22].includes(task.taskId)) {
     const planCount = testPlans?.length || 0
     const drillCount = drills?.length || 0
-    const drillsWithRating = drills?.filter((d: any) => d.DrillRating)?.length || 0
+    const drillsWithRating = drills?.filter((d: any) => d.PlanEffectivenessRating || d.ProceduresEffectivenessRating)?.length || 0
     
     // المهمة 2: خطة 4 تمارين سنوية
     if (task.taskId === 2) {

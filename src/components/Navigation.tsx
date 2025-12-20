@@ -3,7 +3,8 @@ import { Nav, INavStyles, DefaultButton, Text, Icon, IconButton } from '@fluentu
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import BCInfoSidebar from './BCInfoSidebar'
-import SupportingDocsSidebar from './SupportingDocsSidebar'
+import NotificationBell from './NotificationBell'
+import { SharePointService } from '../services/sharepointService'
 
 interface LeaderboardEntry {
   rank: number
@@ -44,28 +45,67 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [showBCInfo, setShowBCInfo] = useState(false)
-  const [showSupportingDocs, setShowSupportingDocs] = useState(false)
 
-  // Load leaderboard from localStorage
+  // Load leaderboard from SharePoint (no localStorage for security compliance)
   useEffect(() => {
-    const loadLeaderboard = () => {
-      const data = localStorage.getItem('bc_top200_leaderboard')
-      if (data) {
-        setLeaderboard(JSON.parse(data))
+    const loadLeaderboard = async () => {
+      try {
+        // Load data from SharePoint and calculate leaderboard
+        const [allSchools, allTeamMembers, allDrills, allTrainingLog] = await Promise.all([
+          SharePointService.getSchoolInfo(),
+          SharePointService.getTeamMembers(),
+          SharePointService.getDrills(),
+          SharePointService.getTrainingLog(),
+        ])
+        
+        const TARGET_TEAM = 6, TARGET_DRILLS = 4, TARGET_TRAIN = 2
+        const progressMap = new Map<string, number>()
+        
+        allSchools.forEach(s => progressMap.set(s.SchoolName, 0))
+        
+        const teamCount = new Map<string, number>()
+        const drillCount = new Map<string, number>()
+        const trainCount = new Map<string, number>()
+        
+        allTeamMembers.forEach((m: any) => {
+          const s = m.SchoolName_Ref
+          if (s) teamCount.set(s, (teamCount.get(s) || 0) + 1)
+        })
+        allDrills.forEach((d: any) => {
+          const s = d.SchoolName_Ref
+          if (s) drillCount.set(s, (drillCount.get(s) || 0) + 1)
+        })
+        allTrainingLog.forEach((t: any) => {
+          const s = t.SchoolName_Ref
+          if (s) trainCount.set(s, (trainCount.get(s) || 0) + 1)
+        })
+        
+        allSchools.forEach(school => {
+          const t = Math.min((teamCount.get(school.SchoolName) || 0) / TARGET_TEAM, 1)
+          const d = Math.min((drillCount.get(school.SchoolName) || 0) / TARGET_DRILLS, 1)
+          const tr = Math.min((trainCount.get(school.SchoolName) || 0) / TARGET_TRAIN, 1)
+          progressMap.set(school.SchoolName, Math.round((t + d + tr) / 3 * 100))
+        })
+        
+        const sorted = Array.from(progressMap.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 200)
+          .map((entry, idx) => ({
+            rank: idx + 1,
+            schoolName: entry[0],
+            readinessPercent: entry[1],
+          }))
+        
+        setLeaderboard(sorted)
+      } catch (e) {
+        console.error('[Navigation] Error loading leaderboard from SharePoint:', e)
       }
     }
+    
     loadLeaderboard()
-    
-    // Listen for storage changes from other tabs
-    window.addEventListener('storage', loadLeaderboard)
-    
-    // Also poll periodically for same-tab updates
-    const interval = setInterval(loadLeaderboard, 2000)
-    
-    return () => {
-      window.removeEventListener('storage', loadLeaderboard)
-      clearInterval(interval)
-    }
+    // Refresh every 30 seconds
+    const interval = setInterval(loadLeaderboard, 30000)
+    return () => clearInterval(interval)
   }, [])
 
   // Listen for navigation events from stats cards in AdminPanel
@@ -115,12 +155,16 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
         borderBottom: '1px solid #e1dfdd',
         background: 'linear-gradient(135deg, #008752, #006644)',
         color: '#fff',
-        textAlign: 'center'
       }}>
-        <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, lineHeight: 1.4 }}>
-          نظام متابعة استمرارية العملية التعليمية
-        </h2>
-        <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.9 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, lineHeight: 1.4 }}>
+              نظام متابعة استمرارية العملية التعليمية
+            </h2>
+          </div>
+          <NotificationBell />
+        </div>
+        <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.9, textAlign: 'center' }}>
           الإدارة العامة للتعليم بمنطقة المدينة المنورة
         </p>
       </div>
@@ -158,12 +202,20 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
             {
               links: [
                 { name: 'الرئيسية ومعلومات المدرسة', url: '#/', key: '/', icon: 'Home' },
-                // BC Plan only visible to schools, admin accesses through Admin Panel
-                ...(user?.type !== 'admin' ? [{ name: 'خطة استمرارية التعليم', url: '#/bcplan', key: '/bcplan', icon: 'Shield' }] : []),
+                // BC Plan (Quick Reference is embedded inside for schools)
+                ...(user?.type !== 'admin' ? [{
+                  name: 'خطة استمرارية التعليم',
+                  url: '#/bcplan',
+                  key: '/bcplan',
+                  icon: 'Shield'
+                }] : [
+                  // Admin sees Quick Reference as standalone editable page
+                  { name: 'المرجع السريع (إدارة)', url: '#/bc-quick-reference', key: '/bc-quick-reference', icon: 'BookAnswers' }
+                ]),
                 { name: 'فريق الأمن والسلامة', url: '#/team', key: '/team', icon: 'Group' },
                 { name: 'بوابة التدريب', url: '#/training', key: '/training', icon: 'ReadingMode' },
                 { name: 'سجل التدريبات', url: '#/training-log', key: '/training-log', icon: 'ClipboardList' },
-                { name: 'سجل التمارين الفرضية', url: '#/drills', key: '/drills', icon: 'TaskList' },
+                { name: 'سجل التمارين الفرضية', url: '#/drills', key: '/drills', icon: 'CheckList' },
                 { name: 'انقطاع في العملية التعليمية', url: '#/incidents', key: '/incidents', icon: 'ShieldAlert' },
                 ...(user?.type === 'admin' ? [
                   { name: 'لوحة إدارة BC', url: '#/admin', key: '/admin', icon: 'Settings' }
@@ -271,39 +323,6 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
         </div>
       )}
 
-      {/* BC Info Button - Quick Reference (available for all users, editable by admin) */}
-      <div style={{ padding: '12px 16px', borderTop: '1px solid #e1dfdd' }}>
-        <DefaultButton
-          text="📖 المرجع السريع (RTO/جهات الاتصال)"
-          iconProps={{ iconName: 'Info' }}
-          onClick={() => setShowBCInfo(true)}
-          styles={{
-            root: { 
-              width: '100%', 
-              backgroundColor: '#e6f2ff',
-              border: '1px solid #0078d4',
-              marginBottom: 8,
-            },
-            label: { color: '#0078d4', fontWeight: 600, fontSize: '0.8rem' },
-            icon: { color: '#0078d4' },
-          }}
-        />
-        <DefaultButton
-          text="📚 المستندات المساندة"
-          iconProps={{ iconName: 'DocumentSet' }}
-          onClick={() => setShowSupportingDocs(true)}
-          styles={{
-            root: { 
-              width: '100%', 
-              backgroundColor: '#f3e6ff',
-              border: '1px solid #8764b8',
-            },
-            label: { color: '#8764b8', fontWeight: 600, fontSize: '0.8rem' },
-            icon: { color: '#8764b8' },
-          }}
-        />
-      </div>
-
       {/* Logout Button */}
       <div style={{ padding: '16px', borderTop: '1px solid #e1dfdd' }}>
         <DefaultButton
@@ -319,9 +338,6 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
 
       {/* BC Info Sidebar */}
       <BCInfoSidebar isOpen={showBCInfo} onClose={() => setShowBCInfo(false)} />
-
-      {/* Supporting Documents Sidebar */}
-      <SupportingDocsSidebar isOpen={showSupportingDocs} onClose={() => setShowSupportingDocs(false)} />
     </div>
   )
 }

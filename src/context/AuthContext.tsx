@@ -1,5 +1,9 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react'
 
+// User session is managed in sessionStorage (clears on browser close)
+// This is more secure than localStorage for session management
+// All data storage uses SharePoint ONLY for security compliance
+
 export interface User {
   type: 'admin' | 'school'
   schoolName?: string
@@ -20,18 +24,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = (userData: User) => {
     setUser(userData)
-    // Store in localStorage for persistence
-    localStorage.setItem('bcApp_user', JSON.stringify(userData))
+    // Store in sessionStorage for session persistence (clears on browser close)
+    sessionStorage.setItem('bcApp_user', JSON.stringify(userData))
   }
 
   const logout = () => {
     setUser(null)
-    localStorage.removeItem('bcApp_user')
+    sessionStorage.removeItem('bcApp_user')
   }
 
-  // Restore user from localStorage on mount
+  // Restore user from sessionStorage on mount
   React.useEffect(() => {
-    const stored = localStorage.getItem('bcApp_user')
+    const stored = sessionStorage.getItem('bcApp_user')
     if (stored) {
       try {
         setUser(JSON.parse(stored))

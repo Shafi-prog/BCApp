@@ -27,6 +27,7 @@ import { useAuth } from '../context/AuthContext'
 import { SharePointService, TrainingProgram, TrainingLog, TeamMember } from '../services/sharepointService'
 import { Coordination_Programs_CatalogService } from '../generated'
 import { getColumnConfig, ColumnType, renderDate } from '../config/tableConfig'
+import { sanitizeString, sanitizeHTML, isValidDate } from '../utils/security'
 
 // Default fallback options (used if SharePoint options can't be loaded)
 const defaultProviderEntityOptions: IDropdownOption[] = [
@@ -131,55 +132,55 @@ const Training: React.FC = () => {
   const [executionModeOptions, setExecutionModeOptions] = useState<IDropdownOption[]>(defaultExecutionModeOptions)
   const [coordinationStatusOptions, setCoordinationStatusOptions] = useState<IDropdownOption[]>(defaultCoordinationStatusOptions)
 
-  // Load dropdown options from SharePoint
+  // Load dropdown options from SharePoint choice fields
   const loadDropdownOptions = async () => {
+    console.log('[Training] Loading dropdown options from SharePoint...')
+    
+    // Helper to load a choice field and convert to dropdown options
+    const loadChoiceField = async (fieldName: string, defaultOptions: IDropdownOption[]): Promise<IDropdownOption[]> => {
+      try {
+        const result = await Coordination_Programs_CatalogService.getReferencedEntity('', fieldName)
+        // SharePoint returns {data: {value: [...]}} format
+        const values = (result.data as any)?.value
+        if (values && Array.isArray(values)) {
+          const options = toDropdownOptions(values)
+          if (options.length > 0) {
+            console.log(`[Training] ✓ Loaded ${options.length} options for ${fieldName}:`, options.map(o => o.text))
+            return options
+          } else {
+            console.warn(`[Training] ⚠ ZERO VALUES for ${fieldName} from SharePoint!`)
+          }
+        } else {
+          console.warn(`[Training] ⚠ No array data for ${fieldName}`)
+        }
+        console.warn(`[Training] Using defaults for ${fieldName}`)
+        return defaultOptions
+      } catch (e) {
+        console.error(`[Training] Error loading ${fieldName}:`, e)
+        return defaultOptions
+      }
+    }
+    
     try {
-      console.log('[Training] Loading dropdown options from SharePoint...')
-      
-      // Load all choice field options in parallel
-      const [providerResult, activityResult, targetResult, executionResult, statusResult] = await Promise.all([
-        Coordination_Programs_CatalogService.getReferencedEntity('', 'ProviderEntity').catch(e => { console.warn('ProviderEntity:', e); return null }),
-        Coordination_Programs_CatalogService.getReferencedEntity('', 'ActivityType').catch(e => { console.warn('ActivityType:', e); return null }),
-        Coordination_Programs_CatalogService.getReferencedEntity('', 'TargetAudience').catch(e => { console.warn('TargetAudience:', e); return null }),
-        Coordination_Programs_CatalogService.getReferencedEntity('', 'ExecutionMode').catch(e => { console.warn('ExecutionMode:', e); return null }),
-        Coordination_Programs_CatalogService.getReferencedEntity('', 'CoordinationStatus').catch(e => { console.warn('CoordinationStatus:', e); return null }),
+      // Load all choice fields in parallel
+      const [provider, activity, target, execution, status] = await Promise.all([
+        loadChoiceField('ProviderEntity', defaultProviderEntityOptions),
+        loadChoiceField('ActivityType', defaultActivityTypeOptions),
+        loadChoiceField('TargetAudience', defaultTargetAudienceOptions),
+        loadChoiceField('ExecutionMode', defaultExecutionModeOptions),
+        loadChoiceField('CoordinationStatus', defaultCoordinationStatusOptions),
       ])
       
-      // Update options if successfully loaded from SharePoint
-      if (providerResult?.success && providerResult.data) {
-        const options = toDropdownOptions(providerResult.data as any[])
-        if (options.length > 0) setProviderEntityOptions(options)
-        console.log('[Training] ProviderEntity options:', options)
-      }
+      setProviderEntityOptions(provider)
+      setActivityTypeOptions(activity)
+      setTargetAudienceOptions(target)
+      setExecutionModeOptions(execution)
+      setCoordinationStatusOptions(status)
       
-      if (activityResult?.success && activityResult.data) {
-        const options = toDropdownOptions(activityResult.data as any[])
-        if (options.length > 0) setActivityTypeOptions(options)
-        console.log('[Training] ActivityType options:', options)
-      }
-      
-      if (targetResult?.success && targetResult.data) {
-        const options = toDropdownOptions(targetResult.data as any[])
-        if (options.length > 0) setTargetAudienceOptions(options)
-        console.log('[Training] TargetAudience options:', options)
-      }
-      
-      if (executionResult?.success && executionResult.data) {
-        const options = toDropdownOptions(executionResult.data as any[])
-        if (options.length > 0) setExecutionModeOptions(options)
-        console.log('[Training] ExecutionMode options:', options)
-      }
-      
-      if (statusResult?.success && statusResult.data) {
-        const options = toDropdownOptions(statusResult.data as any[])
-        if (options.length > 0) setCoordinationStatusOptions(options)
-        console.log('[Training] CoordinationStatus options:', options)
-      }
-      
-      console.log('[Training] Dropdown options loaded successfully')
+      console.log('[Training] All dropdown options loaded successfully')
     } catch (e) {
       console.error('[Training] Error loading dropdown options:', e)
-      // Keep using default options on error
+      setErrorMessage('تعذر تحميل خيارات القوائم المنسدلة من SharePoint')
     }
   }
 
@@ -274,12 +275,23 @@ const Training: React.FC = () => {
       return
     }
 
+    // Validate attendee IDs are valid numbers
+    const attendeeIds = selectedAttendees.map(id => parseInt(id, 10)).filter(id => !isNaN(id))
+    if (attendeeIds.length !== selectedAttendees.length) {
+      setErrorMessage('بعض بيانات الحضور غير صحيحة. يرجى إعادة الاختيار.')
+      return
+    }
+    
+    if (attendeeIds.length === 0) {
+      setErrorMessage('يجب اختيار الحضور من فريق الأمن والسلامة')
+      return
+    }
+
     try {
       setSaving(true)
       setErrorMessage('')
       setSuccessMessage('')
 
-      const attendeeIds = selectedAttendees.map(id => parseInt(id, 10)).filter(id => !isNaN(id))
       const registrationType = getRegistrationType(selectedProgram.Date)
       const trainingDate = selectedProgram.Date || new Date().toISOString()
       const schoolName = user?.schoolName || 'Unknown School'
@@ -300,7 +312,20 @@ const Training: React.FC = () => {
       loadTrainingLog()
     } catch (e: any) {
       console.error('Registration error:', e)
-      const errorMsg = e?.message || e?.error || JSON.stringify(e)
+      let errorMsg = 'خطأ غير معروف'
+      if (e?.message) {
+        errorMsg = e.message
+      } else if (e?.error) {
+        errorMsg = typeof e.error === 'string' ? e.error : JSON.stringify(e.error)
+      } else if (typeof e === 'string') {
+        errorMsg = e
+      } else {
+        try {
+          errorMsg = JSON.stringify(e)
+        } catch {
+          errorMsg = String(e)
+        }
+      }
       setErrorMessage(`فشل التسجيل: ${errorMsg}`)
     } finally {
       setSaving(false)
@@ -768,7 +793,7 @@ const Training: React.FC = () => {
           </MessageBar>
         )}
 
-        {/* Tabs for programs and log */}
+        {/* Tabs for programs (school training log has its own page) */}
         <Pivot>
           <PivotItem headerText={isAdmin ? 'كتالوج البرامج' : 'البرامج المتاحة'}>
             <div className="card" style={{ marginTop: 16, padding: 16 }}>
@@ -792,48 +817,6 @@ const Training: React.FC = () => {
             </div>
           </PivotItem>
 
-          <PivotItem headerText="السجل التدريبي">
-            <div className="card" style={{ marginTop: 16, padding: 16 }}>
-              {loadingLog ? (
-                <Spinner label="جارٍ تحميل السجل..." />
-              ) : trainingLog.length === 0 ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: '#666' }}>
-                  {showTeamWarning ? (
-                    <div style={{ 
-                      padding: '32px', 
-                      textAlign: 'center', 
-                      backgroundColor: '#fff4ce', 
-                      border: '1px solid #ffb900', 
-                      borderRadius: '8px' 
-                    }}>
-                      <Text variant="large" block style={{ marginBottom: '12px', color: '#323130' }}>
-                        ⚠️ يجب إضافة أعضاء فريق الأمن والسلامة أولاً
-                      </Text>
-                      <Text variant="medium" style={{ color: '#605e5c' }}>
-                        يرجى الانتقال إلى صفحة "فريق الأمن والسلامة" وإضافة الأعضاء قبل التسجيل في البرامج التدريبية
-                      </Text>
-                    </div>
-                  ) : (
-                    <div style={{ padding: 24, textAlign: 'center' }}>
-                      <Icon iconName="PageList" style={{ fontSize: 48, color: '#999', marginBottom: 12 }} />
-                      <Text variant="large" block style={{ color: '#666' }}>لا يوجد سجل تدريبي</Text>
-                      <Text variant="medium" style={{ color: '#999' }}>قم بالتسجيل في البرامج التدريبية من تبويب "البرامج المتاحة"</Text>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div style={{ width: '100%', overflowX: 'auto' }}>
-                  <DetailsList
-                    items={trainingLog}
-                    columns={getLogColumns()}
-                    layoutMode={DetailsListLayoutMode.justified}
-                    selectionMode={SelectionMode.none}
-                    styles={{ root: { width: '100%' } }}
-                  />
-                </div>
-              )}
-            </div>
-          </PivotItem>
         </Pivot>
       </Stack>
 

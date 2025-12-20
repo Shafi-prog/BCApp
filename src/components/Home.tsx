@@ -19,6 +19,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, SchoolInfo, TeamMember, Drill, TrainingLog as TrainingLogType } from '../services/sharepointService'
+import { AdminDataService } from '../services/adminDataService'
 
 interface DashboardStats {
   teamMembers: number
@@ -89,18 +90,21 @@ const Home: React.FC = () => {
   const [schoolRanking, setSchoolRanking] = useState<number | null>(null)
 
   useEffect(() => {
-    // Load shared BC Plan from localStorage
-    const savedPlan = localStorage.getItem('bc_shared_plan')
-    if (savedPlan) {
+    // Load shared BC Plan from SharePoint (no localStorage for security compliance)
+    const loadBCPlan = async () => {
       try {
-        const plan = JSON.parse(savedPlan) as SharedBCPlan
-        if (plan.isPublished) {
-          setSharedBCPlan(plan)
+        const spPlan = await AdminDataService.getSharedBCPlan()
+        if (spPlan && spPlan.isPublished) {
+          console.log('[Home] Loaded BC Plan from SharePoint, isPublished:', spPlan.isPublished)
+          setSharedBCPlan(spPlan as any)
+        } else {
+          console.log('[Home] No published BC Plan found in SharePoint')
         }
       } catch (e) {
-        console.error('Error loading BC Plan:', e)
+        console.error('[Home] Error loading BC Plan from SharePoint:', e)
       }
     }
+    loadBCPlan()
   }, [])
 
   useEffect(() => {
@@ -178,14 +182,14 @@ const Home: React.FC = () => {
           setSchoolProgress(progressArray)
           setFilteredProgress(progressArray)
           
-          // Save top 200 schools leaderboard to localStorage for school view
+          // Store top 200 schools leaderboard in state (no localStorage for security compliance)
           const sortedByReadiness = [...progressArray].sort((a, b) => b.readinessPercent - a.readinessPercent)
           const top200 = sortedByReadiness.slice(0, 200).map((p, idx) => ({
             rank: idx + 1,
             schoolName: p.schoolName,
             readinessPercent: p.readinessPercent,
           }))
-          localStorage.setItem('bc_top200_leaderboard', JSON.stringify(top200))
+          // Note: Leaderboard data is calculated dynamically, not cached in localStorage
           
           // Calculate summary stats
           const schoolsWithTeams = progressArray.filter(p => p.teamCount > 0).length
@@ -264,13 +268,13 @@ const Home: React.FC = () => {
             setSchoolRanking(schoolRankIndex + 1)
           }
           
-          // Save top 200 for navigation leaderboard display
+          // Calculate top 200 for ranking display (no localStorage for security compliance)
           const top200 = sortedSchools.slice(0, 200).map((p, idx) => ({
             rank: idx + 1,
             schoolName: p.schoolName,
             readinessPercent: p.readinessPercent,
           }))
-          localStorage.setItem('bc_top200_leaderboard', JSON.stringify(top200))
+          // Note: Leaderboard data is calculated dynamically, not cached
 
           // Load stats for single school (from already loaded data)
           const myTeamMembers = allTeamMembers.filter((m: TeamMember) => m.SchoolName_Ref === schoolName)
@@ -487,7 +491,7 @@ const Home: React.FC = () => {
     },
     {
       title: 'تسجيل تمرين فرضي',
-      icon: 'TaskList',
+      icon: 'CheckList',
       color: '#107c10',
       route: '/drills',
       description: 'تسجيل تمرين إخلاء أو طوارئ',
@@ -522,7 +526,7 @@ const Home: React.FC = () => {
     {
       title: 'مدارس نفذت تمارين',
       value: stats.schoolsWithDrills || 0,
-      icon: 'TaskList',
+      icon: 'CheckList',
       color: '#107c10',
       route: '/drills',
       description: `من ${stats.totalSchools || 0} مدرسة`,
@@ -658,7 +662,7 @@ const Home: React.FC = () => {
           }}>
             <div style={{ backgroundColor: '#008752', color: '#fff', padding: '12px 16px', textAlign: 'center' }}>
               <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <Icon iconName="School" />
+                <Icon iconName="Education" />
                 معلومات المدرسة الأساسية
               </h3>
             </div>
@@ -675,7 +679,7 @@ const Home: React.FC = () => {
                   <span>{schoolInfo.SchoolGender || '-'}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '8px 12px', backgroundColor: '#f9f9f9', borderRadius: 8 }}>
-                  <Icon iconName="BuildingMultiple" style={{ color: '#107c10', fontSize: 16 }} />
+                  <Icon iconName="CityNext" style={{ color: '#107c10', fontSize: 16 }} />
                   <strong>نمط المدرسة:</strong>
                   <span>{schoolInfo.SchoolType || '-'}</span>
                 </div>
@@ -792,7 +796,7 @@ const Home: React.FC = () => {
               borderRadius: 12,
             }}
           >
-            <Icon iconName="TaskList" style={{ fontSize: 32, color: '#107c10', marginBottom: 8 }} />
+            <Icon iconName="CheckList" style={{ fontSize: 32, color: '#107c10', marginBottom: 8 }} />
             <div style={{ fontSize: '2rem', fontWeight: 700, color: '#107c10' }}>{stats.drillsConducted}</div>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>التمارين الفرضية</div>
             <div style={{ fontSize: '0.85rem', color: '#666' }}>تمارين منفذة</div>
@@ -939,16 +943,41 @@ const Home: React.FC = () => {
               </h3>
             </div>
             <div style={{ padding: 0 }}>
-              <iframe
-                src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${schoolInfo.Latitude},${schoolInfo.Longitude}&zoom=15`}
-                width="100%"
-                height="300"
-                style={{ border: 0 }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              ></iframe>
-              <div style={{ padding: '12px 16px', backgroundColor: '#f3f2f1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div
+                style={{
+                  width: '100%',
+                  height: '300px',
+                  backgroundColor: '#f3f2f1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '16px'
+                }}
+              >
+                <Icon iconName="World" style={{ fontSize: 48, color: '#107c10' }} />
+                <Text variant="large" style={{ color: '#605e5c' }}>عرض الموقع على الخريطة</Text>
+                <a
+                  href={`https://www.google.com/maps?q=${schoolInfo.Latitude},${schoolInfo.Longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#107c10',
+                    color: '#fff',
+                    borderRadius: '4px',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontWeight: 600
+                  }}
+                >
+                  <Icon iconName="NavigateExternalInline" />
+                  فتح الخريطة في نافذة جديدة
+                </a>
+              </div>
+              <div style={{ padding: '12px 16px', backgroundColor: '#e1dfdd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>
                   <strong>الإحداثيات:</strong> {schoolInfo.Latitude}, {schoolInfo.Longitude}
                 </span>

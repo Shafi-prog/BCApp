@@ -12,6 +12,114 @@ body {
   min-height: 100vh;
 }
 
+/* ========================================
+   FLUENT ICON FONT FALLBACK (MDL2 ISSUE)
+   ======================================== */
+/* In some environments (including Power Apps), the FabricMDL2 icon fonts
+   are blocked or fail to load, so Fluent UI icons render as empty squares.
+   These rules provide a safe emoji-based fallback using data-icon-name. */
+
+/* Base: hide broken font glyph and use emoji/text instead */
+i[data-icon-name] {
+  position: relative;
+  /* Hide the original MDL2 glyph (square) to avoid double icons */
+  font-size: 0;
+}
+
+/* Emoji/text layer */
+i[data-icon-name]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: inherit;
+  font-size: 1.1rem;
+}
+
+/* Key icon mappings used in the app */
+i[data-icon-name="Admin"]::before { content: "👤"; }
+i[data-icon-name="Org"]::before { content: "🏢"; }
+i[data-icon-name="Home"]::before { content: "🏠"; }
+i[data-icon-name="Group"]::before { content: "👥"; }
+i[data-icon-name="People"]::before { content: "👥"; }
+i[data-icon-name="Settings"]::before { content: "⚙"; }
+i[data-icon-name="Shield"]::before { content: "🛡"; }
+i[data-icon-name="ShieldAlert"]::before { content: "🚨"; }
+i[data-icon-name="Education"]::before { content: "🎓"; }
+i[data-icon-name="ReadingMode"]::before { content: "📖"; }
+i[data-icon-name="CheckList"]::before { content: "✅"; }
+i[data-icon-name="ClipboardList"]::before { content: "📋"; }
+i[data-icon-name="LightningBolt"]::before { content: "⚡"; }
+i[data-icon-name="Ringer"]::before { content: "🔔"; }
+i[data-icon-name="Mail"]::before { content: "✉"; }
+i[data-icon-name="Phone"]::before { content: "📞"; }
+i[data-icon-name="MapPin"]::before { content: "📍"; }
+i[data-icon-name="World"]::before { content: "🌐"; }
+i[data-icon-name="CityNext"]::before { content: "🏙"; }
+i[data-icon-name="Library"]::before { content: "📚"; }
+i[data-icon-name="Clock"]::before { content: "⏰"; }
+i[data-icon-name="DocumentSet"]::before { content: "📁"; }
+i[data-icon-name="Calendar"]::before { content: "📅"; }
+i[data-icon-name="Warning"]::before { content: "⚠"; }
+i[data-icon-name="ExcelDocument"]::before { content: "📊"; }
+i[data-icon-name="PDF"]::before { content: "📄"; }
+i[data-icon-name="Download"]::before { content: "⬇"; }
+i[data-icon-name="Upload"]::before { content: "⬆"; }
+i[data-icon-name="CloudUpload"]::before { content: "☁"; }
+i[data-icon-name="Print"]::before { content: "🖨"; }
+i[data-icon-name="Edit"]::before { content: "✎"; }
+i[data-icon-name="Delete"]::before { content: "🗑"; }
+i[data-icon-name="Add"]::before { content: "＋"; }
+i[data-icon-name="AddFriend"]::before { content: "➕"; }
+i[data-icon-name="NavigateExternalInline"]::before { content: "↗"; }
+i[data-icon-name="ViewDashboard"]::before { content: "📊"; }
+i[data-icon-name="BarChartVertical"]::before { content: "📊"; }
+i[data-icon-name="PageList"]::before { content: "📄"; }
+i[data-icon-name="Car"]::before { content: "🚗"; }
+i[data-icon-name="Info"]::before { content: "ℹ"; }
+i[data-icon-name="Contact"]::before { content: "👤"; }
+i[data-icon-name="ContactList"]::before { content: "📇"; }
+i[data-icon-name="TimelineProgress"]::before { content: "📈"; }
+i[data-icon-name="BookAnswers"]::before { content: "📘"; }
+i[data-icon-name="StatusCircleCheckmark"]::before { content: "✅"; }
+i[data-icon-name="BulletedList"]::before { content: "•"; }
+i[data-icon-name="Dictionary"]::before { content: "📖"; }
+i[data-icon-name="Version"]::before { content: "🔁"; }
+i[data-icon-name="Org"]::before { content: "🏢"; }
+i[data-icon-name="GridViewMedium"]::before { content: "🔳"; }
+i[data-icon-name="Table"]::before { content: "📋"; }
+i[data-icon-name="Cancel"]::before { content: "✖"; }
+i[data-icon-name="Save"]::before { content: "💾"; }
+i[data-icon-name="Share"]::before { content: "📤"; }
+i[data-icon-name="Attach"]::before { content: "📎"; }
+i[data-icon-name="Document"]::before { content: "📄"; }
+i[data-icon-name="History"]::before { content: "🕒"; }
+i[data-icon-name="ReviewSolid"]::before { content: "📝"; }
+i[data-icon-name="DocumentSearch"]::before { content: "🔍"; }
+i[data-icon-name="Certificate"]::before { content: "🎖"; }
+i[data-icon-name="TestPlan"]::before { content: "🧪"; }
+i[data-icon-name="Lightbulb"]::before { content: "💡"; }
+i[data-icon-name="Error"]::before { content: "❗"; }
+i[data-icon-name="Switch"]::before { content: "🔁"; }
+i[data-icon-name="ReportWarning"]::before { content: "📋"; }
+i[data-icon-name="AnalyticsView"]::before { content: "📊"; }
+i[data-icon-name="CalendarReply"]::before { content: "📅"; }
+i[data-icon-name="Ribbon"]::before { content: "🎗"; }
+i[data-icon-name="CloudDownload"]::before { content: "☁"; }
+i[data-icon-name="CityNext"]::before { content: "🏙"; }
+i[data-icon-name="Globe"]::before { content: "🌐"; }
+i[data-icon-name="Tag"]::before { content: "🏷"; }
+i[data-icon-name="GroupedList"]::before { content: "☰"; }
+i[data-icon-name="SearchIssue"]::before { content: "🔎"; }
+i[data-icon-name="SignOut"]::before { content: "↩"; }
+i[data-icon-name="Play"]::before { content: "▶"; }
+i[data-icon-name="NavigateForward"]::before { content: "➡"; }
+i[data-icon-name="PageAdd"]::before { content: "➕"; }
+
+
 .app-layout,
 .app-shell {
   display: flex;
@@ -584,4 +692,320 @@ main,
 
 .ms-Nav-compositeLink {
   text-align: center !important;
+}
+
+/* ========================================
+   ENHANCED RESPONSIVE DESIGN
+   ======================================== */
+
+/* Large Desktop (1400px+) */
+@media (min-width: 1400px) {
+  .app-layout {
+    margin-right: 280px;
+  }
+
+  .side-nav,
+  .nav-panel {
+    width: 280px;
+  }
+
+  main,
+  .content {
+    padding: 32px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  .card {
+    padding: 24px;
+  }
+
+  .page-title {
+    font-size: 1.6rem;
+  }
+}
+
+/* Tablet Landscape (1024px - 1199px) */
+@media (max-width: 1199px) and (min-width: 1024px) {
+  .app-layout {
+    margin-right: 220px;
+  }
+
+  .side-nav,
+  .nav-panel {
+    width: 220px;
+  }
+
+  main,
+  .content {
+    padding: 20px;
+  }
+
+  .ms-DetailsList {
+    font-size: 12px !important;
+  }
+}
+
+/* Tablet Portrait (768px - 1023px) */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .app-layout {
+    margin-right: 200px;
+  }
+
+  .side-nav,
+  .nav-panel {
+    width: 200px;
+  }
+
+  main,
+  .content {
+    padding: 16px;
+  }
+
+  .page-title {
+    font-size: 1.3rem;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  .form-row {
+    gap: 12px;
+  }
+
+  .form-row > * {
+    min-width: 45%;
+  }
+
+  /* Smaller table fonts on tablet */
+  .ms-DetailsList {
+    font-size: 11px !important;
+  }
+
+  .ms-DetailsHeader-cellTitle {
+    font-size: 11px !important;
+  }
+
+  .ms-DetailsRow-cell {
+    font-size: 11px !important;
+    padding: 8px 6px !important;
+  }
+}
+
+/* Mobile Large (480px - 767px) */
+@media (max-width: 767px) and (min-width: 480px) {
+  .app-layout {
+    margin-right: 0;
+  }
+
+  .side-nav,
+  .nav-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    transform: translateX(100%);
+    width: 280px;
+  }
+
+  .side-nav.open,
+  .nav-panel.open {
+    transform: translateX(0);
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-overlay.open {
+    display: block;
+  }
+
+  main,
+  .content {
+    padding: 16px 12px 80px;
+  }
+
+  .page-title {
+    font-size: 1.15rem;
+  }
+
+  .card {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  .form-row > * {
+    min-width: 100%;
+  }
+
+  /* Horizontal scroll for tables on mobile */
+  .responsive-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ms-DetailsList {
+    min-width: 600px;
+    font-size: 11px !important;
+  }
+
+  .ms-Panel-main {
+    max-width: 100vw !important;
+    width: 100vw !important;
+  }
+}
+
+/* Mobile Small (< 480px) */
+@media (max-width: 479px) {
+  .app-layout {
+    margin-right: 0;
+  }
+
+  .side-nav,
+  .nav-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    transform: translateX(100%);
+    width: 100%;
+  }
+
+  .side-nav.open,
+  .nav-panel.open {
+    transform: translateX(0);
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    bottom: 16px;
+    left: 16px;
+  }
+
+  main,
+  .content {
+    padding: 12px 8px 72px;
+  }
+
+  .page-title {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+  }
+
+  .card {
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Full width panels on mobile */
+  .ms-Panel-main {
+    max-width: 100vw !important;
+    width: 100vw !important;
+  }
+
+  .ms-Dialog-main {
+    max-width: 98vw !important;
+    min-width: 98vw !important;
+    margin: 8px !important;
+  }
+
+  /* Stack buttons vertically */
+  .ms-Stack.horizontal {
+    flex-direction: column !important;
+  }
+
+  /* Compact table view */
+  .ms-DetailsList {
+    min-width: 500px;
+    font-size: 10px !important;
+  }
+
+  .ms-DetailsHeader-cellTitle {
+    font-size: 10px !important;
+  }
+
+  .ms-DetailsRow-cell {
+    font-size: 10px !important;
+    padding: 6px 4px !important;
+  }
+
+  /* Adjust icon button sizes */
+  .ms-Button--icon {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  /* Compact dropdowns */
+  .ms-Dropdown {
+    font-size: 13px;
+  }
+
+  .ms-TextField-field {
+    font-size: 14px;
+  }
+}
+
+/* Touch-friendly elements for all mobile */
+@media (max-width: 1023px) {
+  /* Larger touch targets */
+  .ms-Button {
+    min-height: 40px;
+  }
+
+  .ms-Nav-link {
+    min-height: 44px;
+    padding: 12px 16px !important;
+  }
+
+  .ms-Dropdown {
+    min-height: 40px;
+  }
+
+  .ms-TextField-field {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+
+  /* Improve scrolling */
+  .card {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Landscape mode on phones */
+@media (max-height: 500px) and (orientation: landscape) {
+  .side-nav,
+  .nav-panel {
+    width: 200px;
+  }
+
+  main,
+  .content {
+    padding: 8px 12px 60px;
+  }
+
+  .page-title {
+    font-size: 1rem;
+    margin-bottom: 8px;
+  }
+
+  .card {
+    padding: 8px;
+  }
 }

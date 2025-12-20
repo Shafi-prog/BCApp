@@ -1,0 +1,4 @@
+Title,Message,Priority,TargetAudience,TargetSchools,PublishDate,ExpiryDate,IsActive,CreatedBy,AttachmentUrl
+تحديث مهم في خطة الطوارئ,يرجى مراجعة التحديثات الجديدة في خطة استمرارية الأعمال والتأكد من تطبيقها,normal,all,[],2024-12-19T08:00:00Z,2025-01-19T23:59:59Z,Yes,Admin,https://example.com/plan.pdf
+تدريب إخلاء يوم الأربعاء,سيتم إجراء تدريب إخلاء الساعة 10 صباحاً. يرجى التحضير,urgent,specific,"[""مدرسة ابن خلدون الابتدائية"",""مدرسة الفارابي الثانوية""]",2024-12-20T08:00:00Z,,Yes,Admin,
+تحذير من عاصفة رملية,يُرجى اتخاذ إجراءات السلامة اللازمة وإغلاق النوافذ فوراً,critical,all,[],2024-12-19T06:00:00Z,2024-12-19T18:00:00Z,Yes,Admin,

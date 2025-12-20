@@ -508,16 +508,30 @@ const SchoolInfo: React.FC = () => {
 
           {schoolInfo.Latitude && schoolInfo.Longitude ? (
             <div>
-              <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #e1e1e1', height: '350px', position: 'relative' }}>
-                <iframe
-                  title="موقع المدرسة"
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  style={{ border: 0 }}
-                  src={`https://maps.google.com/maps?q=${schoolInfo.Latitude},${schoolInfo.Longitude}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
-                  allowFullScreen
-                />
+              <div
+                style={{
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  border: '1px solid #e1e1e1',
+                  height: '350px',
+                  backgroundColor: '#f3f2f1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '16px'
+                }}
+              >
+                <Icon iconName="World" style={{ fontSize: 64, color: '#0078d4' }} />
+                <Text variant="xLarge" style={{ color: '#323130', fontWeight: 600 }}>موقع المدرسة</Text>
+                <Text variant="large" style={{ color: '#605e5c', textAlign: 'center', maxWidth: '80%' }}>
+                  انقر على الأزرار أدناه لعرض الموقع على خرائط جوجل
+                </Text>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <Text variant="medium" style={{ color: '#605e5c' }}>
+                    <strong>الإحداثيات:</strong> {schoolInfo.Latitude}, {schoolInfo.Longitude}
+                  </Text>
+                </div>
               </div>
               <div style={{ marginTop: '12px', display: 'flex', gap: '12px' }}>
                 <a
