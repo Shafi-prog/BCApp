@@ -210,18 +210,37 @@ export const AnnouncementService = {
     }
   },
 
-  // Mark announcement as read (for tracking)
+  // Mark announcement as read (using localStorage for read tracking - non-sensitive data)
   async markAsRead(announcementId: number, schoolName: string): Promise<void> {
-    // TODO: Implement read tracking if needed
-    console.log(`[AnnouncementService] Marked announcement ${announcementId} as read by ${schoolName}`);
+    const key = `read_announcements_${schoolName}`;
+    try {
+      const readIds = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!readIds.includes(announcementId)) {
+        readIds.push(announcementId);
+        localStorage.setItem(key, JSON.stringify(readIds));
+      }
+      console.log(`[AnnouncementService] Marked announcement ${announcementId} as read by ${schoolName}`);
+    } catch (e) {
+      console.error('[AnnouncementService] Error marking as read:', e);
+    }
   },
 
   // Get unread count for a school
   async getUnreadCount(schoolName: string): Promise<number> {
     const announcements = await this.getAnnouncements(schoolName);
-    // TODO: Implement proper read tracking
-    // For now, return all active announcements count
-    return announcements.filter(a => a.isActive).length;
+    const key = `read_announcements_${schoolName}`;
+    try {
+      const readIds = JSON.parse(localStorage.getItem(key) || '[]');
+      // Count announcements that are active and NOT in the read list
+      const unreadAnnouncements = announcements.filter(a => 
+        a.isActive && !readIds.includes(a.id)
+      );
+      console.log(`[AnnouncementService] Unread count for ${schoolName}: ${unreadAnnouncements.length}`);
+      return unreadAnnouncements.length;
+    } catch (e) {
+      console.error('[AnnouncementService] Error getting unread count:', e);
+      return 0;
+    }
   }
 };
 

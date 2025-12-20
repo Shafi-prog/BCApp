@@ -5,12 +5,14 @@ import {
   MessageBar, MessageBarType, Spinner, Pivot, PivotItem, Toggle, DatePicker,
   IDropdownOption, Checkbox, ProgressIndicator, SearchBox, IconButton
 } from '@fluentui/react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, SchoolInfo, TeamMember, Drill, Incident, TrainingLog } from '../services/sharepointService'
 import { AdminDataService } from '../services/adminDataService'
 import { AnnouncementService, Announcement } from '../services/announcementService'
 import { mutualOperationPlan, SchoolAlternatives } from '../data/mutualOperation'
 import BCTasksDashboard from './BCTasksDashboard'
+import DrilsManagement from './DrilsManagement'
 import { getColumnConfig, ColumnType, renderDate } from '../config/tableConfig'
 import { sanitizeString, sanitizeHTML, isValidEmail, isValidSaudiPhone, isValidDate, formatSaudiPhone } from '../utils/security'
 
@@ -139,7 +141,12 @@ interface PlanReview {
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('duties')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  
+  // Get initial tab from URL parameter, default to 'tasks25'
+  const initialTab = searchParams.get('tab') || 'tasks25'
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{type: MessageBarType, text: string} | null>(null)
   
@@ -182,6 +189,14 @@ const AdminPanel: React.FC = () => {
     loadAllData()
     loadLocalData()
   }, [])
+
+  // Sync URL parameter with active tab
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams, activeTab])
 
   const loadAllData = async () => {
     setLoading(true)
@@ -709,7 +724,11 @@ const AdminPanel: React.FC = () => {
 
       {loading && <Spinner label="جاري التحميل..." />}
 
-      <Pivot selectedKey={activeTab} onLinkClick={(item) => setActiveTab(item?.props.itemKey || 'tasks25')}>
+      <Pivot selectedKey={activeTab} onLinkClick={(item) => {
+        const newTab = item?.props.itemKey || 'tasks25'
+        setActiveTab(newTab)
+        setSearchParams({ tab: newTab })
+      }}>
         {/* Tab 1: BC Tasks Dashboard - 25 Tasks (Main Dashboard) */}
         <PivotItem headerText="لوحة المهام الـ25" itemKey="tasks25" itemIcon="ViewDashboard">
           <BCTasksDashboard
@@ -1269,37 +1288,8 @@ const AdminPanel: React.FC = () => {
               </div>
             </div>
 
-            <Stack horizontal horizontalAlign="space-between" style={{ marginBottom: 16 }}>
-              <h3 style={{ margin: 0 }}>خطة التمارين الفرضية السنوية (4 تمارين لكل مدرسة)</h3>
-              <PrimaryButton text="إضافة تمرين مخطط" iconProps={{ iconName: 'Add' }} onClick={() => { setEditingTestPlan(null); setTestPlanPanelOpen(true) }} />
-            </Stack>
-            
-            {/* Yearly Plan Table */}
-            <div className="card">
-              <DetailsList
-                items={testPlans}
-                columns={[
-                  { ...getColumnConfig(ColumnType.MEDIUM_TEXT), key: 'title', name: 'عنوان التمرين', fieldName: 'title', onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.title}</div> },
-                  { ...getColumnConfig(ColumnType.MEDIUM_TEXT), key: 'hypothesis', name: 'الفرضية', fieldName: 'hypothesis', onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>{item.hypothesis}</div> },
-                  { ...getColumnConfig(ColumnType.SHORT_TEXT), key: 'targetGroup', name: 'الفئة المستهدفة', fieldName: 'targetGroup', onRender: (item: TestPlan) => <div style={{ textAlign: 'center', width: '100%' }}>{item.targetGroup}</div> },
-                  { ...getColumnConfig(ColumnType.DATE), key: 'startDate', name: 'من', fieldName: 'startDate', onRender: (item: TestPlan) => renderDate(item.startDate) },
-                  { ...getColumnConfig(ColumnType.DATE), key: 'endDate', name: 'إلى', fieldName: 'endDate', onRender: (item: TestPlan) => renderDate(item.endDate) },
-                  { ...getColumnConfig(ColumnType.STATUS), key: 'status', name: 'الحالة', fieldName: 'status', onRender: (item: TestPlan) => {
-                    const colors: any = { 'مخطط': '#ffb900', 'قيد التنفيذ': '#0078d4', 'مكتمل': '#107c10', 'مؤجل': '#d83b01' }
-                    return <div style={{ textAlign: 'center', width: '100%' }}><span style={{ color: colors[item.status] || '#666', fontWeight: 600 }}>{item.status}</span></div>
-                  }},
-                  { ...getColumnConfig(ColumnType.ACTIONS), key: 'actions', name: 'إجراءات', onRender: (item: TestPlan) => (
-                    <Stack horizontal tokens={{ childrenGap: 4 }} horizontalAlign="center">
-                      <IconButton iconProps={{ iconName: 'Edit' }} title="تعديل" onClick={() => { setEditingTestPlan(item); setTestPlanPanelOpen(true) }} styles={{ root: { color: '#0078d4' } }} />
-                      <IconButton iconProps={{ iconName: 'Delete' }} title="حذف" onClick={() => saveTestPlans(testPlans.filter(t => t.id !== item.id))} styles={{ root: { color: '#d83b01' } }} />
-                    </Stack>
-                  )}
-                ]}
-                layoutMode={DetailsListLayoutMode.justified}
-                selectionMode={SelectionMode.none}
-              />
-              {testPlans.length === 0 && <div style={{ padding: 20, textAlign: 'center', color: '#666' }}>لا توجد تمارين مخططة - أضف الخطة السنوية للتمارين</div>}
-            </div>
+            {/* Drills Management Component */}
+            <DrilsManagement />
 
             {/* Schools Progress */}
             <div className="card" style={{ marginTop: 20 }}>
@@ -1322,7 +1312,7 @@ const AdminPanel: React.FC = () => {
                 ]}
                 layoutMode={DetailsListLayoutMode.justified}
                 selectionMode={SelectionMode.none}
-                styles={{ root: { maxHeight: 300, overflowY: 'auto' } }}
+                styles={{ root: { maxHeight: 600, overflowY: 'auto' } }}
               />
             </div>
           </div>

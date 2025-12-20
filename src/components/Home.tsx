@@ -494,14 +494,14 @@ const Home: React.FC = () => {
       icon: 'CheckList',
       color: '#107c10',
       route: '/drills',
-      description: 'تسجيل تمرين إخلاء أو طوارئ',
+      description: 'تسجيل تمرين انقطاع العملية التعليمية',
     },
     {
-      title: 'الإبلاغ عن حادث',
+      title: 'الإبلاغ عن انقطاع',
       icon: 'ShieldAlert',
       color: '#d83b01',
       route: '/incidents',
-      description: 'الإبلاغ عن حادث أو طارئ',
+      description: 'الإبلاغ عن انقطاع في العملية التعليمية',
     },
   ]
 

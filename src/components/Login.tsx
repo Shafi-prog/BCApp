@@ -25,20 +25,16 @@ interface SchoolInfo {
 }
 
 const LoginIllustration: React.FC = () => (
-  <svg viewBox="0 0 400 300" style={{ width: '100%', height: 'auto', maxWidth: '350px' }}>
-    <rect x="50" y="50" width="300" height="200" rx="10" fill="#e8f8ef" />
-    <rect x="120" y="100" width="160" height="130" fill="#008752" rx="5" />
-    <rect x="140" y="120" width="40" height="50" fill="#fff" rx="2" />
-    <rect x="220" y="120" width="40" height="50" fill="#fff" rx="2" />
-    <rect x="170" y="180" width="60" height="50" fill="#fff" rx="2" />
-    <polygon points="100,100 200,50 300,100" fill="#005f3b" />
-    <rect x="195" y="30" width="4" height="25" fill="#333" />
-    <rect x="199" y="30" width="25" height="15" fill="#008752" />
-    <circle cx="90" cy="200" r="15" fill="#008752" />
-    <rect x="80" y="220" width="20" height="25" rx="5" fill="#008752" />
-    <circle cx="310" cy="200" r="15" fill="#107c10" />
-    <rect x="300" y="220" width="20" height="25" rx="5" fill="#107c10" />
-  </svg>
+  <img 
+    src="https://cdn-icons-png.flaticon.com/512/4436/4436481.png" 
+    alt="Account Verification" 
+    style={{ 
+      width: '100%', 
+      height: 'auto', 
+      maxWidth: '350px',
+      objectFit: 'contain'
+    }} 
+  />
 )
 
 const Login: React.FC = () => {
@@ -217,10 +213,10 @@ const Login: React.FC = () => {
         >
           <LoginIllustration />
           <Text variant="xLarge" style={{ marginTop: '24px', color: '#008752', textAlign: 'center' }}>
-            <strong>نظام متابعة استمرارية العملية التعليمية</strong>
+            <strong>قواعد بيانات متابعة استمرارية العملية التعليمية</strong>
           </Text>
           <Text variant="medium" style={{ marginTop: '12px', color: '#666', textAlign: 'center' }}>
-            وزارة التعليم - المملكة العربية السعودية
+            الإدارة العامة للتعليم بمنطقة المدينة المنورة
           </Text>
         </div>
 

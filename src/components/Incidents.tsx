@@ -17,86 +17,32 @@ import {
   PanelType,
   IDropdownOption,
   Toggle,
+  ComboBox,
+  IComboBoxOption,
 } from '@fluentui/react'
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, Incident } from '../services/sharepointService'
+import { AdminDataService } from '../services/adminDataService'
 import { SBC_Incidents_LogService } from '../generated/services/SBC_Incidents_LogService'
 import { getColumnConfig, ColumnType, renderDate } from '../config/tableConfig'
+import { allRiskLevels, categoryToRiskLevelMapping, getAlertTypeForRiskLevel } from '../config/incidentConfig'
 
-// Full risk level list grouped by incident category
-const allRiskLevels = [
-  // Group 1: تعطل البنية التحتية (indices 0-2, 3 items)
-  'تعذر استخدام المبنى المدرسي ليوم واحد',
-  'تعذر استخدام المبنى المدرسي لأكثر من يوم واحد إلى 3 أيام',
-  'تعذر استخدام المبنى المدرسي لأكثر من ثلاثة أيام إلى شهر',
-  // Group 2: نقص الموارد البشرية (indices 3-6, 4 items)
-  'غياب أقل من 30% من المعلمين',
-  'غياب أكثر من 30% من المعلمين',
-  'غياب أكثر من 60% من المعلمين',
-  'غياب كافة المعلمين',
-  // Group 3: تعطل الأنظمة/المنصات التعليمية (indices 7-10, 4 items)
-  'تعطل الأنظمة لا يزيد عن 8 ساعات',
-  'تعطل الأنظمة أكثر من 8 ساعات إلى خمسة أيام',
-  'تعطل الأنظمة أكثر من خمسة أيام',
-  'تعطل الأنظمة أكثر من أسبوعين',
-  // Group 4: تعطل البث التلفزيوني (indices 11-14, 4 items) - same as systems
-  'تعطل الأنظمة لا يزيد عن 8 ساعات',
-  'تعطل الأنظمة أكثر من 8 ساعات إلى خمسة أيام',
-  'تعطل الأنظمة أكثر من خمسة أيام',
-  'تعطل الأنظمة أكثر من أسبوعين',
-  // Group 5: اضطراب أمني (indices 15-18, 4 items)
-  'اضطراب أمني خارج حدود المدرسة يؤثر على استمرار التعليم بالمدرسة ليوم أو أقل',
-  'اضطراب أمني يؤثر على استمرار التعليم بالمدرسة لأكثر من يوم إلى 3 أيام',
-  'اضطراب أمني يؤثر على استمرار التعليم بالمدرسة لأكثر من ثلاثة أيام إلى أسبوعين',
-  'اضطراب أمني يؤثر على استمرار التعليم بالمدرسة لأكثر من أسبوعين',
-  // Group 6: فقدان الاتصالات/الإنترنت (indices 19-22, 4 items)
-  'انقطاع الاتصالات ليومين أو أقل',
-  'انقطاع الاتصالات أكثر من يومين إلى خمسة أيام',
-  'انقطاع الاتصالات أكثر من خمسة أيام إلى أسبوعين',
-  'انقطاع الاتصالات أكثر من أسبوعين',
-]
-
-// Mapping of incident category to risk level indices
-const categoryToRiskLevelMapping: { [key: string]: { start: number; count: number } } = {
-  'تعطل البنية التحتية': { start: 0, count: 3 },
-  'نقص الموارد البشرية': { start: 3, count: 4 },
-  'تعطل الأنظمة/المنصات التعليمية': { start: 7, count: 4 },
-  'تعطل البث التلفزيوني': { start: 11, count: 4 },
-  'اضطراب أمني': { start: 15, count: 4 },
-  'فقدان الاتصالات/الإنترنت': { start: 19, count: 4 },
-}
-
-// Alert type constants
-const ALERT_GREEN = '1. أخضر (نموذج رصد ومراقبة)'
-const ALERT_YELLOW = '2. أصفر (نموذج تحذير)'
-const ALERT_RED = '3. أحمر (نموذج إنذار)'
-
-// Function to get alert type based on risk level position within its group
-const getAlertTypeForRiskLevel = (riskLevel: string, category: string): string => {
-  const mapping = categoryToRiskLevelMapping[category]
-  if (!mapping) return ''
-  
-  const groupRiskLevels = allRiskLevels.slice(mapping.start, mapping.start + mapping.count)
-  const positionInGroup = groupRiskLevels.indexOf(riskLevel)
-  
-  if (positionInGroup === -1) return ''
-  
-  // For 3-item groups (تعطل البنية التحتية)
-  if (mapping.count === 3) {
-    if (positionInGroup === 0) return ALERT_GREEN
-    if (positionInGroup === 1) return ALERT_YELLOW
-    if (positionInGroup === 2) return ALERT_RED
-  }
-  
-  // For 4-item groups
-  if (mapping.count === 4) {
-    if (positionInGroup === 0) return ALERT_GREEN
-    if (positionInGroup === 1 || positionInGroup === 2) return ALERT_YELLOW
-    if (positionInGroup === 3) return ALERT_RED
-  }
-  
-  return ''
-}
+/**
+ * All dropdown options for incident management are now loaded dynamically from SharePoint
+ * This ensures cyber compliance - no hardcoded data in the app
+ * 
+ * Form Phases (matching SharePoint columns):
+ * Phase 1 - During Incident:
+ *   - Title, IncidentCategory, RiskLevel, AlertModelType, ActivationTime
+ *   - HazardDescription, ActivatedAlternative, AltLocation (conditional)
+ *   - CoordinatedEntities (multi-select), ActionTaken, CommunicationDone
+ * 
+ * Phase 2 - After First Phase:
+ *   - ClosureTime
+ * 
+ * Phase 3 - Learning:
+ *   - Challenges, LessonsLearned, Suggestions, IncidentNumber
+ */
 
 const Incidents: React.FC = () => {
   const { user } = useAuth()
@@ -114,8 +60,11 @@ const Incidents: React.FC = () => {
   const [activatedAlternativeOptions, setActivatedAlternativeOptions] = useState<IDropdownOption[]>([])
   const [coordinatedEntitiesOptions, setCoordinatedEntitiesOptions] = useState<IDropdownOption[]>([])
   const [actionTakenOptions, setActionTakenOptions] = useState<IDropdownOption[]>([])
-  const [altLocationOptions, setAltLocationOptions] = useState<IDropdownOption[]>([])
-  const [schoolOptions, setSchoolOptions] = useState<IDropdownOption[]>([])
+  const [altLocationOptions, setAltLocationOptions] = useState<IComboBoxOption[]>([])
+  const [mutualSchools, setMutualSchools] = useState<string[]>([])
+  
+  // Multi-select state for CoordinatedEntities
+  const [selectedEntities, setSelectedEntities] = useState<string[]>([])
   
   const [form, setForm] = useState<Partial<Incident>>({
     Title: '',
@@ -126,7 +75,6 @@ const Incidents: React.FC = () => {
     AlertModelType: '',
     HazardDescription: '',
     CoordinatedEntities: '',
-    IncidentNumber: '',
     ActionTaken: '',
     AltLocation: '',
     CommunicationDone: false,
@@ -134,6 +82,7 @@ const Incidents: React.FC = () => {
     Challenges: '',
     LessonsLearned: '',
     Suggestions: '',
+    IncidentNumber: undefined,
   })
 
   // Helper function to convert SharePoint response to dropdown options
@@ -189,32 +138,38 @@ const Incidents: React.FC = () => {
       processField('ActivatedAlternative', activatedAlternativeRes, setActivatedAlternativeOptions)
       processField('CoordinatedEntities', coordinatedEntitiesRes, setCoordinatedEntitiesOptions)
       processField('ActionTaken', actionTakenRes, setActionTakenOptions)
-      processField('AltLocation', altLocationRes, setAltLocationOptions)
       
-      // Load schools for AltLocation dropdown (when "مدرسة بديلة" is selected)
-      try {
-        const schools = await SharePointService.getSchoolInfo()
-        const schoolOpts: IDropdownOption[] = schools.map(s => ({
-          key: s.SchoolName,
-          text: s.SchoolName,
-        }))
-        setSchoolOptions(schoolOpts)
-        console.log(`Loaded ${schoolOpts.length} schools for AltLocation dropdown`)
-      } catch (schoolError) {
-        console.error('Error loading schools for AltLocation:', schoolError)
+      // Process AltLocation as ComboBox options
+      if (altLocationRes.data) {
+        const opts = toDropdownOptions((altLocationRes.data as any)?.value)
+        if (opts.length > 0) {
+          setAltLocationOptions(opts.map(o => ({ key: o.key, text: o.text })))
+        }
       }
       
-      console.log('Dropdown options loaded successfully')
+      // Load mutual operation schools for current school
+      if (user?.schoolName) {
+        try {
+          const mutualOps = await AdminDataService.getMutualOperations()
+          const schoolMutualSchools = mutualOps
+            .filter(op => op.sourceSchool === user.schoolName)
+            .map(op => op.school)
+          setMutualSchools(schoolMutualSchools)
+          console.log(`[Incidents] Loaded ${schoolMutualSchools.length} mutual schools for ${user.schoolName}`)
+        } catch (e) {
+          console.error('[Incidents] Error loading mutual schools:', e)
+        }
+      }
+      
+      console.log('Dropdown options loaded successfully from SharePoint')
     } catch (error) {
-      console.error('Error loading dropdown options:', error)
-      // Fallback to hardcoded options from SharePointService
-      setIncidentCategoryOptions(SharePointService.getIncidentCategoryOptions())
-      setRiskLevelOptions(SharePointService.getRiskLevelOptions())
-      setAlertModelTypeOptions(SharePointService.getAlertModelTypeOptions())
-      setActivatedAlternativeOptions(SharePointService.getActivatedAlternativeOptions())
-      setCoordinatedEntitiesOptions(SharePointService.getCoordinatedEntitiesOptions())
-      setActionTakenOptions(SharePointService.getActionTakenOptions())
-      setAltLocationOptions(SharePointService.getAltLocationOptions())
+      console.error('Error loading dropdown options from SharePoint:', error)
+      // No fallback - all data must come from SharePoint for cyber compliance
+      // If SharePoint is unavailable, the app will show empty dropdowns and error message
+      setMessage({
+        type: MessageBarType.error,
+        text: 'خطأ في الاتصال بـ SharePoint - تعذر تحميل خيارات الإنشاء'
+      })
     }
   }
 
@@ -256,15 +211,6 @@ const Incidents: React.FC = () => {
         <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
           {item.Title}
         </div>
-      ),
-    },
-    { 
-      ...getColumnConfig(ColumnType.NUMBER),
-      key: 'IncidentNumber', 
-      name: 'رقم البلاغ', 
-      fieldName: 'IncidentNumber', 
-      onRender: (item: Incident) => (
-        <div style={{ textAlign: 'center', width: '100%' }}>{item.IncidentNumber}</div>
       ),
     },
     { 
@@ -412,6 +358,7 @@ const Incidents: React.FC = () => {
   const onOpen = () => {
     setEditingId(null)
     setFilteredRiskLevelOptions([]) // Clear filtered options for new form
+    setSelectedEntities([]) // Clear multi-select
     setForm({
       Title: '',
       IncidentCategory: '',
@@ -421,7 +368,6 @@ const Incidents: React.FC = () => {
       AlertModelType: '',
       HazardDescription: '',
       CoordinatedEntities: '',
-      IncidentNumber: '',
       ActionTaken: '',
       AltLocation: '',
       CommunicationDone: false,
@@ -429,6 +375,7 @@ const Incidents: React.FC = () => {
       Challenges: '',
       LessonsLearned: '',
       Suggestions: '',
+      IncidentNumber: undefined,
     })
     setPanelOpen(true)
   }
@@ -436,6 +383,12 @@ const Incidents: React.FC = () => {
   const onEdit = (item: Incident) => {
     setEditingId(item.Id!)
     setForm({ ...item })
+    // Set selected entities for multi-select
+    if (item.CoordinatedEntities) {
+      setSelectedEntities(item.CoordinatedEntities.split(',').map(e => e.trim()))
+    } else {
+      setSelectedEntities([])
+    }
     // Set filtered risk levels based on the item's category
     const mapping = categoryToRiskLevelMapping[item.IncidentCategory || '']
     if (mapping) {
@@ -457,9 +410,53 @@ const Incidents: React.FC = () => {
   }
 
   const onSave = async () => {
-    if (!form.Title || !form.IncidentCategory || !form.RiskLevel || !form.IncidentNumber) {
-      setMessage({ type: MessageBarType.warning, text: 'يرجى ملء جميع الحقول المطلوبة (العنوان، تصنيف الحادث، مستوى الخطر، رقم بلاغ الدعم الموحد)' })
+    // Phase 1 Required Fields Validation
+    if (!form.Title) {
+      setMessage({ type: MessageBarType.warning, text: 'يرجى إدخال العنوان' })
       return
+    }
+    if (!form.IncidentCategory) {
+      setMessage({ type: MessageBarType.warning, text: 'يرجى اختيار تصنيف الحادث' })
+      return
+    }
+    if (!form.RiskLevel) {
+      setMessage({ type: MessageBarType.warning, text: 'يرجى اختيار مستوى الخطر' })
+      return
+    }
+    if (!form.ActivatedAlternative) {
+      setMessage({ type: MessageBarType.warning, text: 'يرجى اختيار البديل المفعل' })
+      return
+    }
+    // Conditional: If alternative requires location, validate it
+    if (form.ActivatedAlternative === 'نقل العملية التعليمية إلى مدرسة مجاورة' && !form.AltLocation) {
+      setMessage({ type: MessageBarType.warning, text: 'يرجى اختيار الموقع البديل (المدرسة المجاورة)' })
+      return
+    }
+    if (!form.ActivationTime) {
+      setMessage({ type: MessageBarType.warning, text: 'يرجى إدخال تاريخ التفعيل' })
+      return
+    }
+    if (!form.HazardDescription) {
+      setMessage({ type: MessageBarType.warning, text: 'يرجى إدخال وصف الخطر' })
+      return
+    }
+    if (selectedEntities.length === 0) {
+      setMessage({ type: MessageBarType.warning, text: 'يرجى اختيار الجهات المنسق معها (جهة واحدة على الأقل)' })
+      return
+    }
+    if (!form.ActionTaken) {
+      setMessage({ type: MessageBarType.warning, text: 'يرجى اختيار الإجراء المتخذ' })
+      return
+    }
+    
+    // Date validation: ClosureTime cannot be before ActivationTime
+    if (form.ClosureTime && form.ActivationTime) {
+      const activationDate = new Date(form.ActivationTime)
+      const closureDate = new Date(form.ClosureTime)
+      if (closureDate < activationDate) {
+        setMessage({ type: MessageBarType.error, text: 'تاريخ استعادة الخدمة لا يمكن أن يكون قبل تاريخ التفعيل' })
+        return
+      }
     }
 
     setLoading(true)
@@ -468,6 +465,7 @@ const Incidents: React.FC = () => {
         ...form,
         Title: form.Title!,
         SchoolName_Ref: user?.schoolName,
+        CoordinatedEntities: selectedEntities.join(', '), // Convert array to comma-separated string
       }
 
       if (editingId) {
@@ -479,8 +477,10 @@ const Incidents: React.FC = () => {
       }
       await loadIncidents()
       onClose()
-    } catch (e) {
-      setMessage({ type: MessageBarType.error, text: `فشل الحفظ: ${e}` })
+    } catch (e: any) {
+      const errorMessage = e?.message || (typeof e === 'string' ? e : JSON.stringify(e))
+      console.error('[Incidents] Save error:', e)
+      setMessage({ type: MessageBarType.error, text: `فشل الحفظ: ${errorMessage}` })
     } finally {
       setLoading(false)
     }
@@ -494,8 +494,10 @@ const Incidents: React.FC = () => {
       await SharePointService.deleteIncident(id)
       setMessage({ type: MessageBarType.success, text: 'تم حذف الحادث بنجاح' })
       await loadIncidents()
-    } catch (e) {
-      setMessage({ type: MessageBarType.error, text: `فشل الحذف: ${e}` })
+    } catch (e: any) {
+      const errorMessage = e?.message || (typeof e === 'string' ? e : JSON.stringify(e))
+      console.error('[Incidents] Delete error:', e)
+      setMessage({ type: MessageBarType.error, text: `فشل الحذف: ${errorMessage}` })
     } finally {
       setLoading(false)
     }
@@ -558,226 +560,280 @@ const Incidents: React.FC = () => {
         )}
       >
         <div style={{ padding: 16 }}>
-          {/* 1. Title - العنوان */}
-          <TextField
-            label="العنوان *"
-            value={form.Title || ''}
-            onChange={(_, v) => setForm({ ...form, Title: v || '' })}
-            required
-            placeholder="أدخل عنوان الانقطاع"
-          />
-          
-          {/* 2. IncidentCategory - تصنيف الحادث */}
-          <Dropdown
-            label="تصنيف الحادث *"
-            selectedKey={form.IncidentCategory}
-            options={incidentCategoryOptions}
-            onChange={(_, option) => {
-              const category = option?.key as string || ''
-              // Filter risk levels based on selected category
-              const mapping = categoryToRiskLevelMapping[category]
-              if (mapping) {
-                const filteredLevels = allRiskLevels.slice(mapping.start, mapping.start + mapping.count)
-                const filteredOpts: IDropdownOption[] = filteredLevels.map(level => ({
-                  key: level,
-                  text: level,
-                }))
-                setFilteredRiskLevelOptions(filteredOpts)
-              } else {
-                // If category not in mapping, show all risk levels
-                setFilteredRiskLevelOptions(riskLevelOptions)
-              }
-              // Clear RiskLevel and AlertModelType when category changes
-              setForm({ ...form, IncidentCategory: category, RiskLevel: '', AlertModelType: '' })
-            }}
-            required
-            styles={{ root: { marginTop: 12 } }}
-          />
-          
-          {/* 3. المدارس البديلة (تظهر عند اختيار إجراء تشغيل بديل) */}
-          {(form.ActionTaken === 'التشغيل المتبادل' || form.ActionTaken === 'التشغيل المبتادل مقر بديل') && (
-            <div style={{ 
-              backgroundColor: '#f0f9ff', 
-              padding: 16, 
-              borderRadius: 8, 
-              marginTop: 12,
-              border: '1px solid #0078d4' 
-            }}>
-              <h4 style={{ margin: '0 0 12px 0', color: '#0078d4' }}>🏫 البديل المفعل - اختيار المدرسة البديلة من بيانات SchoolInfo</h4>
-              <Dropdown
-                label="البديل المفعل (المدرسة البديلة)"
-                selectedKey={form.AltLocation}
-                options={schoolOptions}
-                onChange={(_, option) => {
-                  const altSchool = option?.key as string || ''
-                  setForm({ 
-                    ...form, 
-                    AltLocation: altSchool,
-                    // نحفظ البديل المفعل كـ "مدرسة بديلة" للتوافق مع SharePoint
-                    ActivatedAlternative: altSchool ? 'مدرسة بديلة' : ''
-                  })
-                }}
-                placeholder="اختر المدرسة البديلة"
-                styles={{ root: { marginTop: 12 } }}
-              />
+          {/* ========== المرحلة الأولى: أثناء الحادث ========== */}
+          <div style={{ 
+            backgroundColor: '#fff4e5', 
+            border: '2px solid #d83b01', 
+            borderRadius: 8, 
+            padding: 16, 
+            marginBottom: 20 
+          }}>
+            <h3 style={{ color: '#d83b01', margin: '0 0 16px 0', borderBottom: '1px solid #d83b01', paddingBottom: 8 }}>
+              🔴 المرحلة الأولى: أثناء الحادث
+            </h3>
+            
+            {/* 1. Title - العنوان */}
+            <TextField
+              label="العنوان *"
+              value={form.Title || ''}
+              onChange={(_, v) => setForm({ ...form, Title: v || '' })}
+              required
+              placeholder="أدخل عنوان الانقطاع"
+            />
+            
+            {/* 2. IncidentNumber - رقم بلاغ الدعم الموحد */}
+            <TextField
+              label="رقم بلاغ الدعم الموحد"
+              type="number"
+              value={form.IncidentNumber?.toString() || ''}
+              onChange={(_, v) => setForm({ ...form, IncidentNumber: v ? parseInt(v) : undefined })}
+              styles={{ root: { marginTop: 12 } }}
+              placeholder="أدخل رقم البلاغ"
+            />
+            
+            {/* 3. IncidentCategory - تصنيف الحادث */}
+            <Dropdown
+              label="تصنيف الحادث *"
+              selectedKey={form.IncidentCategory || undefined}
+              options={incidentCategoryOptions}
+              placeholder={incidentCategoryOptions.length === 0 ? "جاري التحميل..." : "اختر تصنيف الحادث"}
+              disabled={incidentCategoryOptions.length === 0}
+              onChange={(_, option) => {
+                const category = option?.key as string || ''
+                const mapping = categoryToRiskLevelMapping[category]
+                if (mapping) {
+                  const filteredLevels = allRiskLevels.slice(mapping.start, mapping.start + mapping.count)
+                  const filteredOpts: IDropdownOption[] = filteredLevels.map(level => ({
+                    key: level,
+                    text: level,
+                  }))
+                  setFilteredRiskLevelOptions(filteredOpts)
+                } else {
+                  setFilteredRiskLevelOptions(riskLevelOptions)
+                }
+                setForm({ ...form, IncidentCategory: category, RiskLevel: '', AlertModelType: '' })
+              }}
+              required
+              styles={{ root: { marginTop: 12 } }}
+            />
+            
+            {/* 3. ActivatedAlternative - البديل المفعل */}
+            <Dropdown
+              label="البديل المفعل *"
+              selectedKey={form.ActivatedAlternative}
+              options={activatedAlternativeOptions}
+              onChange={(_, option) => {
+                const alt = option?.key as string || ''
+                setForm({ 
+                  ...form, 
+                  ActivatedAlternative: alt,
+                  // Clear AltLocation if different alternative selected
+                  AltLocation: alt === 'نقل العملية التعليمية إلى مدرسة مجاورة' ? form.AltLocation : ''
+                })
+              }}
+              required
+              styles={{ root: { marginTop: 12 } }}
+              placeholder="اختر البديل المفعل"
+            />
+            
+            {/* 4. AltLocation - الموقع البديل (Conditional - only when نقل العملية التعليمية إلى مدرسة مجاورة) */}
+            {form.ActivatedAlternative === 'نقل العملية التعليمية إلى مدرسة مجاورة' && (
+              <div style={{ 
+                backgroundColor: '#f0f9ff', 
+                padding: 12, 
+                borderRadius: 8, 
+                marginTop: 12,
+                border: '1px solid #0078d4' 
+              }}>
+                <ComboBox
+                  label="🏢 الموقع البديل (المدرسة المجاورة) *"
+                  selectedKey={form.AltLocation}
+                  options={[
+                    // Show mutual schools at top with star prefix
+                    ...mutualSchools.map(school => ({
+                      key: school,
+                      text: `⭐ ${school} (مدرسة متبادلة)`,
+                    })),
+                    // Then show all other locations
+                    ...altLocationOptions.filter(opt => !mutualSchools.includes(opt.key as string))
+                  ]}
+                  onChange={(_, option) => setForm({ ...form, AltLocation: option?.key as string || '' })}
+                  allowFreeform
+                  autoComplete="on"
+                  placeholder="ابحث أو اختر المدرسة البديلة"
+                  styles={{ root: { marginTop: 8 } }}
+                />
+                {mutualSchools.length > 0 && (
+                  <div style={{ fontSize: 12, color: '#0078d4', marginTop: 4 }}>
+                    ⭐ المدارس المتبادلة تظهر في الأعلى
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* 5. RiskLevel - مستوى الخطر */}
+            <Dropdown
+              label="مستوى الخطر *"
+              selectedKey={form.RiskLevel}
+              options={filteredRiskLevelOptions.length > 0 ? filteredRiskLevelOptions : riskLevelOptions}
+              onChange={(_, option) => {
+                const riskLevel = option?.key as string || ''
+                const alertType = getAlertTypeForRiskLevel(riskLevel, form.IncidentCategory || '')
+                setForm({ ...form, RiskLevel: riskLevel, AlertModelType: alertType })
+              }}
+              required
+              styles={{ root: { marginTop: 12 } }}
+              disabled={!form.IncidentCategory}
+              placeholder={!form.IncidentCategory ? 'اختر تصنيف الحادث أولاً' : 'اختر مستوى الخطر'}
+            />
+            
+            {/* 6. ActivationTime - وقت التفعيل */}
+            <TextField
+              label="تاريخ التفعيل *"
+              type="date"
+              value={form.ActivationTime ? form.ActivationTime.split('T')[0] : ''}
+              onChange={(_, v) => setForm({ ...form, ActivationTime: v || '' })}
+              required
+              styles={{ root: { marginTop: 12 } }}
+            />
+            
+            {/* 7. AlertModelType - نوع التنبيه (auto-calculated) */}
+            <div style={{ marginTop: 12 }}>
+              <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>نوع التنبيه</label>
+              <div style={{ 
+                padding: '8px 12px', 
+                borderRadius: 4, 
+                backgroundColor: form.AlertModelType?.includes('أخضر') ? '#dff6dd' : 
+                                 form.AlertModelType?.includes('أصفر') ? '#fff4ce' : 
+                                 form.AlertModelType?.includes('أحمر') ? '#fde7e9' : '#f3f2f1',
+                border: `1px solid ${form.AlertModelType?.includes('أخضر') ? '#107c10' : 
+                                     form.AlertModelType?.includes('أصفر') ? '#ffb900' : 
+                                     form.AlertModelType?.includes('أحمر') ? '#d83b01' : '#c8c6c4'}`,
+                color: form.AlertModelType?.includes('أخضر') ? '#107c10' : 
+                       form.AlertModelType?.includes('أصفر') ? '#835c00' : 
+                       form.AlertModelType?.includes('أحمر') ? '#a4262c' : '#605e5c',
+                fontWeight: 600,
+                minHeight: 32,
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                {form.AlertModelType || 'يتم تحديده تلقائياً بناءً على مستوى الخطر'}
+              </div>
             </div>
-          )}
-          
-          {/* 4. RiskLevel - مستوى الخطر */}
-          <Dropdown
-            label="مستوى الخطر *"
-            selectedKey={form.RiskLevel}
-            options={filteredRiskLevelOptions.length > 0 ? filteredRiskLevelOptions : riskLevelOptions}
-            onChange={(_, option) => {
-              const riskLevel = option?.key as string || ''
-              // Auto-select AlertModelType based on RiskLevel and Category
-              const alertType = getAlertTypeForRiskLevel(riskLevel, form.IncidentCategory || '')
-              setForm({ ...form, RiskLevel: riskLevel, AlertModelType: alertType })
-            }}
-            required
-            styles={{ root: { marginTop: 12 } }}
-            disabled={!form.IncidentCategory}
-            placeholder={!form.IncidentCategory ? 'اختر تصنيف الحادث أولاً' : 'اختر مستوى الخطر'}
-          />
-          
-          {/* 5. ActivationTime - وقت التفعيل */}
-          <TextField
-            label="تاريخ التفعيل"
-            type="date"
-            value={form.ActivationTime ? form.ActivationTime.split('T')[0] : ''}
-            onChange={(_, v) => setForm({ ...form, ActivationTime: v || '' })}
-            styles={{ root: { marginTop: 12 } }}
-          />
-          
-          {/* 6. AlertModelType - نوع التنبيه (auto-calculated, view only) */}
-          <div style={{ marginTop: 12 }}>
-            <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>نوع التنبيه</label>
-            <div style={{ 
-              padding: '8px 12px', 
-              borderRadius: 4, 
-              backgroundColor: form.AlertModelType?.includes('أخضر') ? '#dff6dd' : 
-                               form.AlertModelType?.includes('أصفر') ? '#fff4ce' : 
-                               form.AlertModelType?.includes('أحمر') ? '#fde7e9' : '#f3f2f1',
-              border: `1px solid ${form.AlertModelType?.includes('أخضر') ? '#107c10' : 
-                                   form.AlertModelType?.includes('أصفر') ? '#ffb900' : 
-                                   form.AlertModelType?.includes('أحمر') ? '#d83b01' : '#c8c6c4'}`,
-              color: form.AlertModelType?.includes('أخضر') ? '#107c10' : 
-                     form.AlertModelType?.includes('أصفر') ? '#835c00' : 
-                     form.AlertModelType?.includes('أحمر') ? '#a4262c' : '#605e5c',
-              fontWeight: 600,
-              minHeight: 32,
-              display: 'flex',
-              alignItems: 'center'
-            }}>
-              {form.AlertModelType || 'يتم تحديده تلقائياً بناءً على مستوى الخطر'}
-            </div>
+            
+            {/* 8. HazardDescription - وصف الخطر */}
+            <TextField
+              label="وصف الخطر *"
+              value={form.HazardDescription || ''}
+              onChange={(_, v) => setForm({ ...form, HazardDescription: v || '' })}
+              multiline
+              rows={3}
+              required
+              styles={{ root: { marginTop: 12 } }}
+            />
+            
+            {/* 9. CoordinatedEntities - الجهات المنسق معها (Multi-Select) */}
+            <Dropdown
+              label="الجهات المنسق معها *"
+              selectedKeys={selectedEntities}
+              options={coordinatedEntitiesOptions}
+              onChange={(_, option) => {
+                if (option) {
+                  const key = option.key as string
+                  if (option.selected) {
+                    setSelectedEntities([...selectedEntities, key])
+                  } else {
+                    setSelectedEntities(selectedEntities.filter(e => e !== key))
+                  }
+                }
+              }}
+              multiSelect
+              required
+              styles={{ root: { marginTop: 12 } }}
+              placeholder="اختر الجهات المنسق معها (يمكن اختيار أكثر من جهة)"
+            />
+            
+            {/* 10. ActionTaken - الإجراء المتخذ */}
+            <Dropdown
+              label="الإجراء المتخذ *"
+              selectedKey={form.ActionTaken}
+              options={actionTakenOptions}
+              onChange={(_, option) => setForm({ ...form, ActionTaken: option?.key as string || '' })}
+              required
+              styles={{ root: { marginTop: 12 } }}
+              placeholder="اختر الإجراء المتخذ"
+            />
+            
+            {/* 11. CommunicationDone - التواصل مع أولياء الأمور */}
+            <Toggle
+              label="التواصل مع أولياء الأمور"
+              checked={form.CommunicationDone || false}
+              onChange={(_, checked) => setForm({ ...form, CommunicationDone: checked || false })}
+              styles={{ root: { marginTop: 12 } }}
+            />
           </div>
           
-          {/* 7. HazardDescription - وصف الخطر */}
-          <TextField
-            label="وصف الخطر"
-            value={form.HazardDescription || ''}
-            onChange={(_, v) => setForm({ ...form, HazardDescription: v || '' })}
-            multiline
-            rows={3}
-            styles={{ root: { marginTop: 12 } }}
-          />
+          {/* ========== المرحلة الثانية: بعد المرحلة الأولى ========== */}
+          <div style={{ 
+            backgroundColor: '#e6f7ff', 
+            border: '2px solid #0078d4', 
+            borderRadius: 8, 
+            padding: 16, 
+            marginBottom: 20 
+          }}>
+            <h3 style={{ color: '#0078d4', margin: '0 0 16px 0', borderBottom: '1px solid #0078d4', paddingBottom: 8 }}>
+              🔵 المرحلة الثانية: بعد المرحلة الأولى
+            </h3>
+            
+            {/* 12. ClosureTime - وقت استعادة الخدمة */}
+            <TextField
+              label="تاريخ استعادة الخدمة"
+              type="date"
+              value={form.ClosureTime ? form.ClosureTime.split('T')[0] : ''}
+              onChange={(_, v) => setForm({ ...form, ClosureTime: v || '' })}
+            />
+          </div>
           
-          {/* 8. CoordinatedEntities - الجهات التي تم تنسيقها */}
-          <Dropdown
-            label="الجهات التي تم تنسيقها"
-            selectedKey={form.CoordinatedEntities}
-            options={coordinatedEntitiesOptions}
-            onChange={(_, option) => setForm({ ...form, CoordinatedEntities: option?.key as string || '' })}
-            styles={{ root: { marginTop: 12 } }}
-          />
-          
-          {/* 9. IncidentNumber - رقم بلاغ الدعم الموحد */}
-          <TextField
-            label="رقم بلاغ الدعم الموحد"
-            type="number"
-            value={form.IncidentNumber || ''}
-            onChange={(_, v) => setForm({ ...form, IncidentNumber: v || '' })}
-            styles={{ root: { marginTop: 12 } }}
-            placeholder="أدخل رقم البلاغ"
-            required
-          />
-          
-          {/* 10. ActionTaken - الإجراء المتخذ (المحرك الرئيسي لظهور البديل المفعل) */}
-          <Dropdown
-            label="الإجراء المتخذ"
-            selectedKey={form.ActionTaken}
-            options={actionTakenOptions}
-            onChange={(_, option) => {
-              const action = option?.key as string || ''
-              // عندما يكون الإجراء تشغيل بديل لمقر بديل، نظهر حقل البديل المفعل
-              const isAltAction = action === 'التشغيل المتبادل' || action === 'التشغيل المبتادل مقر بديل'
-              if (isAltAction) {
-                setForm({ 
-                  ...form, 
-                  ActionTaken: action,
-                  // نضبط البديل المفعل إلى "مدرسة بديلة" ليظهر في التقارير
-                  ActivatedAlternative: 'مدرسة بديلة'
-                })
-              } else {
-                // في غير ذلك، نخفي البديل ونفرغ الحقول المرتبطة به
-                setForm({ 
-                  ...form, 
-                  ActionTaken: action,
-                  ActivatedAlternative: '',
-                  AltLocation: ''
-                })
-              }
-            }}
-            styles={{ root: { marginTop: 12 } }}
-          />
-          
-          {/* 11. CommunicationDone - التواصل مع أولياء الأمور */}
-          <Toggle
-            label="التواصل مع أولياء الأمور"
-            checked={form.CommunicationDone || false}
-            onChange={(_, checked) => setForm({ ...form, CommunicationDone: checked || false })}
-            styles={{ root: { marginTop: 12 } }}
-          />
-          
-          {/* 12. ClosureTime - وقت استعادة الخدمة */}
-          <TextField
-            label="تاريخ استعادة الخدمة"
-            type="date"
-            value={form.ClosureTime ? form.ClosureTime.split('T')[0] : ''}
-            onChange={(_, v) => setForm({ ...form, ClosureTime: v || '' })}
-            styles={{ root: { marginTop: 12 } }}
-          />
-          
-          {/* 13. Challenges - التحديات */}
-          <TextField
-            label="التحديات"
-            value={form.Challenges || ''}
-            onChange={(_, v) => setForm({ ...form, Challenges: v || '' })}
-            multiline
-            rows={2}
-            styles={{ root: { marginTop: 12 } }}
-          />
-          
-          {/* 15. LessonsLearned - الدروس المستفادة */}
-          <TextField
-            label="الدروس المستفادة"
-            value={form.LessonsLearned || ''}
-            onChange={(_, v) => setForm({ ...form, LessonsLearned: v || '' })}
-            multiline
-            rows={2}
-            styles={{ root: { marginTop: 12 } }}
-          />
-          
-          {/* 16. Suggestions - المقترحات */}
-          <TextField
-            label="المقترحات لتحسين الاستجابة المستقبلية"
-            value={form.Suggestions || ''}
-            onChange={(_, v) => setForm({ ...form, Suggestions: v || '' })}
-            multiline
-            rows={2}
-            styles={{ root: { marginTop: 12 } }}
-          />
+          {/* ========== المرحلة الثالثة: التعلم ========== */}
+          <div style={{ 
+            backgroundColor: '#e8f5e9', 
+            border: '2px solid #107c10', 
+            borderRadius: 8, 
+            padding: 16 
+          }}>
+            <h3 style={{ color: '#107c10', margin: '0 0 16px 0', borderBottom: '1px solid #107c10', paddingBottom: 8 }}>
+              🟢 المرحلة الثالثة: التعلم
+            </h3>
+            
+            {/* 13. Challenges - التحديات */}
+            <TextField
+              label="التحديات"
+              value={form.Challenges || ''}
+              onChange={(_, v) => setForm({ ...form, Challenges: v || '' })}
+              multiline
+              rows={2}
+            />
+            
+            {/* 14. LessonsLearned - الدروس المستفادة */}
+            <TextField
+              label="الدروس المستفادة"
+              value={form.LessonsLearned || ''}
+              onChange={(_, v) => setForm({ ...form, LessonsLearned: v || '' })}
+              multiline
+              rows={2}
+              styles={{ root: { marginTop: 12 } }}
+            />
+            
+            {/* 15. Suggestions - المقترحات */}
+            <TextField
+              label="المقترحات لتحسين الاستجابة المستقبلية"
+              value={form.Suggestions || ''}
+              onChange={(_, v) => setForm({ ...form, Suggestions: v || '' })}
+              multiline
+              rows={2}
+              styles={{ root: { marginTop: 12 } }}
+            />
+          </div>
         </div>
       </Panel>
     </div>

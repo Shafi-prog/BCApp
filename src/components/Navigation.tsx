@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Nav, INavStyles, DefaultButton, Text, Icon, IconButton } from '@fluentui/react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import BCInfoSidebar from './BCInfoSidebar'
 import NotificationBell from './NotificationBell'
@@ -218,7 +218,7 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
                 { name: 'سجل التمارين الفرضية', url: '#/drills', key: '/drills', icon: 'CheckList' },
                 { name: 'انقطاع في العملية التعليمية', url: '#/incidents', key: '/incidents', icon: 'ShieldAlert' },
                 ...(user?.type === 'admin' ? [
-                  { name: 'لوحة إدارة BC', url: '#/admin', key: '/admin', icon: 'Settings' }
+                  { name: 'لوحة إدارة BC', url: '#/admin', key: '/admin', icon: 'Settings' },
                 ] : [])
               ]
             }

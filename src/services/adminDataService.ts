@@ -12,7 +12,8 @@ import {
   BC_Damage_ReportsService,
   BC_Plan_ReviewService,
   BC_Plan_ScenariosService,
-  BC_Mutual_OperationService
+  BC_Mutual_OperationService,
+  SBC_Drills_LogService
 } from '../generated';
 
 // ============ INTERFACES ============
@@ -30,6 +31,7 @@ export interface AdminContact {
   contactTiming?: string;
   backupMember?: string;
   isVisibleToSchools?: boolean;
+  isActive?: boolean; // SharePoint field_10
 }
 
 export interface BCPlanDocument {
@@ -56,6 +58,7 @@ export interface SharedBCPlan {
   notes?: string;
   reviewPeriodMonths?: number;
   nextReviewDate?: string;
+  publishDate?: string; // SharePoint field
   task1_1_complete?: boolean;
   task1_2_complete?: boolean;
   task1_3_complete?: boolean;
@@ -82,6 +85,8 @@ export interface DRCheckItem {
   status: 'ready' | 'partial' | 'not_ready';
   lastChecked: string;
   notes: string;
+  priority?: string; // SharePoint field_4
+  responsiblePerson?: string; // SharePoint field_5
 }
 
 export interface IncidentEvaluation {
@@ -97,6 +102,15 @@ export interface IncidentEvaluation {
   weaknesses: string;
   recommendations: string;
   evaluatedBy: string;
+  // Additional evaluation fields from SharePoint
+  responseEffectiveness?: number;
+  communicationEffectiveness?: number;
+  coordinationEffectiveness?: number;
+  timelinessScore?: number;
+  lessonsLearned?: string;
+  followUpRequired?: boolean;
+  followUpDate?: string;
+  notes?: string;
 }
 
 export interface DamageReport {
@@ -110,6 +124,8 @@ export interface DamageReport {
   recoveryTime: string;
   status: string;
   notes: string;
+  reportedBy?: string; // SharePoint field
+  incidentRef?: number; // SharePoint field - Lookup to SBC_Incidents_Log
 }
 
 export interface PlanReview {
@@ -128,6 +144,8 @@ export interface PlanReview {
   proceduresFileUploadDate?: string;
   approvalDate?: string;
   approvedBy?: string;
+  reviewedBy?: string; // SharePoint field
+  reviewerRole?: string; // SharePoint field
   task7_1_complete?: boolean;
   task7_2_complete?: boolean;
   task7_3_complete?: boolean;
@@ -139,6 +157,9 @@ export interface PlanScenario {
   title: string;
   description: string;
   actions: string[];
+  scenarioNumber?: number; // SharePoint field_1
+  sortOrder?: number; // SharePoint field_4
+  planRef?: string; // SharePoint field_5 - Lookup
 }
 
 export interface MutualOperation {
@@ -147,6 +168,13 @@ export interface MutualOperation {
   address: string;
   distance: number;
   transport: string;
+  activationPriority?: number; // SharePoint field
+  contactPerson?: string; // SharePoint field
+  contactPhone?: string; // SharePoint field
+  contactEmail?: string; // SharePoint field
+  agreementStatus?: string; // SharePoint field
+  agreementDate?: string; // SharePoint field
+  lastVerified?: string; // SharePoint field
 }
 
 // ============ HELPER FUNCTIONS ============
@@ -168,16 +196,17 @@ const extractChoice = (field: any): string => {
 const transformAdminContact = (raw: any): AdminContact => ({
   id: raw.ID || raw.id || 0,
   Title: raw.Title || '',
-  role: extractChoice(raw.field_1) || '',
-  phone: raw.field_2?.toString() || '',
-  email: raw.field_3 || '',
-  organization: extractChoice(raw.field_4) || '',
-  category: extractChoice(raw.field_5) || 'internal',
-  contactScope: extractChoice(raw.field_6) || '',
-  contactTiming: extractChoice(raw.field_7) || '',
-  backupMember: extractChoice(raw.field_8) || '',
-  notes: raw.field_9 || '',
+  role: extractChoice(raw.Role || raw.field_1) || '',
+  phone: (raw.Phone || raw.field_2 || '')?.toString() || '',
+  email: raw.Email || raw.field_3 || '',
+  organization: extractChoice(raw.Organization || raw.field_4) || '',
+  category: extractChoice(raw.Category || raw.field_5) || 'internal',
+  contactScope: extractChoice(raw.ContactScope || raw.field_6) || '',
+  contactTiming: extractChoice(raw.ContactTiming || raw.field_7) || '',
+  backupMember: extractChoice(raw.BackupMember || raw.field_8) || '',
+  notes: raw.Notes || raw.field_9 || '',
   isVisibleToSchools: raw.field_10 === true || raw.field_10 === 'true' || false,
+  isActive: raw.IsActive === true || raw.IsActive === 'true' || raw.field_10 === true || raw.field_10 === 'true' || true,
 });
 
 const transformBCPlanDocument = (raw: any): BCPlanDocument => ({
@@ -204,6 +233,7 @@ const transformSharedBCPlan = (raw: any): SharedBCPlan => ({
   nextReviewDate: raw.field_7 || '',
   notes: raw.field_8 || '',
   fileUploadDate: raw.FileUploadDate || '',
+  publishDate: raw.field_4 || raw.PublishDate || '',
   task1_1_complete: raw.Task1_1_Complete || false,
   task1_2_complete: raw.Task1_2_Complete || false,
   task1_3_complete: raw.Task1_3_Complete || false,
@@ -213,73 +243,88 @@ const transformSharedBCPlan = (raw: any): SharedBCPlan => ({
 const transformTestPlan = (raw: any): TestPlan => ({
   id: raw.ID || raw.id || 0,
   title: raw.Title || '',
-  hypothesis: raw.field_1 || '',
-  specificEvent: raw.field_2 || '',
-  targetGroup: raw.field_3 || '',
-  startDate: raw.field_4 || '',
-  endDate: raw.field_5 || '',
-  status: extractChoice(raw.field_6) || '',
-  responsible: raw.field_7 || '',
-  notes: raw.field_8 || '',
+  hypothesis: raw.Hypothesis || raw.field_1 || '',
+  specificEvent: raw.SpecificEvent || raw.field_2 || '',
+  targetGroup: raw.TargetGroup || raw.field_3 || '',
+  startDate: raw.StartDate || raw.field_4 || '',
+  endDate: raw.EndDate || raw.field_5 || '',
+  status: extractChoice(raw.Status || raw.field_6) || '',
+  responsible: raw.Responsible || raw.field_7 || '',
+  notes: raw.Notes || raw.field_8 || '',
 });
 
 const transformDRCheckItem = (raw: any): DRCheckItem => ({
   id: raw.ID || raw.id || 0,
   Title: raw.Title || '',
-  category: extractChoice(raw.field_1) || '',
-  status: extractChoice(raw.field_2) || 'not_ready',
-  lastChecked: raw.field_3 || '',
-  notes: raw.field_4 || '',
+  category: extractChoice(raw.Category || raw.field_1) || '',
+  status: extractChoice(raw.Status || raw.field_2) || 'not_ready',
+  lastChecked: raw.LastChecked || raw.field_3 || '',
+  notes: raw.Notes || raw.field_4 || raw.field_6 || '',
+  priority: raw.SortOrder || raw.field_4 || raw.Priority || '',
+  responsiblePerson: raw.CheckedBy || raw.field_5 || raw.ResponsiblePerson || '',
 });
 
 const transformIncidentEvaluation = (raw: any): IncidentEvaluation => ({
   id: raw.ID || raw.id || 0,
-  incidentId: raw.field_1 || 0,
-  evaluationDate: raw.field_2 || '',
-  evaluatedBy: raw.field_3 || '',
-  overallScore: raw.field_4 || 0,
-  strengths: raw.field_5 || '',
-  weaknesses: raw.field_6 || '',
-  recommendations: raw.field_7 || '',
-  responseTimeMinutes: raw.field_8,
-  recoveryTimeHours: raw.field_9,
-  studentsReturnedDate: raw.field_10 || '',
-  alternativeUsed: raw.field_11 || '',
+  incidentId: raw.Incident_Ref || raw.IncidentNumber || raw.field_1 || 0,
+  evaluationDate: raw.EvaluationDate || raw.field_2 || '',
+  evaluatedBy: raw.EvaluatedBy || raw.field_3 || '',
+  overallScore: raw.OverallScore || raw.field_4 || 0,
+  strengths: raw.strengths || raw.field_5 || '',
+  weaknesses: raw.weaknesses || raw.field_6 || '',
+  recommendations: raw.recommendations || raw.field_7 || '',
+  responseTimeMinutes: raw.ResponseTimeMinutes || raw.field_8,
+  recoveryTimeHours: raw.RecoveryTimeHours || raw.field_9,
+  studentsReturnedDate: raw.StudentsReturnedDate || raw.field_10 || '',
+  alternativeUsed: raw.AlternativeUsed || raw.field_11 || '',
+  // New fields from SharePoint
+  responseEffectiveness: raw.ResponseEffectiveness || raw.field_4 || 0,
+  communicationEffectiveness: raw.CommunicationEffectiveness || raw.field_5 || 0,
+  coordinationEffectiveness: raw.CoordinationEffectiveness || raw.field_6 || 0,
+  timelinessScore: raw.TimelinessScore || raw.field_7 || 0,
+  lessonsLearned: raw.LessonsLearned || raw.field_12 || '',
+  followUpRequired: raw.FollowUpRequired || raw.field_13 || false,
+  followUpDate: raw.FollowUpDate || raw.field_14 || '',
+  notes: raw.Notes || raw.field_15 || '',
 });
 
 const transformDamageReport = (raw: any): DamageReport => ({
   id: raw.ID || raw.id || 0,
   incidentTitle: raw.Title || '',
-  date: raw.field_1 || '',
-  buildingDamage: extractChoice(raw.field_2) || '',
-  equipmentDamage: extractChoice(raw.field_3) || '',
-  dataLoss: extractChoice(raw.field_4) || '',
-  estimatedCost: raw.field_5 || '',
-  recoveryTime: raw.field_6?.toString() || '',
-  status: extractChoice(raw.field_7) || '',
-  notes: raw.field_8 || '',
+  date: raw.field_1 || raw.Date || '',
+  buildingDamage: extractChoice(raw.field_2 || raw.BuildingDamage) || '',
+  equipmentDamage: extractChoice(raw.field_3 || raw.EquipmentDamage) || '',
+  dataLoss: extractChoice(raw.field_4 || raw.DataLoss) || '',
+  estimatedCost: raw.field_5 || raw.EstimatedCost || '',
+  recoveryTime: (raw.field_6 || raw.RecoveryTime || '')?.toString() || '',
+  status: extractChoice(raw.field_7 || raw.Status) || '',
+  notes: raw.field_8 || raw.Notes || '',
+  reportedBy: raw.ReportedBy || raw.field_9 || '',
+  incidentRef: raw.Incident_Ref || raw.IncidentRef || raw.field_10,
 });
 
 const transformPlanReview = (raw: any): PlanReview => ({
   id: raw.ID || raw.id || 0,
-  reviewDate: raw.field_1 || '',
-  approvedBy: raw.field_2 || '',
-  approvalDate: raw.field_3 || '',
-  reviewNotes: raw.field_4 || '',
-  reviewFileName: raw.field_5 || '',
-  reviewFileUploadDate: raw.field_6 || '',
-  reviewRecommendations: raw.field_7 || '',
-  response_scenario1: raw.field_8 || '',
-  response_scenario2: raw.field_9 || '',
-  response_scenario3: raw.field_10 || '',
-  response_scenario4: raw.field_11 || '',
-  response_scenario5: raw.field_12 || '',
-  proceduresFileName: raw.field_13 || '',
-  proceduresFileUploadDate: raw.field_14 || '',
-  task7_1_complete: raw.field_15 || false,
-  task7_2_complete: raw.field_16 || false,
-  task7_3_complete: raw.field_17 || false,
-  lastUpdated: raw.Modified || '',
+  reviewDate: raw.ReviewDate || raw.field_1 || '',
+  approvedBy: raw.ApprovedBy || raw.field_2 || '',
+  approvalDate: raw.ApprovalDate || raw.field_3 || '',
+  reviewNotes: raw.reviewNotes || raw.field_4 || '',
+  reviewFileName: raw.ReviewFileName || raw.field_5 || '',
+  reviewFileUploadDate: raw.ReviewFileUploadDate || raw.field_6 || '',
+  reviewRecommendations: raw.ReviewRecommendations || raw.field_7 || '',
+  response_scenario1: raw.response_scenario1 || raw.field_8 || '',
+  response_scenario2: raw.response_scenario2 || raw.field_9 || '',
+  response_scenario3: raw.response_scenario3 || raw.field_10 || '',
+  response_scenario4: raw.response_scenario4 || raw.field_11 || '',
+  response_scenario5: raw.response_scenario5 || raw.field_12 || '',
+  proceduresFileName: raw.ProceduresFileName || raw.field_13 || '',
+  proceduresFileUploadDate: raw.ProceduresFileUploadDate || raw.field_14 || '',
+  task7_1_complete: raw.Task7_1_Complete || raw.field_15 || false,
+  task7_2_complete: raw.Task7_2_Complete || raw.field_16 || false,
+  task7_3_complete: raw.Task7_3_Complete || raw.field_17 || false,
+  lastUpdated: raw.LastUpdated || raw.Modified || '',
+  reviewedBy: raw.ReviewedBy || raw.field_18 || '',
+  reviewerRole: raw.ReviewerRole || raw.field_19 || '',
 });
 
 const transformPlanScenario = (raw: any): PlanScenario => {
@@ -293,15 +338,25 @@ const transformPlanScenario = (raw: any): PlanScenario => {
     title: raw.Title || '',
     description: raw.field_2 || '',
     actions: actions,
+    scenarioNumber: raw.field_1 || raw.ScenarioNumber,
+    sortOrder: raw.field_4 || raw.SortOrder,
+    planRef: raw.field_5 || raw.PlanRef || '',
   };
 };
 
 const transformMutualOperation = (raw: any): MutualOperation => ({
-  sourceSchool: raw.field_1 || '',
-  school: raw.field_2 || '',
-  address: raw.field_3 || '',
-  distance: raw.field_4 || 0,
-  transport: raw.field_5 || '',
+  sourceSchool: raw.SourceSchoolName || raw.field_1 || raw.sourceSchool || '',
+  school: raw.AlternativeSchoolName || raw.field_2 || raw.school || '',
+  address: raw.AlternativeAddress || raw.field_3 || raw.address || '',
+  distance: raw.Distance || raw.field_4 || raw.distance || 0,
+  transport: raw.Title || raw.field_5 || raw.transport || '',
+  activationPriority: raw.ActivationPriority || raw.field_6,
+  contactPerson: raw.ContactPerson || raw.field_7 || '',
+  contactPhone: raw.ContactPhone || raw.field_8 || '',
+  contactEmail: raw.ContactEmail || raw.field_9 || '',
+  agreementStatus: raw.AgreementStatus || raw.field_10 || '',
+  agreementDate: raw.AgreementDate || raw.field_11 || '',
+  lastVerified: raw.LastVerified || raw.field_12 || '',
 });
 
 // ============ ADMIN DATA SERVICE - SHAREPOINT ONLY ============
@@ -558,6 +613,9 @@ export const AdminDataService = {
       if (updates.title !== undefined) data.Title = updates.title;
       if (updates.hypothesis !== undefined) data.field_1 = updates.hypothesis;
       if (updates.specificEvent !== undefined) data.field_2 = updates.specificEvent;
+      if (updates.targetGroup !== undefined) data.field_3 = updates.targetGroup;
+      if (updates.startDate !== undefined) data.field_4 = updates.startDate;
+      if (updates.endDate !== undefined) data.field_5 = updates.endDate;
       if (updates.status !== undefined) data.field_6 = [{ Value: updates.status }];
       if (updates.responsible !== undefined) data.field_7 = updates.responsible;
       if (updates.notes !== undefined) data.field_8 = updates.notes;
@@ -578,6 +636,61 @@ export const AdminDataService = {
       await BC_Test_PlansService.delete(id.toString());
     } catch (e: any) {
       console.error('[AdminData] Error deleting test plan:', e);
+      throw e;
+    }
+  },
+
+  // ===== GET DRILLS FOR SCHOOLS (FROM BC_TEST_PLANS) =====
+  async getDrillsForSchool(): Promise<TestPlan[]> {
+    try {
+      console.log('[AdminData] Loading drills for school from BC_Test_Plans...');
+      const result = await BC_Test_PlansService.getAll();
+      if (result.success && result.data) {
+        const drills = result.data.map(transformTestPlan);
+        console.log(`[AdminData] Loaded ${drills.length} drills for school`);
+        return drills;
+      }
+      return [];
+    } catch (e: any) {
+      console.error('[AdminData] Error loading drills for school:', e);
+      return [];
+    }
+  },
+
+  // ===== RECORD DRILL EXECUTION (SCHOOLS) =====
+  async recordDrillExecution(drillId: number, executionData: {
+    executionDate: string;
+    schoolName?: string;
+  }): Promise<any> {
+    try {
+      console.log('[AdminData] Recording drill execution to SBC_Drills_Log...');
+      
+      // Record the school's execution of the drill in SBC_Drills_Log
+      // Using exact SharePoint column names from the list schema
+      const data: any = {
+        Title: `تنفيذ - التمرين الفرضي`,
+        ExecutionDate: executionData.executionDate,      // Date field
+      };
+      
+      if (executionData.schoolName) {
+        data['SchoolName'] = executionData.schoolName;    // School name reference
+      }
+      
+      console.log('[AdminData] Sending execution data to SharePoint:', data);
+      const result = await SBC_Drills_LogService.create(data);
+      
+      if (result.success) {
+        console.log('[AdminData] Drill execution recorded successfully');
+        return {
+          success: true,
+          message: 'تم تسجيل التمرين بنجاح',
+          data: result.data
+        };
+      }
+      
+      throw new Error(String(result.error) || 'Failed to record drill execution');
+    } catch (e: any) {
+      console.error('[AdminData] Error recording drill execution:', e);
       throw e;
     }
   },

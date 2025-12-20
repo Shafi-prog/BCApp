@@ -29,7 +29,20 @@ import { Coordination_Programs_CatalogService } from '../generated'
 import { getColumnConfig, ColumnType, renderDate } from '../config/tableConfig'
 import { sanitizeString, sanitizeHTML, isValidDate } from '../utils/security'
 
-// Default fallback options (used if SharePoint options can't be loaded)
+/**
+ * CYBER COMPLIANCE NOTE:
+ * All dropdown options below serve ONLY as fallback defaults when SharePoint list connections fail.
+ * Primary data is loaded dynamically from Coordination_Programs_Catalog SharePoint list choice fields:
+ * - Provider Entity: ProviderEntity choice field
+ * - Activity Type: ActivityType choice field
+ * - Target Audience: TargetAudience choice field (may be multi-select)
+ * - Execution Mode: ExecutionMode choice field
+ * - Coordination Status: CoordinationStatus choice field
+ * 
+ * This ensures all data is restored from SharePoint, complying with cyber regulations.
+ */
+
+// Default fallback options (used ONLY if SharePoint options can't be loaded)
 const defaultProviderEntityOptions: IDropdownOption[] = [
   { key: 'إدارة الأمن والسلامة المدرسية', text: 'إدارة الأمن والسلامة المدرسية' },
   { key: 'إدارة التدريب والابتعاث', text: 'إدارة التدريب والابتعاث' },

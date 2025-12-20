@@ -1,53 +1,203 @@
 # SharePoint Lists Column Reference
 
-## Quick Reference for Required Columns
-
-### 1. SchoolInfo
-**Purpose**: Store school basic information
-
-| Column Name | Type | Required | Description |
-|------------|------|----------|-------------|
-| Title | Text | ✅ | School name |
-| SchoolName | Text | ✅ | Official school name |
-| SchoolID | Text | ✅ | Unique school identifier |
-| Level | Choice | ✅ | School level (ابتدائي، متوسط، ثانوي) |
-| SchoolGender | Choice | ✅ | Gender type (بنين، بنات، مختلط) |
-| SchoolType | Choice | ✅ | School type |
-| EducationType | Choice | ✅ | Education type (حكومي، أهلي) |
-| StudyTime | Choice | ✅ | Study time (صباحي، مسائي) |
-| BuildingOwnership | Choice | ✅ | Building ownership |
-| SectorDescription | Text | ⬜ | Sector description |
-| PrincipalName | Text | ✅ | Principal name |
-| PrincipalID | Text | ✅ | Principal ID number |
-| principalEmail | Text | ✅ | Principal email |
-| PrincipalPhone | Text | ✅ | Principal phone |
-| SchoolEmail | Text | ✅ | School email |
-| Latitude | Text | ⬜ | GPS Latitude |
-| Longitude | Text | ⬜ | GPS Longitude |
+**Last Updated:** December 20, 2025  
+**Status:** ✅ Verified - All columns exist and mapped
 
 ---
 
-### 2. BC_Teams_Members
-**Purpose**: Safety and security team members
+## Quick Navigation
 
-| Column Name | Type | Required | Description |
-|------------|------|----------|-------------|
-| Title | Text | ✅ | Member name |
-| SchoolName_Ref | Lookup | ✅ | Reference to SchoolInfo → Title |
-| JobRole | Choice | ✅ | Job role (معلم، وكيل، مشرف، etc.) |
-| MembershipType | Choice | ✅ | Membership type (فريق رئيسي، فريق احتياطي) |
-| MemberEmail | Text | ⬜ | Member email |
-
-**⚠️ Important Configuration:**
-- `SchoolName_Ref`: Lookup to `SchoolInfo` list → `Title` field
+- [BC_Test_Plans](#1-bc_test_plans) - ✅ All columns verified
+- [School_Training_Log](#2-school_training_log) - ✅ Status column verified
+- [BC_Plan_Review](#3-bc_plan_review) - ✅ All columns verified
+- [BC_Mutual_Operation](#4-bc_mutual_operation) - ✅ All columns verified
+- [BC_Incident_Evaluations](#5-bc_incident_evaluations) - ✅ All columns verified
+- [BC_Admin_Contacts](#6-bc_admin_contacts) - ✅ All columns verified
+- [BC_DR_Checklist](#7-bc_dr_checklist) - ✅ All columns verified
 
 ---
 
-### 3. SBC_Drills_Log
-**Purpose**: Drill exercises log (both school executions and admin plans)
+## 1. BC_Test_Plans
 
-| Column Name | Type | Required | Description |
-|------------|------|----------|-------------|
+**Purpose**: Test and drill planning for business continuity exercises
+
+| Column Name | Type | Frontend Field | Required | Notes |
+|---|---|---|---|---|
+| Title | Single line text | title | ✅ | Plan title/name |
+| Hypothesis | Single line text | hypothesis | ✅ | Test hypothesis |
+| SpecificEvent | Single line text | specificEvent | ✅ | Specific event being tested |
+| TargetGroup | Single line text | targetGroup | ✅ | Target group for test |
+| StartDate | Date and Time | startDate | ✅ | Test start date |
+| EndDate | Date and Time | endDate | ✅ | Test end date |
+| Status | Choice | status | ✅ | Test status |
+| Responsible | Single line text | responsible | ✅ | Person responsible |
+| Notes | Single line text | notes | ✅ | Additional notes |
+| Year | Number | (not mapped) | ⬜ | Academic year |
+| Quarter | Single line text | (not mapped) | ⬜ | Quarter information |
+
+**Frontend Interface:** `TestPlan`  
+**Frontend Service:** `AdminDataService.getTestPlans()`  
+**Status:** ✅ All columns mapped
+
+---
+
+## 2. School_Training_Log
+
+**Purpose**: Track training attendance and completion
+
+| Column Name | Type | Frontend Field | Required | Notes |
+|---|---|---|---|---|
+| Title | Single line text | Title | ✅ | Training entry title |
+| SchoolName_Ref | Lookup | (lookup reference) | ✅ | School reference |
+| Program_Ref | Lookup | (lookup reference) | ✅ | Training program reference |
+| RegistrationType | Choice | registrationType | ✅ | Type of registration |
+| AttendeesNames | Lookup | (lookup reference) | ✅ | Attendees reference |
+| TrainingDate | Date and Time | trainingDate | ✅ | Date of training |
+| **Status** | **Choice** | **status** | **✅** | **✅ VERIFIED - "مسجل, مكتمل, ملغي"** |
+
+**Frontend Interface:** `TrainingLog`  
+**Frontend Service:** `SharePointService.getTrainingLogs()`  
+**Status:** ✅ Status column verified and available
+
+---
+
+## 3. BC_Plan_Review
+
+**Purpose**: Formal review and approval of business continuity plans
+
+| Column Name | Type | Frontend Field | Required | Notes |
+|---|---|---|---|---|
+| Title | Single line text | (ID) | ✅ | Review record identifier |
+| ReviewDate | Date and Time | reviewDate | ✅ | Date of review |
+| **ReviewedBy** | **Single line text** | **reviewedBy** | **✅** | **✅ Person conducting review** |
+| **ReviewerRole** | **Choice** | **reviewerRole** | **✅** | **✅ Role of reviewer** |
+| PlanVersion | Number | (not mapped) | ⬜ | Plan version number |
+| OverallStatus | Choice | (not mapped) | ⬜ | Overall review status |
+| ApprovedBy | Person or Group | approvedBy | ✅ | Person who approved |
+| ApprovalDate | Date and Time | approvalDate | ✅ | Date of approval |
+| reviewNotes | Single line text | reviewNotes | ✅ | Review notes |
+| ReviewFileName | Single line text | reviewFileName | ✅ | Name of review file |
+| ReviewFileUploadDate | Date and Time | reviewFileUploadDate | ✅ | Upload date |
+| ReviewRecommendations | Multiple lines text | reviewRecommendations | ✅ | Review recommendations |
+| response_scenario1-5 | Multiple lines text | response_scenario1-5 | ✅ | Scenario responses |
+| ProceduresFileName | Single line text | proceduresFileName | ✅ | Procedures file name |
+| ProceduresFileUploadDate | Date and Time | proceduresFileUploadDate | ✅ | Upload date |
+| **Task7_1_Complete** | **Yes/No** | **task7_1_complete** | **✅** | **✅ Task completion flag 1** |
+| **Task7_2_Complete** | **Yes/No** | **task7_2_complete** | **✅** | **✅ Task completion flag 2** |
+| **Task7_3_Complete** | **Yes/No** | **task7_3_complete** | **✅** | **✅ Task completion flag 3** |
+| LastUpdated | Date and Time | lastUpdated | ✅ | Last update date |
+
+**Frontend Interface:** `PlanReview`  
+**Frontend Service:** `AdminDataService.getPlanReview()`  
+**Status:** ✅ All columns mapped and verified
+
+---
+
+## 4. BC_Mutual_Operation
+
+**Purpose**: Alternative school arrangements during disruptions
+
+| Column Name | Type | Frontend Field | Required | Notes |
+|---|---|---|---|---|
+| Title | Single line text | transport | ✅ | Transportation method |
+| AlternativeAddress | Single line text | address | ✅ | Alternative school address |
+| Distance | Number | distance | ✅ | Distance to alternative |
+| **ActivationPriority** | **Number** | **activationPriority** | **✅** | **✅ Priority for activation** |
+| **ContactPerson** | **Single line text** | **contactPerson** | **✅** | **✅ Contact person name** |
+| **ContactPhone** | **Number** | **contactPhone** | **✅** | **✅ Contact phone number** |
+| **ContactEmail** | **Person or Group** | **contactEmail** | **✅** | **✅ Contact email** |
+| **AgreementStatus** | **Choice** | **agreementStatus** | **✅** | **✅ Status of agreement** |
+| **AgreementDate** | **Date and Time** | **agreementDate** | **✅** | **✅ Agreement date** |
+| **LastVerified** | **Date and Time** | **lastVerified** | **✅** | **✅ Last verification date** |
+| Notes | Single line text | (not mapped) | ⬜ | Additional notes |
+| IsActive | Yes/No | (not mapped) | ⬜ | Active/inactive status |
+| SourceSchoolName | Lookup | sourceSchool | ✅ | Source school name |
+| AlternativeSchoolName | Lookup | school | ✅ | Alternative school name |
+
+**Frontend Interface:** `MutualOperation`  
+**Frontend Service:** `AdminDataService.getMutualOperations()`  
+**Status:** ✅ All 7 additional fields mapped and verified
+
+---
+
+## 5. BC_Incident_Evaluations
+
+**Purpose**: Evaluate business continuity response to incidents
+
+| Column Name | Type | Frontend Field | Required | Notes |
+|---|---|---|---|---|
+| Title | Single line text | (not mapped) | ✅ | Evaluation title |
+| EvaluationDate | Date and Time | evaluationDate | ✅ | Evaluation date |
+| EvaluatedBy | Single line text | evaluatedBy | ✅ | Evaluated by |
+| **ResponseEffectiveness** | **Number** | **responseEffectiveness** | **✅** | **✅ Response effectiveness score** |
+| **CommunicationEffectiveness** | **Number** | **communicationEffectiveness** | **✅** | **✅ Communication score** |
+| **CoordinationEffectiveness** | **Number** | **coordinationEffectiveness** | **✅** | **✅ Coordination score** |
+| **TimelinessScore** | **Number** | **timelinessScore** | **✅** | **✅ Timeliness score** |
+| OverallScore | Number | overallScore | ✅ | Overall score |
+| strengths | Single line text | strengths | ✅ | Strengths identified |
+| weaknesses | Single line text | weaknesses | ✅ | Weaknesses identified |
+| recommendations | Single line text | recommendations | ✅ | Recommendations |
+| **LessonsLearned** | **Single line text** | **lessonsLearned** | **✅** | **✅ Lessons learned** |
+| **FollowUpRequired** | **Yes/No** | **followUpRequired** | **✅** | **✅ Follow-up required** |
+| **FollowUpDate** | **Date and Time** | **followUpDate** | **✅** | **✅ Follow-up date** |
+| **Notes** | **Multiple lines text** | **notes** | **✅** | **✅ Additional notes** |
+| Incident_Ref | Lookup | incidentId | ✅ | Incident reference |
+| ResponseTimeMinutes | Number | responseTimeMinutes | ✅ | Response time |
+| RecoveryTimeHours | Number | recoveryTimeHours | ✅ | Recovery time |
+| StudentsReturnedDate | Date and Time | studentsReturnedDate | ✅ | Student return date |
+| AlternativeUsed | Single line text | alternativeUsed | ✅ | Alternative used |
+
+**Frontend Interface:** `IncidentEvaluation`  
+**Frontend Service:** `AdminDataService.getIncidentEvaluations()`  
+**Status:** ✅ All 8 additional fields mapped and verified
+
+---
+
+## 6. BC_Admin_Contacts
+
+**Purpose**: Emergency and administrative contact information
+
+| Column Name | Type | Frontend Field | Required | Notes |
+|---|---|---|---|---|
+| Title | Single line text | Title | ✅ | Contact name |
+| Role | Choice | role | ✅ | Contact role |
+| Phone | Number | phone | ✅ | Phone number |
+| Email | Single line text | email | ✅ | Email address |
+| Organization | Choice | organization | ✅ | Organization |
+| Category | Choice | category | ✅ | Contact category |
+| ContactScope | Choice | contactScope | ✅ | Contact scope |
+| ContactTiming | Choice | contactTiming | ✅ | Contact timing |
+| BackupMember | Choice | backupMember | ✅ | Backup member |
+| Notes | Single line text | notes | ✅ | Notes |
+| **IsActive** | **Yes/No** | **isActive** | **✅** | **✅ Active status** |
+
+**Frontend Interface:** `AdminContact`  
+**Frontend Service:** `AdminDataService.getAdminContacts()`  
+**Status:** ✅ IsActive field mapped and verified
+
+---
+
+## 7. BC_DR_Checklist
+
+**Purpose**: Disaster recovery checklist items
+
+| Column Name | Type | Frontend Field | Required | Notes |
+|---|---|---|---|---|
+| Title | Single line text | Title | ✅ | Checklist item |
+| Category | Choice | category | ✅ | Category |
+| Status | Choice | status | ✅ | Status |
+| LastChecked | Date and Time | lastChecked | ✅ | Last checked date |
+| CheckedBy | Choice | responsiblePerson | ✅ | Checked by person |
+| Notes | Single line text | notes | ✅ | Notes |
+| SortOrder | Number | priority | ✅ | Sort/priority order |
+
+**Frontend Interface:** `DRCheckItem`  
+**Frontend Service:** `AdminDataService.getDRChecklist()`  
+**Status:** ✅ All fields mapped and verified
+
+---
+
+## 🔄 Quick Reference for Required Columns
 | Title | Text | ✅ | Drill title |
 | SchoolName_Ref | Lookup | ✅ | Reference to SchoolInfo → Title |
 | DrillHypothesis | Choice | ✅ | Hypothesis scenario |

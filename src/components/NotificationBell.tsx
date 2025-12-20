@@ -50,15 +50,21 @@ const NotificationBell: React.FC = () => {
 
   const handleBellClick = async () => {
     setPanelOpen(true);
-    // Mark all as read when opening panel
-    if (user?.type === 'school' && user.schoolName) {
+    // Mark all as read when opening panel and reset count immediately
+    if (user?.type === 'school' && user.schoolName && announcements.length > 0) {
       try {
+        // Reset count immediately for better UX
+        setUnreadCount(0);
+        // Then mark all as read in background
         await Promise.all(
           announcements.map(a => AnnouncementService.markAsRead(a.id, user.schoolName!))
         );
-        setUnreadCount(0);
+        console.log('[NotificationBell] All announcements marked as read');
       } catch (e) {
         console.error('[NotificationBell] Error marking as read:', e);
+        // Reload count if marking failed
+        const count = await AnnouncementService.getUnreadCount(user.schoolName);
+        setUnreadCount(count);
       }
     }
   };
@@ -127,18 +133,51 @@ const NotificationBell: React.FC = () => {
         type={PanelType.medium}
         headerText="الإشعارات والتنبيهات"
         closeButtonAriaLabel="إغلاق"
+        hasCloseButton={false}
+        onRenderNavigation={() => (
+          <IconButton
+            iconProps={{ iconName: 'Cancel' }}
+            ariaLabel="إغلاق"
+            onClick={() => setPanelOpen(false)}
+            styles={{
+              root: {
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                zIndex: 100,
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                borderRadius: '50%',
+                width: 36,
+                height: 36,
+                border: '2px solid #008752',
+              },
+              rootHovered: {
+                backgroundColor: '#fff',
+              },
+              icon: {
+                color: '#008752',
+                fontSize: 16,
+                fontWeight: 'bold',
+              },
+            }}
+          />
+        )}
         styles={{
           header: {
             background: 'linear-gradient(135deg, #008752, #006644)',
             color: '#fff',
+            paddingRight: 48,
           },
           headerText: {
             color: '#fff',
             fontSize: '1.1rem',
             fontWeight: 600,
           },
-          closeButton: {
-            color: '#fff',
+          navigation: {
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            zIndex: 100,
           },
         }}
       >

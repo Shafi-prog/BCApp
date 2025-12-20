@@ -127,7 +127,6 @@ export interface Incident {
   AlertModelType?: string;
   HazardDescription?: string;
   CoordinatedEntities?: string;
-  IncidentNumber?: string;
   ActionTaken?: string;
   AltLocation?: string;
   CommunicationDone?: boolean;
@@ -135,6 +134,7 @@ export interface Incident {
   Challenges?: string;
   LessonsLearned?: string;
   Suggestions?: string;
+  IncidentNumber?: number; // رقم بلاغ الدعم الموحد
   SharePointLink?: string;
   Created?: string;
   // Dynamic Evaluation Fields (calculated automatically)
@@ -1102,9 +1102,9 @@ export const SharePointService = {
           Suggestions: incident.Suggestions || '',
         };
         
-        // Add IncidentNumber if provided (number field)
-        if (incident.IncidentNumber) {
-          data.IncidentNumber = parseFloat(incident.IncidentNumber) || 0;
+        // Add UnifiedSupportTicketNumber if provided (number field)
+        if (incident.UnifiedSupportTicketNumber) {
+          data.UnifiedSupportTicketNumber = incident.UnifiedSupportTicketNumber;
         }
         
         if (schoolId) {
@@ -1155,9 +1155,9 @@ export const SharePointService = {
           Suggestions: incident.Suggestions || '',
         };
         
-        // Add IncidentNumber if provided (number field)
+        // Add IncidentNumber if provided (number field - رقم بلاغ الدعم الموحد)
         if (incident.IncidentNumber) {
-          data.IncidentNumber = parseFloat(incident.IncidentNumber) || 0;
+          data.IncidentNumber = incident.IncidentNumber;
         }
         
         // Add date fields

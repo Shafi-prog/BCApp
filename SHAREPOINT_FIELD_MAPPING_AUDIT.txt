@@ -1,0 +1,692 @@
+================================================================================
+COMPREHENSIVE SHAREPOINT FIELD MAPPING AUDIT REPORT
+Date: December 20, 2025
+Application: School Business Continuity Management System
+================================================================================
+
+This audit examines all SharePoint field mappings used in the application by 
+comparing actual model definitions, transformation functions, and component 
+references.
+
+================================================================================
+1. SBC_DRILLS_LOG
+================================================================================
+
+LIST STRUCTURE:
+  - ID (system field)
+  - Title (single line text)
+  - SchoolName_Ref (lookup to SchoolInfo list)
+  - DrillHypothesis (choice field)
+  - SpecificEvent (multi-line text)
+  - TargetGroup (choice field)
+  - ExecutionDate (date field)
+  - ComplianceAssetId (system field)
+  - Created, Modified (system fields)
+  - Author, Editor (person fields)
+
+MODEL COLUMNS (from SBC_Drills_LogModel.ts):
+  ID, Title, SchoolName_Ref, SchoolName_Ref#Id, DrillHypothesis, DrillHypothesis#Id,
+  SpecificEvent, TargetGroup, TargetGroup#Id, ExecutionDate, OData__ColorTag,
+  ComplianceAssetId, Modified, Created, Author, Editor, {Identifier}, {IsFolder},
+  {Thumbnail}, {Link}, {Name}, {FilenameWithExtension}, {Path}, {FullPath},
+  {ModerationStatus}, {ModerationComment}, {ContentType}, {HasAttachments},
+  {Attachments}, {VersionNumber}, {TriggerWindowStartToken}, {TriggerWindowEndToken}
+
+CODE REFERENCES (sharepointService.ts):
+  - Interface Drill uses: Title, SchoolName_Ref, DrillHypothesis, SpecificEvent,
+    TargetGroup, ExecutionDate, and additional computed fields (IsAdminPlan, 
+    StartDate, EndDate, PlanStatus, Quarter, Responsible, Notes, AcademicYear,
+    PlanEffectivenessRating, ProceduresEffectivenessRating, SchoolFeedback,
+    ImprovementSuggestions)
+  - recordDrillExecution() writes to: Title, ExecutionDate, SchoolName
+
+ISSUES IDENTIFIED:
+  ✓ Core fields are properly mapped
+  ⚠ COMPUTED FIELDS NOT IN SHAREPOINT: IsAdminPlan, StartDate, EndDate, 
+    PlanStatus, Quarter, Responsible, Notes, AcademicYear, 
+    PlanEffectivenessRating, ProceduresEffectivenessRating, SchoolFeedback,
+    ImprovementSuggestions - these are mentioned in the Drill interface but NOT
+    in the SharePoint model. They appear to be intended for future use or are
+    incorrectly documented.
+
+================================================================================
+2. BC_TEST_PLANS
+================================================================================
+
+LIST STRUCTURE:
+  - ID (system field)
+  - Title (single line text)
+  - field_1 to field_10 (generic field names in SharePoint)
+  - field_6 (appears to be choice field based on field_6Value interface)
+
+MODEL COLUMNS (from BC_Test_PlansModel.ts):
+  ID, Title, field_1, field_2, field_3, field_4, field_5, field_6, field_7,
+  field_8, field_9, field_10, OData__ColorTag, ComplianceAssetId, Modified,
+  Created, Author, Editor, {system fields}
+
+CODE REFERENCES (adminDataService.ts):
+  - Interface TestPlan maps:
+    * Title -> title
+    * field_1 -> hypothesis
+    * field_2 -> specificEvent
+    * field_3 -> targetGroup
+    * field_4 -> startDate
+    * field_5 -> endDate
+    * field_6 -> status (choice field)
+    * field_7 -> responsible
+    * field_8 -> notes
+  - getDrillsForSchool() loads all BC_Test_Plans and transforms via 
+    transformTestPlan()
+  - Drills.tsx attempts to load Status options via:
+    BC_Test_PlansService.getReferencedEntity('', 'field_6')
+
+ISSUES IDENTIFIED:
+  ⚠ GENERIC FIELD NAMES: SharePoint uses generic "field_X" names instead of
+    descriptive column names. This makes maintenance difficult and error-prone.
+  ✓ Transformation function properly maps field_X to business logic properties
+  ✓ field_6 correctly identified as choice field with dynamic loading
+
+================================================================================
+3. SBC_INCIDENTS_LOG
+================================================================================
+
+LIST STRUCTURE:
+  - ID (system field)
+  - Title (single line text)
+  - SchoolName_Ref (lookup)
+  - IncidentCategory (choice field)
+  - ActivatedAlternative (choice field)
+  - RiskLevel (choice field)
+  - ActivationTime (date/time field)
+  - AlertModelType (choice field)
+  - HazardDescription (multi-line text)
+  - CoordinatedEntities (choice field)
+  - IncidentNumber (number field)
+  - ActionTaken (choice field)
+  - AltLocation (choice field)
+  - CommunicationDone (boolean/yes-no field)
+  - ClosureTime (date/time field)
+  - Challenges (multi-line text)
+  - LessonsLearned (multi-line text)
+  - Suggestions (multi-line text)
+
+MODEL COLUMNS (from SBC_Incidents_LogModel.ts):
+  ID, Title, SchoolName_Ref, IncidentCategory, ActivatedAlternative,
+  RiskLevel, ActivationTime, AlertModelType, HazardDescription,
+  CoordinatedEntities, IncidentNumber, ActionTaken, AltLocation,
+  CommunicationDone, ClosureTime, Challenges, LessonsLearned, Suggestions,
+  {system fields}
+
+CODE REFERENCES (sharepointService.ts):
+  - Interface Incident uses all core fields listed above
+  - Incidents.tsx loads dropdown options dynamically from SharePoint using:
+    SBC_Incidents_LogService.getReferencedEntity('', 'IncidentCategory')
+    SBC_Incidents_LogService.getReferencedEntity('', 'RiskLevel')
+    SBC_Incidents_LogService.getReferencedEntity('', 'AlertModelType')
+    SBC_Incidents_LogService.getReferencedEntity('', 'ActivatedAlternative')
+    SBC_Incidents_LogService.getReferencedEntity('', 'CoordinatedEntities')
+    SBC_Incidents_LogService.getReferencedEntity('', 'ActionTaken')
+    SBC_Incidents_LogService.getReferencedEntity('', 'AltLocation')
+
+ISSUES IDENTIFIED:
+  ✓ All choice fields are properly named and referenced
+  ✓ Dynamic loading of dropdown options ensures compliance
+  ✓ Field structure matches interface requirements
+  ⚠ COMPUTED FIELDS IN CODE: Incident interface includes calculated fields
+    (ResponseTimeMinutes, RecoveryTimeHours, ResponseRating, CoordinationRating,
+    CommunicationRating, RecoveryRating, OverallRating, EvaluationNotes,
+    IsEvaluated) that are NOT in SharePoint model - these are computed in
+    calculateIncidentEvaluation() function
+
+================================================================================
+4. BC_INCIDENT_EVALUATIONS
+================================================================================
+
+LIST STRUCTURE:
+  - ID (system field)
+  - Title (single line text)
+  - field_2 to field_15 (generic field names)
+  - IncidentNumber (lookup)
+  - Incident_Ref (lookup)
+  - ResponseTimeMinutes (number field)
+  - RecoveryTimeHours (number field)
+  - StudentsReturnedDate (date field)
+  - AlternativeUsed (multi-line text)
+
+MODEL COLUMNS (from BC_Incident_EvaluationsModel.ts):
+  ID, Title, field_2, field_3, field_4, field_5, field_6, field_7, field_8,
+  field_9, field_10, field_11, field_12, field_13, field_14, field_15,
+  IncidentNumber, Incident_Ref, ResponseTimeMinutes, RecoveryTimeHours,
+  StudentsReturnedDate, AlternativeUsed, {system fields}
+
+CODE REFERENCES (adminDataService.ts):
+  - Interface IncidentEvaluation maps:
+    * ID -> id
+    * field_1 -> incidentId (NOTE: field_1 NOT in model, uses 
+      IncidentNumber instead)
+    * field_2 -> evaluationDate
+    * field_3 -> evaluatedBy
+    * field_4 -> overallScore / responseEffectiveness
+    * field_5 -> strengths / communicationEffectiveness
+    * field_6 -> weaknesses / coordinationEffectiveness
+    * field_7 -> recommendations / timelinessScore
+    * field_8 -> responseTimeMinutes
+    * field_9 -> recoveryTimeHours
+    * field_10 -> studentsReturnedDate
+    * field_11 -> alternativeUsed
+    * field_12 -> lessonsLearned
+    * field_13 -> followUpRequired
+    * field_14 -> followUpDate
+    * field_15 -> notes
+
+ISSUES IDENTIFIED:
+  ✗ CRITICAL: transformIncidentEvaluation() tries to read field_1 but this
+    column is NOT defined in BC_Incident_EvaluationsModel.ts. Instead, the
+    model has IncidentNumber and Incident_Ref lookups. Code should use:
+    raw.IncidentNumber or raw.Incident_Ref instead of raw.field_1
+  ⚠ GENERIC FIELD NAMES: SharePoint uses field_X naming which obscures purpose
+  ⚠ FIELD MAPPING MISMATCH: Code comments show dual mapping (e.g., field_4
+    maps to both overallScore AND responseEffectiveness) indicating schema
+    confusion
+
+================================================================================
+5. SCHOOL_TRAINING_LOG
+================================================================================
+
+LIST STRUCTURE:
+  - ID (system field)
+  - Title (single line text)
+  - SchoolName_Ref (lookup)
+  - Program_Ref (lookup)
+  - RegistrationType (choice field)
+  - AttendeesNames (multi-select person/lookup field)
+  - TrainingDate (date field)
+
+MODEL COLUMNS (from School_Training_LogModel.ts):
+  ID, Title, SchoolName_Ref, Program_Ref, RegistrationType, AttendeesNames,
+  TrainingDate, {system fields}
+
+CODE REFERENCES (sharepointService.ts):
+  - Interface TrainingLog maps:
+    * Title -> title
+    * Program_Ref -> program
+    * SchoolName_Ref -> schoolName_Ref
+    * RegistrationType -> registrationType
+    * AttendeesNames -> attendeesNames
+    * TrainingDate -> trainingDate
+
+ISSUES IDENTIFIED:
+  ✓ All core fields are properly mapped
+  ✓ Field names match between model and interface
+  ✓ Lookup relationships are correctly defined
+
+================================================================================
+6. BC_PLAN_SCENARIOS
+================================================================================
+
+LIST STRUCTURE:
+  - ID (system field)
+  - Title (single line text)
+  - field_1 (number - scenario number)
+  - field_2 (multi-line text - description)
+  - field_3 (multi-line text - actions)
+  - field_4 (number - sort order)
+  - PlanRef (lookup to BC_Shared_Plan)
+
+MODEL COLUMNS (from BC_Plan_ScenariosModel.ts):
+  ID, Title, field_1, field_2, field_3, field_4, PlanRef, {system fields}
+
+CODE REFERENCES (adminDataService.ts):
+  - Interface PlanScenario maps:
+    * Title -> title
+    * field_2 -> description
+    * field_3 -> actions (split by newline)
+    * field_1 -> scenarioNumber
+    * field_4 -> sortOrder
+    * PlanRef -> planRef (not used in create, only read)
+
+ISSUES IDENTIFIED:
+  ⚠ GENERIC FIELD NAMES: field_1, field_2, field_3, field_4 are not 
+    descriptive
+  ✓ Actions stored as multi-line text and split properly
+  ✓ Mapping is consistent between code and model
+
+================================================================================
+7. BC_ADMIN_CONTACTS
+================================================================================
+
+LIST STRUCTURE:
+  - ID (system field)
+  - Title (single line text - name)
+  - field_1 to field_10 (generic field names)
+    * field_1 (choice - role)
+    * field_2 (number - phone)
+    * field_3 (single line text - email)
+    * field_4 to field_8 (choice fields - organization/category)
+    * field_9 (multi-line text - notes)
+    * field_10 (yes/no - visibility/active status)
+
+MODEL COLUMNS (from BC_Admin_ContactsModel.ts):
+  ID, Title, field_1, field_2, field_3, field_4, field_5, field_6, field_7,
+  field_8, field_9, field_10, {system fields}
+
+CODE REFERENCES (adminDataService.ts):
+  - Interface AdminContact maps:
+    * Title -> title
+    * field_1 -> role (choice)
+    * field_2 -> phone (number)
+    * field_3 -> email
+    * field_4 -> organization (choice)
+    * field_5 -> category (choice - internal/external)
+    * field_6 -> contactScope (choice)
+    * field_7 -> contactTiming (choice)
+    * field_8 -> backupMember (choice)
+    * field_9 -> notes
+    * field_10 -> isVisibleToSchools / isActive (yes/no)
+
+ISSUES IDENTIFIED:
+  ⚠ GENERIC FIELD NAMES: All custom fields use field_X naming
+  ✓ Phone field correctly converted to number type
+  ✓ Choice fields properly wrapped in arrays for creation/update
+  ✓ Dual use of field_10 (both isVisibleToSchools and isActive) could cause
+    confusion in code - AdminPanel.tsx uses it as isVisibleToSchools toggle
+
+================================================================================
+8. BC_SHARED_PLAN
+================================================================================
+
+LIST STRUCTURE:
+  - ID (system field)
+  - Title (single line text)
+  - field_1 to field_9 (generic field names)
+  - FileUploadDate (date field)
+  - Task1_1_Complete to Task1_4_Complete (yes/no fields)
+
+MODEL COLUMNS (from BC_Shared_PlanModel.ts):
+  ID, Title, field_1, field_2, field_3, field_4, field_5, field_6, field_7,
+  field_8, field_9, FileUploadDate, Task1_1_Complete, Task1_2_Complete,
+  Task1_3_Complete, Task1_4_Complete, {system fields}
+
+CODE REFERENCES (adminDataService.ts):
+  - Interface SharedBCPlan maps:
+    * Title -> title
+    * field_1 -> description
+    * field_2 -> fileName
+    * field_3 -> isPublished (boolean)
+    * field_4 -> publishDate
+    * field_5 -> lastUpdated
+    * field_6 -> reviewPeriodMonths
+    * field_7 -> nextReviewDate
+    * field_8 -> notes
+    * field_9 -> not mapped
+    * FileUploadDate -> fileUploadDate
+    * Task1_1_Complete -> task1_1_complete
+    * Task1_2_Complete -> task1_2_complete
+    * Task1_3_Complete -> task1_3_complete
+    * Task1_4_Complete -> task1_4_complete
+
+ISSUES IDENTIFIED:
+  ⚠ GENERIC FIELD NAMES: field_1 through field_8 obscure purpose
+  ⚠ UNUSED FIELD: field_9 is not mapped or used anywhere
+  ✓ Named fields (FileUploadDate, Task1_X_Complete) are properly named and used
+  ✓ Mapping includes both field_X and named columns
+
+================================================================================
+9. BC_DR_CHECKLIST
+================================================================================
+
+LIST STRUCTURE:
+  - ID (system field)
+  - Title (single line text)
+  - field_1 (choice - category)
+  - field_2 (choice - status: ready/partial/not_ready)
+  - field_3 (date field - lastChecked)
+  - field_4 (choice - priority)
+  - field_5 (single line text - responsible person)
+  - field_6 (number - or part of mapping confusion)
+
+MODEL COLUMNS (from BC_DR_ChecklistModel.ts):
+  ID, Title, field_1, field_2, field_3, field_4, field_5, field_6, {system fields}
+
+CODE REFERENCES (adminDataService.ts):
+  - Interface DRCheckItem maps:
+    * ID -> id
+    * Title -> title
+    * field_1 -> category (choice)
+    * field_2 -> status (choice)
+    * field_3 -> lastChecked (date)
+    * field_4 -> notes AND priority (DUAL MAPPING ISSUE)
+    * field_5 -> responsiblePerson
+    * field_6 -> notes / priority (CONFUSION)
+
+ISSUES IDENTIFIED:
+  ✗ CRITICAL: transformDRCheckItem() has inconsistent field mapping:
+    - notes: raw.field_4 || raw.field_6 || '' (tries two different fields)
+    - priority: raw.field_4 || '' (same as notes)
+    This indicates either missing field definition or schema mismatch
+  ⚠ MODEL DEFINITION INCOMPLETE: Model only defines field_1 through field_6
+    but transformDRCheckItem references raw.SortOrder, raw.CheckedBy,
+    raw.Priority, raw.ResponsiblePerson which are NOT in the model
+  ⚠ GENERIC FIELD NAMES make the mapping unclear
+
+================================================================================
+10. BC_DAMAGE_REPORTS
+================================================================================
+
+LIST STRUCTURE:
+  - ID (system field)
+  - Title (single line text)
+  - field_1 to field_17 (generic field names)
+  - IncidentNumber (lookup)
+  - School_Ref (lookup)
+  - Incident_Ref (lookup)
+  - BuildingDamage (choice field)
+  - EquipmentDamage (choice field)
+  - DataLoss (choice field)
+  - RecoveryTime (number field)
+
+MODEL COLUMNS (from BC_Damage_ReportsModel.ts):
+  ID, Title, field_2, field_3, field_4, field_5, field_6, field_7, field_8,
+  field_9, field_10, field_11, field_12, field_13, field_14, field_15, field_16,
+  field_17, IncidentNumber, School_Ref, Incident_Ref, BuildingDamage,
+  EquipmentDamage, DataLoss, RecoveryTime, {system fields}
+
+CODE REFERENCES (adminDataService.ts):
+  - Interface DamageReport maps:
+    * ID -> id
+    * Title -> incidentTitle
+    * field_1 -> date
+    * field_2 -> buildingDamage (choice)
+    * field_3 -> equipmentDamage (choice)
+    * field_4 -> dataLoss (choice)
+    * field_5 -> estimatedCost
+    * field_6 -> recoveryTime
+    * field_7 -> status (choice)
+    * field_8 -> notes
+    * field_9 -> reportedBy
+    * field_10 -> incidentRef (NOTE: should use Incident_Ref from model)
+
+ISSUES IDENTIFIED:
+  ⚠ GENERIC FIELD NAMES: field_1 through field_9 (and more up to field_17)
+  ⚠ MODEL/CODE MISMATCH: Code uses field_1 for date but model starts at field_2.
+    This suggests field_1 might be in SharePoint but missing from generated model
+  ✓ Named lookup fields (IncidentNumber, School_Ref, Incident_Ref) are properly
+    defined in model
+  ⚠ CHOICE FIELDS: field_2, field_3, field_4 should wrap values in array format
+    for creation but mapping shows direct choice references
+
+================================================================================
+11. BC_PLAN_DOCUMENTS
+================================================================================
+
+LIST STRUCTURE:
+  - ID (system field)
+  - Title (single line text)
+  - field_1 (choice - document type)
+  - field_2 to field_8 (generic field names)
+
+MODEL COLUMNS (from BC_Plan_DocumentsModel.ts):
+  ID, Title, field_1, field_2, field_3, field_4, field_5, field_6, field_7,
+  field_8, {system fields}
+
+CODE REFERENCES (adminDataService.ts):
+  - Interface BCPlanDocument maps:
+    * Title -> title
+    * field_1 -> documentType (choice)
+    * field_2 -> description
+    * field_3 -> fileName
+    * field_4 -> version
+    * field_5 -> uploadDate
+    * field_6 -> shareDate
+    * field_7 -> isShared (yes/no)
+    * field_8 -> notes
+
+ISSUES IDENTIFIED:
+  ⚠ GENERIC FIELD NAMES: field_1 through field_8 are not descriptive
+  ✓ Mapping is consistent and complete
+  ✓ Choice field (field_1) properly handled
+
+================================================================================
+12. BC_PLAN_REVIEW
+================================================================================
+
+LIST STRUCTURE:
+  - ID (system field)
+  - Title (single line text)
+  - field_1 to field_19 (generic field names)
+  - Plan_Ref (lookup)
+  - Task7_1_Complete to Task7_3_Complete (yes/no fields)
+  - ReviewFileName, ReviewFileUploadDate, ReviewRecommendations (named fields)
+  - ResponseScenario1-5, ProceduresFileName, ProceduresFileUploadDate (named fields)
+
+MODEL COLUMNS (from BC_Plan_ReviewModel.ts):
+  ID, Title, field_1, field_2, field_3, field_4, field_5, field_6, field_7,
+  field_8, field_9, field_10, field_11, field_12, field_13, field_14, field_15,
+  field_16, field_17, field_18, field_19, Plan_Ref, Task7_1_Complete,
+  Task7_2_Complete, Task7_3_Complete, ReviewFileName, ReviewFileUploadDate,
+  ReviewRecommendations, ResponseScenario1-5, ProceduresFileName,
+  ProceduresFileUploadDate, {system fields}
+
+CODE REFERENCES (adminDataService.ts):
+  - Interface PlanReview maps:
+    * ID -> id
+    * field_1 -> reviewDate
+    * field_2 -> approvedBy
+    * field_3 -> approvalDate
+    * field_4 -> reviewNotes
+    * field_5 -> reviewFileName
+    * field_6 -> reviewFileUploadDate
+    * field_7 -> reviewRecommendations
+    * field_8 -> response_scenario1
+    * field_9 -> response_scenario2
+    * field_10 -> response_scenario3
+    * field_11 -> response_scenario4
+    * field_12 -> response_scenario5
+    * field_13 -> proceduresFileName
+    * field_14 -> proceduresFileUploadDate
+    * field_15 -> task7_1_complete
+    * field_16 -> task7_2_complete
+    * field_17 -> task7_3_complete
+    * field_18 -> reviewedBy
+    * field_19 -> reviewerRole
+    (Also reads named fields: ReviewFileName, ReviewFileUploadDate, etc.)
+
+ISSUES IDENTIFIED:
+  ⚠ DUPLICATE FIELD DEFINITIONS: SharePoint has BOTH generic field_X AND named
+    columns (ReviewFileName, ReviewFileUploadDate, ResponseScenario1-5, etc.).
+    Code reads from both, creating confusion about which is authoritative.
+  ⚠ GENERIC FIELD NAMES: field_1 through field_19 are used alongside named
+    columns, making the schema confusing
+  ✓ Mapping is complete but overly complex due to dual naming scheme
+
+================================================================================
+13. BC_TEAMS_MEMBERS
+================================================================================
+
+LIST STRUCTURE:
+  - ID (system field)
+  - Title (single line text - name)
+  - SchoolName_Ref (lookup)
+  - JobRole (choice field)
+  - MembershipType (choice field)
+  - Mobile (number field)
+  - MemberEmail (single line text - email)
+
+MODEL COLUMNS (from BC_Teams_MembersModel.ts):
+  ID, Title, SchoolName_Ref, JobRole, MembershipType, Mobile, MemberEmail,
+  {system fields}
+
+CODE REFERENCES (sharepointService.ts):
+  - Interface TeamMember maps:
+    * ID -> id
+    * Title -> title
+    * SchoolName_Ref -> schoolName_Ref
+    * JobRole -> jobRole
+    * MembershipType -> membershipType
+    * Mobile -> memberMobile (note: property name is different)
+    * MemberEmail -> memberEmail
+
+ISSUES IDENTIFIED:
+  ✓ Field names are descriptive and properly named
+  ⚠ PROPERTY NAME MISMATCH: SharePoint field is "Mobile" but interface uses
+    "MemberMobile" in the TeamMember export interface
+  ✓ Lookup relationships properly defined
+  ✓ Choice fields properly identified
+
+================================================================================
+14. BC_MUTUAL_OPERATION
+================================================================================
+
+LIST STRUCTURE:
+  - ID (system field)
+  - Title (single line text)
+  - field_5 to field_18 (generic field names)
+  - SourceSchoolID (lookup)
+  - SourceSchoolName (lookup)
+  - AlternativeSchoolID (lookup)
+  - AlternativeSchoolName (lookup)
+  - Capacity (number field)
+  - SupportingGrades (single line text)
+
+MODEL COLUMNS (from BC_Mutual_OperationModel.ts):
+  ID, Title, field_5, field_6, field_10, field_11, field_12, field_13, field_14,
+  field_15, field_16, field_17, field_18, SourceSchoolID, SourceSchoolName,
+  AlternativeSchoolID, AlternativeSchoolName, Capacity, SupportingGrades,
+  {system fields}
+
+CODE REFERENCES (adminDataService.ts):
+  - Interface MutualOperation maps:
+    * SourceSchoolName -> sourceSchool
+    * AlternativeSchoolName -> school
+    * field_3 -> address (BUT field_3 NOT in model)
+    * Distance -> distance (BUT NOT in model)
+    * field_5 -> transport
+    * field_6 -> activationPriority
+    * field_7 to field_12 -> various contact/agreement fields
+    (Also reads from Title for transport field)
+
+ISSUES IDENTIFIED:
+  ✗ CRITICAL: transformMutualOperation() maps field_1, field_2, field_3, field_4
+    but model shows NO field_1 through field_4. The actual model has field_5
+    onward. This is a major mismatch.
+  ✗ CRITICAL: References to Distance, AlternativeAddress are NOT in the model
+    but are used in the transformation
+  ⚠ SKIPPED FIELD NAMES: Model jumps from Title directly to field_5,
+    suggesting field_1-4 are missing from generated model or incorrectly generated
+  ⚠ GENERIC FIELD NAMES: Multiple generic field names mixed with named lookups
+
+================================================================================
+SUMMARY OF CRITICAL ISSUES
+================================================================================
+
+1. BC_INCIDENT_EVALUATIONS
+   Issue: transformIncidentEvaluation() reads field_1 which is not defined in
+          the model. Uses IncidentNumber instead.
+   Impact: Data read/write may fail
+   Recommendation: Update code to use IncidentNumber or Incident_Ref
+
+2. BC_DR_CHECKLIST
+   Issue: Dual field mapping (field_4/field_6 for notes and priority) with
+          references to undefined fields (SortOrder, CheckedBy, Priority)
+   Impact: Data mapping ambiguous and error-prone
+   Recommendation: Clarify schema definition and consolidate field references
+
+3. BC_DAMAGE_REPORTS
+   Issue: Code reads from field_1 for date but model starts at field_2.
+          References to field_10 for incidentRef should use Incident_Ref
+   Impact: Potential field misalignment in data reads/writes
+   Recommendation: Verify field numbering matches actual SharePoint schema
+
+4. BC_MUTUAL_OPERATION
+   Issue: Critical - transformMutualOperation() maps field_1 through field_4
+          which don't exist in model. Model shows field_5 onward. References
+          to Distance and AlternativeAddress fields that aren't in model.
+   Impact: Data transformation will fail
+   Recommendation: Regenerate model from SharePoint schema or fix transformation
+
+5. BC_PLAN_REVIEW
+   Issue: Dual column naming system (field_X AND named columns) creates confusion
+          about which is authoritative
+   Impact: Maintenance complexity and potential data consistency issues
+   Recommendation: Consolidate to single naming scheme
+
+6. GENERIC FIELD NAMES THROUGHOUT
+   Issue: Most lists use field_X naming instead of descriptive column names
+   Impact: Difficult to understand schema without documentation
+   Recommendation: Rename SharePoint columns to descriptive names and regenerate
+                   models
+
+7. UNIMPLEMENTED FIELDS
+   Issue: SBC_Drills_Log interface includes fields not in SharePoint model
+          (IsAdminPlan, StartDate, EndDate, PlanStatus, Quarter, Responsible,
+          Notes, AcademicYear, PlanEffectivenessRating, 
+          ProceduresEffectivenessRating, SchoolFeedback, ImprovementSuggestions)
+   Impact: Code references fields that don't exist in SharePoint
+   Recommendation: Add these columns to SharePoint list or remove from interface
+
+================================================================================
+SUMMARY OF WARNINGS
+================================================================================
+
+1. BC_TEST_PLANS (field_6 Status)
+   - Dynamic loading implemented correctly but field name is generic
+   - Recommendation: Verify field_6 actually contains Status choices
+
+2. BC_SHARED_PLAN (field_9)
+   - Field is defined in model but never used in code
+   - Recommendation: Either use or remove this field
+
+3. Mobile vs MemberMobile
+   - SharePoint column: Mobile
+   - Code uses: MemberMobile
+   - Not critical but inconsistent naming
+
+4. Computed vs Stored Fields
+   - Multiple interfaces include computed fields that are calculated at runtime
+   - Ensures data integrity but adds complexity
+   - Review: IncidentEvaluation (rating fields), Drill (effectiveness ratings)
+
+5. Choice Field Wrapping
+   - Some code wraps choice values in [{Value: ...}] arrays for creation
+   - Others treat as plain strings
+   - Recommendation: Standardize choice field handling
+
+================================================================================
+SUMMARY OF WORKING MAPPINGS
+================================================================================
+
+These lists have correct, consistent field mappings:
+
+✓ SBC_DRILLS_LOG - All core fields properly mapped (except unimplemented extras)
+✓ SBC_INCIDENTS_LOG - All fields properly named and referenced
+✓ SCHOOL_TRAINING_LOG - All fields properly named and mapped
+✓ BC_PLAN_SCENARIOS - Field mapping is consistent
+✓ BC_ADMIN_CONTACTS - Proper handling of choice and number fields
+✓ BC_PLAN_DOCUMENTS - Complete and consistent mapping
+✓ BC_TEAMS_MEMBERS - Descriptive field names (except Mobile/MemberMobile alias)
+
+================================================================================
+RECOMMENDATIONS
+================================================================================
+
+IMMEDIATE (HIGH PRIORITY):
+1. Fix BC_MUTUAL_OPERATION transformation - model and code are misaligned
+2. Fix BC_INCIDENT_EVALUATIONS field_1 reference
+3. Fix BC_DR_CHECKLIST dual field mapping
+4. Verify BC_DAMAGE_REPORTS field numbering
+
+SHORT TERM (MEDIUM PRIORITY):
+1. Rename generic field_X columns in SharePoint to descriptive names
+2. Regenerate models after column renames
+3. Add missing fields to SBC_DRILLS_Log or remove from interface
+4. Consolidate BC_PLAN_REVIEW column naming (field_X vs named)
+
+LONG TERM (LOW PRIORITY):
+1. Standardize choice field handling across all services
+2. Add field mapping documentation to each model file
+3. Create automated tests for field mapping consistency
+4. Implement field validation before SharePoint writes
+
+================================================================================
+END OF AUDIT REPORT
+================================================================================
