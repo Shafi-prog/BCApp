@@ -466,7 +466,12 @@ const Incidents: React.FC = () => {
       setSelectedEntities([])
     }
     // Set filtered risk levels based on the item's category
-    const mapping = categoryToRiskLevelMapping[item.IncidentCategory || '']
+    // Extract parent category (before 'L' separator) for mapping
+    const parentCategory = item.IncidentCategory && item.IncidentCategory.includes('L')
+      ? item.IncidentCategory.split('L')[0]
+      : item.IncidentCategory || ''
+    const mapping = categoryToRiskLevelMapping[parentCategory]
+    console.log('[Incidents] onEdit category:', { raw: item.IncidentCategory, parent: parentCategory, mapping })
     if (mapping) {
       const filteredLevels = allRiskLevels.slice(mapping.start, mapping.start + mapping.count)
       const filteredOpts: IDropdownOption[] = filteredLevels.map(level => ({
@@ -867,7 +872,11 @@ const Incidents: React.FC = () => {
               disabled={incidentCategoryOptions.length === 0}
               onChange={(_, option) => {
                 const category = option?.key as string || ''
-                const mapping = categoryToRiskLevelMapping[category]
+                // Extract parent category (before 'L' separator) for mapping
+                // SharePoint uses format: "ParentCategoryLSubcategory"
+                const parentCategory = category.includes('L') ? category.split('L')[0] : category
+                const mapping = categoryToRiskLevelMapping[parentCategory]
+                console.log('[Incidents] Category selected:', { raw: category, parent: parentCategory, mapping })
                 if (mapping) {
                   const filteredLevels = allRiskLevels.slice(mapping.start, mapping.start + mapping.count)
                   const filteredOpts: IDropdownOption[] = filteredLevels.map(level => ({
@@ -875,8 +884,10 @@ const Incidents: React.FC = () => {
                     text: level,
                   }))
                   setFilteredRiskLevelOptions(filteredOpts)
+                  console.log('[Incidents] Filtered risk levels:', filteredLevels)
                 } else {
                   setFilteredRiskLevelOptions(riskLevelOptions)
+                  console.log('[Incidents] No mapping found - showing all risk levels')
                 }
                 setForm({ ...form, IncidentCategory: category, RiskLevel: '', AlertModelType: '' })
               }}
@@ -945,7 +956,12 @@ const Incidents: React.FC = () => {
               options={filteredRiskLevelOptions.length > 0 ? filteredRiskLevelOptions : riskLevelOptions}
               onChange={(_, option) => {
                 const riskLevel = option?.key as string || ''
-                const alertType = getAlertTypeForRiskLevel(riskLevel, form.IncidentCategory || '')
+                // Extract parent category for alert type calculation
+                const parentCategory = form.IncidentCategory && form.IncidentCategory.includes('L')
+                  ? form.IncidentCategory.split('L')[0]
+                  : form.IncidentCategory || ''
+                const alertType = getAlertTypeForRiskLevel(riskLevel, parentCategory)
+                console.log('[Incidents] RiskLevel changed:', { riskLevel, category: parentCategory, alertType })
                 setForm({ ...form, RiskLevel: riskLevel, AlertModelType: alertType })
               }}
               required
