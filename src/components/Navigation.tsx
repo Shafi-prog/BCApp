@@ -209,7 +209,8 @@ const Navigation: React.FC<NavigationProps> = ({ isOpen, onClose }) => {
                   key: '/bcplan',
                   icon: 'Shield'
                 }] : [
-                  // Admin sees Quick Reference as standalone editable page
+                  // Admin sees both BC Plan (school view) and Quick Reference
+                  { name: 'خطة استمرارية التعليم', url: '#/bcplan', key: '/bcplan', icon: 'Shield' },
                   { name: 'المرجع السريع (إدارة)', url: '#/bc-quick-reference', key: '/bc-quick-reference', icon: 'BookAnswers' }
                 ]),
                 { name: 'فريق الأمن والسلامة', url: '#/team', key: '/team', icon: 'Group' },

@@ -4,6 +4,7 @@ import {
   DetailsListLayoutMode,
   SelectionMode,
   IColumn,
+  IGroup,
   PrimaryButton,
   DefaultButton,
   Panel,
@@ -43,6 +44,7 @@ const TrainingLog: React.FC = () => {
   const { user } = useAuth()
   const [items, setItems] = useState<TrainingLogType[]>([])
   const [filteredItems, setFilteredItems] = useState<TrainingLogType[]>([])
+  const [groups, setGroups] = useState<IGroup[]>([])
   const [loading, setLoading] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -215,7 +217,9 @@ const TrainingLog: React.FC = () => {
       const schoolName = user?.type === 'admin' ? undefined : user?.schoolName
       const data = await SharePointService.getTrainingLog(schoolName)
       setItems(data)
-      setFilteredItems(data)
+      const result = createGroups(data)
+      setFilteredItems(result.items)
+      setGroups(result.groups)
     } catch (e) {
       setMessage({ type: MessageBarType.error, text: `فشل تحميل سجل التدريب: ${e}` })
     } finally {
@@ -223,27 +227,62 @@ const TrainingLog: React.FC = () => {
     }
   }
 
+  // Create groups by school name
+  const createGroups = (data: TrainingLogType[]): { items: TrainingLogType[], groups: IGroup[] } => {
+    const schoolMap = new Map<string, TrainingLogType[]>()
+    data.forEach(item => {
+      const schoolName = item.SchoolName_Ref || 'غير محدد'
+      if (!schoolMap.has(schoolName)) {
+        schoolMap.set(schoolName, [])
+      }
+      schoolMap.get(schoolName)!.push(item)
+    })
+
+    const sortedSchools = Array.from(schoolMap.keys()).sort((a, b) => {
+      if (sortOrder === 'none') return 0
+      return sortOrder === 'asc' ? a.localeCompare(b, 'ar') : b.localeCompare(a, 'ar')
+    })
+
+    const groupedItems: TrainingLogType[] = []
+    const groups: IGroup[] = []
+    let startIndex = 0
+
+    sortedSchools.forEach(schoolName => {
+      const schoolItems = schoolMap.get(schoolName)!
+      groups.push({
+        key: schoolName,
+        name: schoolName,
+        startIndex: startIndex,
+        count: schoolItems.length,
+        level: 0,
+      })
+      groupedItems.push(...schoolItems)
+      startIndex += schoolItems.length
+    })
+
+    return { items: groupedItems, groups }
+  }
+
   // Filter by school name alphabet
   const filterByLetter = (letter: string) => {
     setSelectedLetter(letter)
     let filtered = letter ? items.filter(item => item.SchoolName_Ref?.startsWith(letter)) : items
-    filtered = applySorting(filtered)
-    setFilteredItems(filtered)
+    const result = createGroups(filtered)
+    setFilteredItems(result.items)
+    setGroups(result.groups)
   }
 
   const applySorting = (data: TrainingLogType[]) => {
-    if (sortOrder === 'none') return data
-    return [...data].sort((a, b) => {
-      const nameA = a.SchoolName_Ref || ''
-      const nameB = b.SchoolName_Ref || ''
-      return sortOrder === 'asc' ? nameA.localeCompare(nameB, 'ar') : nameB.localeCompare(nameA, 'ar')
-    })
+    const result = createGroups(data)
+    return result.items
   }
 
   const sortBySchoolName = (order: 'asc' | 'desc' | 'none') => {
     setSortOrder(order)
-    const sorted = applySorting(selectedLetter ? filteredItems : items)
-    setFilteredItems(sorted)
+    const dataToSort = selectedLetter ? filteredItems : items
+    const result = createGroups(dataToSort)
+    setFilteredItems(result.items)
+    setGroups(result.groups)
   }
 
   const loadPrograms = async () => {
@@ -509,8 +548,12 @@ const TrainingLog: React.FC = () => {
               <DetailsList
                 items={filteredItems}
                 columns={columns}
+                groups={user?.type === 'admin' ? groups : undefined}
                 layoutMode={DetailsListLayoutMode.justified}
                 selectionMode={SelectionMode.none}
+                groupProps={{
+                  showEmptyGroups: false,
+                }}
               />
             ) : (
               <div style={{ padding: 32, textAlign: 'center' }}>

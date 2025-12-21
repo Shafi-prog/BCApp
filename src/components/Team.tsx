@@ -4,6 +4,7 @@ import {
   DetailsListLayoutMode,
   SelectionMode,
   IColumn,
+  IGroup,
   PrimaryButton,
   DefaultButton,
   Panel,
@@ -52,6 +53,7 @@ const Team: React.FC = () => {
   const { user } = useAuth()
   const [items, setItems] = useState<TeamMember[]>([])
   const [filteredItems, setFilteredItems] = useState<TeamMember[]>([])
+  const [groups, setGroups] = useState<IGroup[]>([])
   const [selectedLetter, setSelectedLetter] = useState<string>('')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | 'none'>('none')
   const [panelOpen, setPanelOpen] = useState(false)
@@ -261,26 +263,71 @@ const Team: React.FC = () => {
     setLoading(true)
     try {
       const schoolName = user?.type === 'admin' ? undefined : user?.schoolName
+      console.log('[Team] Loading members for:', schoolName || 'ALL SCHOOLS (admin)')
       const data = await SharePointService.getTeamMembers(schoolName)
+      console.log('[Team] Loaded members count:', data.length)
+      console.log('[Team] Sample data:', data.slice(0, 3))
       setItems(data)
-      setFilteredItems(data)
+      const result = createGroups(data)
+      setFilteredItems(result.items)
+      setGroups(result.groups)
+      console.log('[Team] Groups created:', result.groups.length)
     } catch (e) {
       setMessage({ type: MessageBarType.error, text: `فشل تحميل أعضاء الفريق: ${e}` })
     } finally {
+      setLoading(false)
+    }
+  }
+
+  const createGroups = (data: TeamMember[]): { items: TeamMember[], groups: IGroup[] } => {
+    // Group by school name
+    const schoolMap = new Map<string, TeamMember[]>()
+    data.forEach(item => {
+      const schoolName = item.SchoolName_Ref || 'غير محدد'
+      if (!schoolMap.has(schoolName)) {
+        schoolMap.set(schoolName, [])
+      }
+      schoolMap.get(schoolName)!.push(item)
+    })
+
+    // Sort schools by name
+    const sortedSchools = Array.from(schoolMap.keys()).sort((a, b) => {
+      if (sortOrder === 'none') return 0
+      return sortOrder === 'asc' ? a.localeCompare(b, 'ar') : b.localeCompare(a, 'ar')
+    })
+
+    // Create flat list and groups
+    const groupedItems: TeamMember[] = []
+    const groups: IGroup[] = []
+    let startIndex = 0
+
+    sortedSchools.forEach(schoolName => {
+      const schoolItems = schoolMap.get(schoolName)!
+      groups.push({
+        key: schoolName,
+        name: schoolName,
+        startIndex: startIndex,
+        count: schoolItems.length,
+        level: 0,
+      })
+      groupedItems.push(...schoolItems)
+      startIndex += schoolItems.length
+    })
+
+    return { items: groupedItems, groups }
+  }
 
   const applySorting = (data: TeamMember[]) => {
-    if (sortOrder === 'none') return data
-    return [...data].sort((a, b) => {
-      const nameA = a.SchoolName_Ref || ''
-      const nameB = b.SchoolName_Ref || ''
-      return sortOrder === 'asc' ? nameA.localeCompare(nameB, 'ar') : nameB.localeCompare(nameA, 'ar')
-    })
+    const result = createGroups(data)
+    return result.items
   }
 
   const sortBySchoolName = (order: 'asc' | 'desc' | 'none') => {
     setSortOrder(order)
-    const sorted = applySorting(selectedLetter ? filteredItems : items)
-    setFilteredItems(sorted)
+    const dataToSort = selectedLetter ? filteredItems : items
+    const result = createGroups(dataToSort)
+    setFilteredItems(result.items)
+    setGroups(result.groups)
   }
 
   const filterByLetter = (letter: string) => {
@@ -293,11 +340,9 @@ const Team: React.FC = () => {
       return matches
     }) : items
     console.log('[Team Filter] Filtered result count:', filtered.length)
-    filtered = applySorting(filtered)
-    setFilteredItems(filtered)
-  }
-      setLoading(false)
-    }
+    const result = createGroups(filtered)
+    setFilteredItems(result.items)
+    setGroups(result.groups)
   }
 
   useEffect(() => {
@@ -514,8 +559,12 @@ const Team: React.FC = () => {
         <DetailsList 
           items={filteredItems} 
           columns={getColumns()}
+          groups={user?.type === 'admin' ? groups : undefined}
           layoutMode={DetailsListLayoutMode.justified}
           selectionMode={SelectionMode.none}
+          groupProps={{
+            showEmptyGroups: false,
+          }}
         />
         {filteredItems.length === 0 && !loading && (
           <div style={{ padding: 20, textAlign: 'center', color: '#666' }}>

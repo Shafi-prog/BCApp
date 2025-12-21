@@ -13,6 +13,7 @@ import {
   DetailsListLayoutMode,
   SelectionMode,
   IColumn,
+  IGroup,
   IconButton,
 } from '@fluentui/react'
 import { useAuth } from '../context/AuthContext'
@@ -58,6 +59,7 @@ const Drills: React.FC = () => {
   const [drills, setDrills] = useState<TestPlan[]>([])
   const [executedDrills, setExecutedDrills] = useState<Drill[]>([])
   const [filteredExecutedDrills, setFilteredExecutedDrills] = useState<Drill[]>([])
+  const [executedGroups, setExecutedGroups] = useState<IGroup[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingExecutions, setLoadingExecutions] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -76,9 +78,11 @@ const Drills: React.FC = () => {
 
   // Load drills and choice options on mount
   useEffect(() => {
-    loadDrillsAndOptions()
-    loadExecutedDrills()
-  }, [])
+    if (user !== undefined) {
+      loadDrillsAndOptions()
+      loadExecutedDrills()
+    }
+  }, [user])
 
   /**
    * Load choice field values from SharePoint
@@ -128,13 +132,51 @@ const Drills: React.FC = () => {
       const schoolName = user?.type === 'admin' ? undefined : user?.schoolName
       const data = await SharePointService.getDrills(schoolName)
       setExecutedDrills(data)
-      setFilteredExecutedDrills(data)
+      const result = createExecutedDrillsGroups(data)
+      setFilteredExecutedDrills(result.items)
+      setExecutedGroups(result.groups)
       console.log(`Loaded ${data.length} executed drills from SBC_Drills_Log`)
     } catch (error) {
       console.error('Error loading executed drills:', error)
     } finally {
       setLoadingExecutions(false)
     }
+  }
+
+  // Create groups by school name for executed drills
+  const createExecutedDrillsGroups = (data: Drill[]): { items: Drill[], groups: IGroup[] } => {
+    const schoolMap = new Map<string, Drill[]>()
+    data.forEach(item => {
+      const schoolName = item.SchoolName_Ref || 'غير محدد'
+      if (!schoolMap.has(schoolName)) {
+        schoolMap.set(schoolName, [])
+      }
+      schoolMap.get(schoolName)!.push(item)
+    })
+
+    const sortedSchools = Array.from(schoolMap.keys()).sort((a, b) => {
+      if (sortOrder === 'none') return 0
+      return sortOrder === 'asc' ? a.localeCompare(b, 'ar') : b.localeCompare(a, 'ar')
+    })
+
+    const groupedItems: Drill[] = []
+    const groups: IGroup[] = []
+    let startIndex = 0
+
+    sortedSchools.forEach(schoolName => {
+      const schoolItems = schoolMap.get(schoolName)!
+      groups.push({
+        key: schoolName,
+        name: schoolName,
+        startIndex: startIndex,
+        count: schoolItems.length,
+        level: 0,
+      })
+      groupedItems.push(...schoolItems)
+      startIndex += schoolItems.length
+    })
+
+    return { items: groupedItems, groups }
   }
 
   // Filter executed drills by school name alphabet
@@ -431,6 +473,15 @@ const Drills: React.FC = () => {
     return cols
   }
 
+  // Show loading while waiting for user context
+  if (user === undefined) {
+    return (
+      <div style={{ padding: 24, textAlign: 'center' }}>
+        <Spinner label="جاري التحميل..." />
+      </div>
+    )
+  }
+
   return (
     <Stack tokens={{ childrenGap: 20 }} style={{ padding: '20px' }}>
       {/* Page Header */}
@@ -652,7 +703,7 @@ const Drills: React.FC = () => {
             {user?.type === 'admin' && executedDrills.length > 0 && (
               <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 8 }}>
                 <Stack horizontal horizontalAlign="space-between" style={{ marginBottom: 12 }}>
-                  <Text variant="small" style={{ fontWeight: 600, color: '#323130' }}>ترتيب:</Text>
+                  <span style={{ fontWeight: 600, color: '#323130', fontSize: 12 }}>ترتيب:</span>
                   <Stack horizontal tokens={{ childrenGap: 8 }}>
                     <DefaultButton
                       text="تصاعدي (أ-ي)"
@@ -691,7 +742,7 @@ const Drills: React.FC = () => {
                     />
                   </Stack>
                 </Stack>
-                <Text variant="small" style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#323130' }}>تصفية حسب اسم المدرسة:</Text>
+                <span style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#323130', fontSize: 12 }}>تصفية حسب اسم المدرسة:</span>
                 <Stack horizontal tokens={{ childrenGap: 4 }} wrap>
                   <DefaultButton
                     text="الكل"
@@ -724,9 +775,9 @@ const Drills: React.FC = () => {
                   ))}
                 </Stack>
                 {selectedLetter && (
-                  <Text variant="small" style={{ display: 'block', marginTop: 8, color: '#666' }}>
+                  <span style={{ display: 'block', marginTop: 8, color: '#666', fontSize: 12 }}>
                     عرض {filteredExecutedDrills.length} تمرين منفذ يبدأ بحرف "{selectedLetter}"
-                  </Text>
+                  </span>
                 )}
               </div>
             )}
@@ -750,8 +801,12 @@ const Drills: React.FC = () => {
                 <DetailsList
                   items={filteredExecutedDrills}
                   columns={getExecutedDrillsColumns()}
+                  groups={user?.type === 'admin' ? executedGroups : undefined}
                   layoutMode={DetailsListLayoutMode.justified}
                   selectionMode={SelectionMode.none}
+                  groupProps={{
+                    showEmptyGroups: false,
+                  }}
                   styles={{
                     root: {
                       '.ms-DetailsRow': {

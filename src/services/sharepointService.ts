@@ -127,14 +127,13 @@ export interface Incident {
   AlertModelType?: string;
   HazardDescription?: string;
   CoordinatedEntities?: string;
-  ActionTaken?: string;
   AltLocation?: string;
   CommunicationDone?: boolean;
   ClosureTime?: string;
   Challenges?: string;
   LessonsLearned?: string;
   Suggestions?: string;
-  IncidentNumber?: number; // رقم بلاغ الدعم الموحد
+  UnifiedSupportTicketNumber?: number; // رقم بلاغ الدعم الموحد
   SharePointLink?: string;
   Created?: string;
   // Dynamic Evaluation Fields (calculated automatically)
@@ -376,9 +375,15 @@ const transformIncident = (raw: any): Incident => {
     ActivationTime: raw.ActivationTime || '',
     AlertModelType: typeof raw.AlertModelType === 'object' ? raw.AlertModelType.Value : (raw.AlertModelType || ''),
     HazardDescription: raw.HazardDescription || '',
-    CoordinatedEntities: typeof raw.CoordinatedEntities === 'object' ? raw.CoordinatedEntities.Value : (raw.CoordinatedEntities || ''),
-    IncidentNumber: raw.IncidentNumber ? String(raw.IncidentNumber) : '',
-    ActionTaken: typeof raw.ActionTaken === 'object' ? raw.ActionTaken.Value : (raw.ActionTaken || ''),
+    CoordinatedEntities: (() => {
+      if (typeof raw.CoordinatedEntities === 'string') return raw.CoordinatedEntities;
+      if (Array.isArray(raw.CoordinatedEntities) && raw.CoordinatedEntities.length > 0) {
+        return raw.CoordinatedEntities.map((e: any) => e.Value || e).join(', ');
+      }
+      if (typeof raw.CoordinatedEntities === 'object' && raw.CoordinatedEntities?.Value) return raw.CoordinatedEntities.Value;
+      return '';
+    })(),
+    UnifiedSupportTicketNumber: raw.UnifiedSupportTicketNumber ? Number(raw.UnifiedSupportTicketNumber) : undefined,
     AltLocation: typeof raw.AltLocation === 'object' ? raw.AltLocation.Value : (raw.AltLocation || ''),
     CommunicationDone: raw.CommunicationDone || false,
     ClosureTime: raw.ClosureTime || '',
@@ -567,15 +572,6 @@ const coordinatedEntitiesOptions: ChoiceOption[] = [
   { key: "لا يوجد", text: "لا يوجد" },
 ];
 
-const actionTakenOptions: ChoiceOption[] = [
-  { key: "إخلاء", text: "إخلاء" },
-  { key: "إسعاف", text: "إسعاف" },
-  { key: "إطفاء", text: "إطفاء" },
-  { key: "إبلاغ الجهات", text: "إبلاغ الجهات المختصة" },
-  { key: "التشغيل المتبادل", text: "التشغيل المتبادل" },
-  { key: "أخرى", text: "أخرى" },
-];
-
 const altLocationOptions: ChoiceOption[] = [
   { key: "مدرسة مجاورة", text: "مدرسة مجاورة" },
   { key: "مركز إيواء", text: "مركز إيواء" },
@@ -609,7 +605,6 @@ export const SharePointService = {
   getAlertModelTypeOptions: (): ChoiceOption[] => alertModelTypeOptions,
   getActivatedAlternativeOptions: (): ChoiceOption[] => activatedAlternativeOptions,
   getCoordinatedEntitiesOptions: (): ChoiceOption[] => coordinatedEntitiesOptions,
-  getActionTakenOptions: (): ChoiceOption[] => actionTakenOptions,
   getAltLocationOptions: (): ChoiceOption[] => altLocationOptions,
   getDrillHypothesisOptions: (): ChoiceOption[] => drillHypothesisOptions,
   getTargetGroupOptions: (): ChoiceOption[] => targetGroupOptions,
@@ -749,20 +744,14 @@ export const SharePointService = {
           };
         }
         
-        // JobRole needs to be sent as an object for choice fields
+        // JobRole is a choice field - send as plain string
         if (member.JobRole) {
-          item.JobRole = {
-            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
-            Value: member.JobRole,
-          };
+          item.JobRole = member.JobRole;
         }
         
-        // MembershipType needs to be sent as an object for choice fields
+        // MembershipType is a choice field - send as plain string
         if (member.MembershipType) {
-          item.MembershipType = {
-            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
-            Value: member.MembershipType,
-          };
+          item.MembershipType = member.MembershipType;
         }
         
         if (member.MemberMobile) {
@@ -803,20 +792,14 @@ export const SharePointService = {
         
         if (member.MemberEmail) data.MemberEmail = member.MemberEmail;
         
-        // JobRole needs to be sent as an object for choice fields
+        // JobRole is a choice field - send as plain string
         if (member.JobRole) {
-          data.JobRole = {
-            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
-            Value: member.JobRole,
-          };
+          data.JobRole = member.JobRole;
         }
         
-        // MembershipType needs to be sent as an object for choice fields
+        // MembershipType is a choice field - send as plain string
         if (member.MembershipType) {
-          data.MembershipType = {
-            '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
-            Value: member.MembershipType,
-          };
+          data.MembershipType = member.MembershipType;
         }
         
         if (member.MemberMobile) {
@@ -1084,11 +1067,22 @@ export const SharePointService = {
     if (isPowerAppsEnvironment()) {
       try {
         console.log('[SharePoint] Loading incidents using SBC_Incidents_LogService.getAll()...');
-        const result = await SBC_Incidents_LogService.getAll();
+        // Request all fields including choice fields explicitly
+        const result = await SBC_Incidents_LogService.getAll({
+          select: [
+            'ID', 'Title', 'SchoolName_Ref', 'IncidentCategory', 'RiskLevel', 
+            'AlertModelType', 'ActivatedAlternative', 'CoordinatedEntities', 
+            'AltLocation', 'ActivationTime', 'ClosureTime', 'HazardDescription',
+            'CommunicationDone', 'Challenges', 'LessonsLearned', 'Suggestions',
+            'UnifiedSupportTicketNumber', 'Created', 'Modified'
+          ]
+        });
         if (result.success && result.data) {
           const rawData = result.data || [];
+          console.log('[SharePoint] Raw incidents data sample (first item):', JSON.stringify(rawData[0], null, 2));
           const incidents = (Array.isArray(rawData) ? rawData : [rawData]).map(transformIncident);
           console.log(`[SharePoint] Loaded ${incidents.length} incidents`);
+          console.log('[SharePoint] Transformed incidents sample (first item):', JSON.stringify(incidents[0], null, 2));
           return schoolName ? incidents.filter(i => i.SchoolName_Ref === schoolName) : incidents;
         }
         console.error('[SharePoint] Failed to load incidents:', result.error);
@@ -1101,51 +1095,154 @@ export const SharePointService = {
   },
 
   async createIncident(incident: Incident, schoolId?: number): Promise<Incident> {
+    console.log('[SharePoint] ⚡ createIncident called with:', { incident, schoolId });
+    
     if (isPowerAppsEnvironment()) {
+      console.log('[SharePoint] ✓ Running in PowerApps environment');
       try {
         const data: any = {
           Title: incident.Title,
-          HazardDescription: incident.HazardDescription || '',
-          ActivationTime: incident.ActivationTime || '',
-          ClosureTime: incident.ClosureTime || '',
           CommunicationDone: incident.CommunicationDone || false,
-          Challenges: incident.Challenges || '',
-          LessonsLearned: incident.LessonsLearned || '',
-          Suggestions: incident.Suggestions || '',
         };
+        console.log('[SharePoint] Initial data object created:', data);
         
-        // Add UnifiedSupportTicketNumber if provided (number field)
+        // Only add optional fields if they have values
+        if (incident.HazardDescription) data.HazardDescription = incident.HazardDescription;
+        if (incident.ActivationTime) {
+          // Ensure date is in ISO format
+          data.ActivationTime = new Date(incident.ActivationTime).toISOString();
+        }
+        if (incident.ClosureTime) {
+          // Ensure date is in ISO format
+          data.ClosureTime = new Date(incident.ClosureTime).toISOString();
+        }
+        if (incident.Challenges) data.Challenges = incident.Challenges;
+        if (incident.LessonsLearned) data.LessonsLearned = incident.LessonsLearned;
+        if (incident.Suggestions) data.Suggestions = incident.Suggestions;
+        
+        // Add UnifiedSupportTicketNumber if provided (number field - رقم بلاغ الدعم الموحد)
         if (incident.UnifiedSupportTicketNumber) {
           data.UnifiedSupportTicketNumber = incident.UnifiedSupportTicketNumber;
         }
         
+        // Add school reference - Use schoolId if provided, otherwise lookup by name
         if (schoolId) {
           data.SchoolName_Ref = {
             '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
             Id: schoolId,
           };
+          console.log('[SharePoint] Using provided schoolId for SchoolName_Ref:', schoolId);
+        } else if (incident.SchoolName_Ref) {
+          // Try to lookup school ID from SchoolInfo list by name
+          try {
+            const { SchoolInfoService } = await import('../generated/services/SchoolInfoService');
+            const schoolsResult = await SchoolInfoService.getAll();
+            if (schoolsResult.success && schoolsResult.data) {
+              const matchingSchool = schoolsResult.data.find((s: any) => 
+                s.field_1 === incident.SchoolName_Ref || s.Title === incident.SchoolName_Ref
+              );
+              
+              if (matchingSchool && matchingSchool.ID) {
+                data.SchoolName_Ref = {
+                  '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+                  Id: matchingSchool.ID,
+                };
+                console.log('[SharePoint] Found school ID by name lookup:', matchingSchool.ID, 'for school:', incident.SchoolName_Ref);
+              } else {
+                console.warn('[SharePoint] School not found in SchoolInfo list:', incident.SchoolName_Ref);
+                // Don't send SchoolName_Ref if we can't find the ID
+              }
+            }
+          } catch (lookupError) {
+            console.error('[SharePoint] Error looking up school ID:', lookupError);
+          }
+        } else {
+          console.warn('[SharePoint] ⚠️ No schoolId or SchoolName_Ref provided - incident will be created without school reference');
         }
         
-        const choiceFields = ['IncidentCategory', 'RiskLevel', 'AlertModelType', 'ActivatedAlternative', 'CoordinatedEntities', 'ActionTaken', 'AltLocation'];
-        for (const field of choiceFields) {
+        // Choice fields - use plain strings for SharePoint
+        const singleChoiceFields = ['IncidentCategory', 'RiskLevel', 'AlertModelType', 'ActivatedAlternative', 'AltLocation'];
+        for (const field of singleChoiceFields) {
           if ((incident as any)[field]) {
-            data[field] = {
-              '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
-              Value: (incident as any)[field],
-            };
+            data[field] = (incident as any)[field];
           }
         }
         
-        console.log('[SharePoint] Creating incident:', data);
+        // CoordinatedEntities is a multi-choice field - send as string but SharePoint will handle it
+        if (incident.CoordinatedEntities) {
+          data.CoordinatedEntities = incident.CoordinatedEntities;
+        }
+        
+        // Validate required fields before sending
+        const requiredFields = ['Title', 'IncidentCategory', 'RiskLevel', 'ActivatedAlternative', 'CoordinatedEntities'];
+        const missingFields = requiredFields.filter(f => !data[f]);
+        if (missingFields.length > 0) {
+          const error = `Missing required fields: ${missingFields.join(', ')}`;
+          console.error('[SharePoint] Validation failed:', error);
+          throw new Error(error);
+        }
+        
+        console.log('[SharePoint] Creating incident with data:', JSON.stringify(data, null, 2));
         const result = await SBC_Incidents_LogService.create(data);
         
         if (result.success && result.data) {
-          return transformIncident(result.data);
+          console.log('[SharePoint] ✅ Incident created successfully, raw data:', JSON.stringify(result.data, null, 2));
+          
+          // SharePoint doesn't return choice fields in response, so merge our sent data with the response
+          const mergedData = {
+            ...result.data,
+            // Include choice fields from our sent data since SharePoint doesn't return them
+            IncidentCategory: data.IncidentCategory,
+            RiskLevel: data.RiskLevel,
+            AlertModelType: data.AlertModelType,
+            ActivatedAlternative: data.ActivatedAlternative,
+            CoordinatedEntities: data.CoordinatedEntities,
+            AltLocation: data.AltLocation,
+          };
+          
+          const transformed = transformIncident(mergedData);
+          console.log('[SharePoint] Transformed incident:', JSON.stringify(transformed, null, 2));
+          return transformed;
         }
-        throw new Error(String(result.error) || 'Failed to create incident');
+        
+        // Extract detailed error message
+        let errorMsg = 'Failed to create incident';
+        if (result.error) {
+          if (typeof result.error === 'string') {
+            errorMsg = result.error;
+          } else if (result.error.message) {
+            errorMsg = result.error.message;
+          } else if (result.error.error?.message) {
+            errorMsg = result.error.error.message;
+          } else {
+            try {
+              errorMsg = JSON.stringify(result.error);
+            } catch {
+              errorMsg = String(result.error);
+            }
+          }
+        }
+        
+        console.error('[SharePoint] Create incident failed:', errorMsg);
+        throw new Error(errorMsg);
       } catch (e: any) {
         console.error('[SharePoint] Error creating incident:', e);
-        throw e;
+        
+        // Try to extract meaningful error message
+        let errorMessage = e?.message || 'Unknown error';
+        if (e?.response?.data) {
+          try {
+            const responseData = typeof e.response.data === 'string' ? JSON.parse(e.response.data) : e.response.data;
+            errorMessage = responseData?.error?.message || responseData?.message || errorMessage;
+          } catch {
+            errorMessage = String(e.response.data);
+          }
+        } else if (e?.error?.message) {
+          errorMessage = e.error.message;
+        }
+        
+        console.error('[SharePoint] Extracted error message:', errorMessage);
+        throw new Error(errorMessage);
       }
     }
     
@@ -1167,9 +1264,9 @@ export const SharePointService = {
           Suggestions: incident.Suggestions || '',
         };
         
-        // Add IncidentNumber if provided (number field - رقم بلاغ الدعم الموحد)
-        if (incident.IncidentNumber) {
-          data.IncidentNumber = incident.IncidentNumber;
+        // Add UnifiedSupportTicketNumber if provided (number field - رقم بلاغ الدعم الموحد)
+        if (incident.UnifiedSupportTicketNumber) {
+          data.UnifiedSupportTicketNumber = incident.UnifiedSupportTicketNumber;
         }
         
         // Add date fields
@@ -1180,14 +1277,15 @@ export const SharePointService = {
           data.ClosureTime = incident.ClosureTime;
         }
         
-        const choiceFields = ['IncidentCategory', 'RiskLevel', 'AlertModelType', 'ActivatedAlternative', 'CoordinatedEntities', 'ActionTaken', 'AltLocation'];
-        for (const field of choiceFields) {
+        const singleChoiceFields = ['IncidentCategory', 'RiskLevel', 'AlertModelType', 'ActivatedAlternative', 'AltLocation'];
+        for (const field of singleChoiceFields) {
           if ((incident as any)[field]) {
-            data[field] = {
-              '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
-              Value: (incident as any)[field],
-            };
+            data[field] = (incident as any)[field];
           }
+        }
+        
+        if (incident.CoordinatedEntities) {
+          data.CoordinatedEntities = incident.CoordinatedEntities;
         }
         
         console.log('[SharePoint] Updating incident:', id, data);

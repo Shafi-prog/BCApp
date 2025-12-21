@@ -4,6 +4,7 @@ import {
   DetailsListLayoutMode,
   SelectionMode,
   IColumn,
+  IGroup,
   PrimaryButton,
   DefaultButton,
   Panel,
@@ -35,7 +36,7 @@ import { allRiskLevels, categoryToRiskLevelMapping, getAlertTypeForRiskLevel } f
  * Phase 1 - During Incident:
  *   - Title, IncidentCategory, RiskLevel, AlertModelType, ActivationTime
  *   - HazardDescription, ActivatedAlternative, AltLocation (conditional)
- *   - CoordinatedEntities (multi-select), ActionTaken, CommunicationDone
+ *   - CoordinatedEntities (multi-select), CommunicationDone
  * 
  * Phase 2 - After First Phase:
  *   - ClosureTime
@@ -48,6 +49,7 @@ const Incidents: React.FC = () => {
   const { user } = useAuth()
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [filteredItems, setFilteredItems] = useState<Incident[]>([])
+  const [incidentGroups, setIncidentGroups] = useState<IGroup[]>([])
   const [selectedLetter, setSelectedLetter] = useState<string>('')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | 'none'>('none')
   const [loading, setLoading] = useState(false)
@@ -62,7 +64,7 @@ const Incidents: React.FC = () => {
   const [alertModelTypeOptions, setAlertModelTypeOptions] = useState<IDropdownOption[]>([])
   const [activatedAlternativeOptions, setActivatedAlternativeOptions] = useState<IDropdownOption[]>([])
   const [coordinatedEntitiesOptions, setCoordinatedEntitiesOptions] = useState<IDropdownOption[]>([])
-  const [actionTakenOptions, setActionTakenOptions] = useState<IDropdownOption[]>([])
+
   const [altLocationOptions, setAltLocationOptions] = useState<IComboBoxOption[]>([])
   const [mutualSchools, setMutualSchools] = useState<string[]>([])
   
@@ -78,14 +80,13 @@ const Incidents: React.FC = () => {
     AlertModelType: '',
     HazardDescription: '',
     CoordinatedEntities: '',
-    ActionTaken: '',
     AltLocation: '',
     CommunicationDone: false,
     ClosureTime: '',
     Challenges: '',
     LessonsLearned: '',
     Suggestions: '',
-    IncidentNumber: undefined,
+    UnifiedSupportTicketNumber: undefined,
   })
 
   // Helper function to convert SharePoint response to dropdown options
@@ -108,7 +109,6 @@ const Incidents: React.FC = () => {
         alertModelTypeRes,
         activatedAlternativeRes,
         coordinatedEntitiesRes,
-        actionTakenRes,
         altLocationRes,
       ] = await Promise.all([
         SBC_Incidents_LogService.getReferencedEntity('', 'IncidentCategory'),
@@ -116,7 +116,6 @@ const Incidents: React.FC = () => {
         SBC_Incidents_LogService.getReferencedEntity('', 'AlertModelType'),
         SBC_Incidents_LogService.getReferencedEntity('', 'ActivatedAlternative'),
         SBC_Incidents_LogService.getReferencedEntity('', 'CoordinatedEntities'),
-        SBC_Incidents_LogService.getReferencedEntity('', 'ActionTaken'),
         SBC_Incidents_LogService.getReferencedEntity('', 'AltLocation'),
       ])
 
@@ -140,7 +139,6 @@ const Incidents: React.FC = () => {
       processField('AlertModelType', alertModelTypeRes, setAlertModelTypeOptions)
       processField('ActivatedAlternative', activatedAlternativeRes, setActivatedAlternativeOptions)
       processField('CoordinatedEntities', coordinatedEntitiesRes, setCoordinatedEntitiesOptions)
-      processField('ActionTaken', actionTakenRes, setActionTakenOptions)
       
       // Process AltLocation as ComboBox options
       if (altLocationRes.data) {
@@ -341,8 +339,10 @@ const Incidents: React.FC = () => {
   const columns = getColumns()
 
   useEffect(() => {
-    loadIncidents()
-    loadDropdownOptions()
+    if (user !== undefined) {
+      loadIncidents()
+      loadDropdownOptions()
+    }
   }, [user])
 
   const loadIncidents = async () => {
@@ -351,12 +351,53 @@ const Incidents: React.FC = () => {
       const schoolName = user?.type === 'admin' ? undefined : user?.schoolName
       const data = await SharePointService.getIncidents(schoolName)
       setIncidents(data)
-      setFilteredItems(data)
+      // Create groups for admin view
+      if (user?.type === 'admin') {
+        const result = createIncidentGroups(data)
+        setFilteredItems(result.items)
+        setIncidentGroups(result.groups)
+      } else {
+        setFilteredItems(data)
+      }
     } catch (e) {
       setMessage({ type: MessageBarType.error, text: `فشل تحميل الحوادث: ${e}` })
     } finally {
       setLoading(false)
     }
+  }
+
+  // Create groups by school name for admin view
+  const createIncidentGroups = (data: Incident[]): { items: Incident[], groups: IGroup[] } => {
+    const schoolMap = new Map<string, Incident[]>()
+    data.forEach(item => {
+      const schoolName = item.SchoolName_Ref || 'غير محدد'
+      if (!schoolMap.has(schoolName)) {
+        schoolMap.set(schoolName, [])
+      }
+      schoolMap.get(schoolName)!.push(item)
+    })
+
+    const groupedItems: Incident[] = []
+    const groups: IGroup[] = []
+    let startIndex = 0
+
+    // Sort schools alphabetically
+    const sortedSchools = Array.from(schoolMap.keys()).sort((a, b) => a.localeCompare(b, 'ar'))
+
+    sortedSchools.forEach(schoolName => {
+      const schoolItems = schoolMap.get(schoolName)!
+      groups.push({
+        key: schoolName,
+        name: `${schoolName} (${schoolItems.length})`,
+        startIndex,
+        count: schoolItems.length,
+        isCollapsed: true,
+      })
+      groupedItems.push(...schoolItems)
+      startIndex += schoolItems.length
+    })
+
+    return { items: groupedItems, groups }
   }
 
   const applySorting = (data: Incident[]) => {
@@ -394,21 +435,30 @@ const Incidents: React.FC = () => {
       AlertModelType: '',
       HazardDescription: '',
       CoordinatedEntities: '',
-      ActionTaken: '',
       AltLocation: '',
       CommunicationDone: false,
       ClosureTime: '',
       Challenges: '',
       LessonsLearned: '',
       Suggestions: '',
-      IncidentNumber: undefined,
+      UnifiedSupportTicketNumber: undefined,
     })
     setPanelOpen(true)
   }
 
   const onEdit = (item: Incident) => {
     setEditingId(item.Id!)
-    setForm({ ...item })
+    // Properly copy all fields, converting empty strings to actual values
+    setForm({
+      ...item,
+      UnifiedSupportTicketNumber: item.UnifiedSupportTicketNumber || undefined,
+      IncidentCategory: item.IncidentCategory || '',
+      RiskLevel: item.RiskLevel || '',
+      AlertModelType: item.AlertModelType || '',
+      ActivatedAlternative: item.ActivatedAlternative || '',
+      AltLocation: item.AltLocation || '',
+      CoordinatedEntities: item.CoordinatedEntities || '',
+    })
     // Set selected entities for multi-select
     if (item.CoordinatedEntities) {
       setSelectedEntities(item.CoordinatedEntities.split(',').map(e => e.trim()))
@@ -436,6 +486,10 @@ const Incidents: React.FC = () => {
   }
 
   const onSave = async () => {
+    console.log('[Incidents] ⚡ onSave called - Starting validation');
+    console.log('[Incidents] Form data:', form);
+    console.log('[Incidents] Selected entities:', selectedEntities);
+    
     // Phase 1 Required Fields Validation
     if (!form.Title) {
       setMessage({ type: MessageBarType.warning, text: 'يرجى إدخال العنوان' })
@@ -470,10 +524,6 @@ const Incidents: React.FC = () => {
       setMessage({ type: MessageBarType.warning, text: 'يرجى اختيار الجهات المنسق معها (جهة واحدة على الأقل)' })
       return
     }
-    if (!form.ActionTaken) {
-      setMessage({ type: MessageBarType.warning, text: 'يرجى اختيار الإجراء المتخذ' })
-      return
-    }
     
     // Date validation: ClosureTime cannot be before ActivationTime
     if (form.ClosureTime && form.ActivationTime) {
@@ -494,6 +544,13 @@ const Incidents: React.FC = () => {
         CoordinatedEntities: selectedEntities.join(', '), // Convert array to comma-separated string
       }
 
+      console.log('[Incidents] Saving incident data:', {
+        incidentData,
+        schoolId: user?.schoolId,
+        schoolName: user?.schoolName,
+        userType: user?.type
+      });
+
       if (editingId) {
         await SharePointService.updateIncident(editingId, incidentData)
         setMessage({ type: MessageBarType.success, text: 'تم تحديث الحادث بنجاح' })
@@ -504,8 +561,60 @@ const Incidents: React.FC = () => {
       await loadIncidents()
       onClose()
     } catch (e: any) {
-      const errorMessage = e?.message || (typeof e === 'string' ? e : JSON.stringify(e))
       console.error('[Incidents] Save error:', e)
+      
+      // Try to stringify the error safely
+      try {
+        console.error('[Incidents] Error details:', JSON.stringify(e, null, 2))
+      } catch {
+        console.error('[Incidents] Error cannot be stringified')
+      }
+      
+      let errorMessage = 'حدث خطأ غير متوقع'
+      
+      // Try multiple ways to extract the error message
+      if (typeof e === 'string') {
+        errorMessage = e
+      } else if (e?.message && typeof e.message === 'string' && e.message !== '[object Object]') {
+        errorMessage = e.message
+      } else if (e?.error?.message && typeof e.error.message === 'string') {
+        errorMessage = e.error.message
+      } else if (e?.response?.data?.error?.message && typeof e.response.data.error.message === 'string') {
+        errorMessage = e.response.data.error.message
+      } else if (e?.response?.data?.message && typeof e.response.data.message === 'string') {
+        errorMessage = e.response.data.message
+      } else if (e?.response?.statusText) {
+        errorMessage = `خطأ ${e.response.status}: ${e.response.statusText}`
+      } else if (e?.statusText && typeof e.statusText === 'string') {
+        errorMessage = e.statusText
+      } else if (e?.status) {
+        errorMessage = `خطأ في الخادم: ${e.status}`
+      } else if (e?.body && typeof e.body === 'string') {
+        errorMessage = e.body
+      } else if (e?.text && typeof e.text === 'string') {
+        errorMessage = e.text
+      } else {
+        // If all else fails, try to convert to string
+        try {
+          const errorStr = String(e)
+          if (errorStr && errorStr !== '[object Object]') {
+            errorMessage = errorStr
+          }
+        } catch {
+          errorMessage = 'حدث خطأ أثناء حفظ البيانات. يرجى المحاولة مرة أخرى.'
+        }
+      }
+      
+      // Log the data being sent for debugging
+      console.error('[Incidents] Failed to save incident data:', {
+        editingId,
+        title: form.Title,
+        category: form.IncidentCategory,
+        schoolName: user?.schoolName,
+        unifiedSupportTicketNumber: form.UnifiedSupportTicketNumber,
+        errorMessage
+      })
+      
       setMessage({ type: MessageBarType.error, text: `فشل الحفظ: ${errorMessage}` })
     } finally {
       setLoading(false)
@@ -521,12 +630,34 @@ const Incidents: React.FC = () => {
       setMessage({ type: MessageBarType.success, text: 'تم حذف الحادث بنجاح' })
       await loadIncidents()
     } catch (e: any) {
-      const errorMessage = e?.message || (typeof e === 'string' ? e : JSON.stringify(e))
       console.error('[Incidents] Delete error:', e)
+      let errorMessage = 'حدث خطأ غير متوقع'
+      
+      if (typeof e === 'string') {
+        errorMessage = e
+      } else if (e?.message) {
+        errorMessage = e.message
+      } else if (e?.error?.message) {
+        errorMessage = e.error.message
+      } else if (e?.response?.data?.error?.message) {
+        errorMessage = e.response.data.error.message
+      } else if (e?.statusText) {
+        errorMessage = e.statusText
+      }
+      
       setMessage({ type: MessageBarType.error, text: `فشل الحذف: ${errorMessage}` })
     } finally {
       setLoading(false)
     }
+  }
+
+  // Show loading while waiting for user context
+  if (user === undefined) {
+    return (
+      <div style={{ padding: 24, textAlign: 'center' }}>
+        <Spinner label="جاري التحميل..." />
+      </div>
+    )
   }
 
   return (
@@ -561,7 +692,7 @@ const Incidents: React.FC = () => {
       {user?.type === 'admin' && incidents.length > 0 && (
         <div style={{ marginBottom: 16, padding: 16, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
           <Stack horizontal horizontalAlign="space-between" style={{ marginBottom: 12 }}>
-            <Text variant="medium" style={{ fontWeight: 600 }}>ترتيب:</Text>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>ترتيب:</span>
             <Stack horizontal tokens={{ childrenGap: 8 }}>
               <DefaultButton
                 text="تصاعدي (أ-ي)"
@@ -600,9 +731,9 @@ const Incidents: React.FC = () => {
               />
             </Stack>
           </Stack>
-          <Text variant="medium" style={{ display: 'block', marginBottom: 12, fontWeight: 600 }}>
+          <span style={{ display: 'block', marginBottom: 12, fontWeight: 600, fontSize: 14 }}>
             تصفية حسب الحرف الأول لاسم المدرسة:
-          </Text>
+          </span>
           <Stack horizontal wrap tokens={{ childrenGap: 8 }}>
             <DefaultButton 
               text="الكل"
@@ -639,9 +770,9 @@ const Incidents: React.FC = () => {
             ))}
           </Stack>
           {selectedLetter && (
-            <Text variant="small" style={{ display: 'block', marginTop: 8, color: '#666' }}>
+            <span style={{ display: 'block', marginTop: 8, color: '#666', fontSize: 12 }}>
               عرض {filteredItems.length} حادث يبدأ اسم المدرسة بحرف "{selectedLetter}"
-            </Text>
+            </span>
           )}
         </div>
       )}
@@ -652,6 +783,10 @@ const Incidents: React.FC = () => {
           columns={columns}
           layoutMode={DetailsListLayoutMode.justified}
           selectionMode={SelectionMode.none}
+          groups={user?.type === 'admin' ? incidentGroups : undefined}
+          groupProps={{
+            showEmptyGroups: false,
+          }}
         />
         {filteredItems.length === 0 && !loading && (
           <div style={{ padding: 20, textAlign: 'center', color: '#666' }}>
@@ -695,14 +830,32 @@ const Incidents: React.FC = () => {
               placeholder="أدخل عنوان الانقطاع"
             />
             
-            {/* 2. IncidentNumber - رقم بلاغ الدعم الموحد */}
+            {/* 2. UnifiedSupportTicketNumber - رقم بلاغ الدعم الموحد */}
             <TextField
               label="رقم بلاغ الدعم الموحد"
               type="number"
-              value={form.IncidentNumber?.toString() || ''}
-              onChange={(_, v) => setForm({ ...form, IncidentNumber: v ? parseInt(v) : undefined })}
+              value={form.UnifiedSupportTicketNumber?.toString() || ''}
+              onChange={(_, v) => {
+                // Only allow numbers
+                if (v === '' || v === undefined) {
+                  setForm({ ...form, UnifiedSupportTicketNumber: undefined })
+                } else {
+                  const numValue = parseInt(v)
+                  if (!isNaN(numValue) && numValue >= 0) {
+                    setForm({ ...form, UnifiedSupportTicketNumber: numValue })
+                  }
+                }
+              }}
+              onGetErrorMessage={(value) => {
+                if (value && !/^\d+$/.test(value)) {
+                  return 'يرجى إدخال أرقام فقط'
+                }
+                return ''
+              }}
+              validateOnFocusOut
+              validateOnLoad={false}
               styles={{ root: { marginTop: 12 } }}
-              placeholder="أدخل رقم البلاغ"
+              placeholder="أدخل رقم البلاغ (أرقام فقط)"
             />
             
             {/* 3. IncidentCategory - تصنيف الحادث */}
@@ -867,18 +1020,7 @@ const Incidents: React.FC = () => {
               placeholder="اختر الجهات المنسق معها (يمكن اختيار أكثر من جهة)"
             />
             
-            {/* 10. ActionTaken - الإجراء المتخذ */}
-            <Dropdown
-              label="الإجراء المتخذ *"
-              selectedKey={form.ActionTaken}
-              options={actionTakenOptions}
-              onChange={(_, option) => setForm({ ...form, ActionTaken: option?.key as string || '' })}
-              required
-              styles={{ root: { marginTop: 12 } }}
-              placeholder="اختر الإجراء المتخذ"
-            />
-            
-            {/* 11. CommunicationDone - التواصل مع أولياء الأمور */}
+            {/* 10. CommunicationDone - التواصل مع أولياء الأمور */}
             <Toggle
               label="التواصل مع أولياء الأمور"
               checked={form.CommunicationDone || false}

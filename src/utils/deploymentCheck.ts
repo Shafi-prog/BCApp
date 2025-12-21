@@ -170,7 +170,6 @@ export async function runDeploymentCheck(): Promise<DeploymentReport> {
     'AlertModelType',
     'ActivatedAlternative',
     'CoordinatedEntities',
-    'ActionTaken',
     'AltLocation',
   ]
   
@@ -415,7 +414,7 @@ export async function checkChoiceFieldsOnly(): Promise<CheckResult[]> {
   const criticalFields = [
     { list: 'SBC_Incidents_Log', field: 'IncidentCategory', service: SBC_Incidents_LogService },
     { list: 'SBC_Incidents_Log', field: 'RiskLevel', service: SBC_Incidents_LogService },
-    { list: 'SBC_Incidents_Log', field: 'ActionTaken', service: SBC_Incidents_LogService },
+    { list: 'SBC_Incidents_Log', field: 'ActivatedAlternative', service: SBC_Incidents_LogService },
     { list: 'Coordination_Programs_Catalog', field: 'ActivityType', service: Coordination_Programs_CatalogService },
     { list: 'Coordination_Programs_Catalog', field: 'ProviderEntity', service: Coordination_Programs_CatalogService },
     { list: 'SBC_Drills_Log', field: 'DrillHypothesis', service: SBC_Drills_LogService },

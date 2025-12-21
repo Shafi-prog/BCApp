@@ -2877,8 +2877,7 @@ const SchoolLessonsAnalysis: React.FC<{ incidents: Incident[]; drills: Drill[] }
       const texts = [
         incident.LessonsLearned || '',
         incident.Challenges || '',
-        incident.Suggestions || '',
-        incident.ActionTaken || ''
+        incident.Suggestions || ''
       ].join(' ')
       
       const words = texts.split(/[\s،,.\-:؛]+/).filter(w => w.length > 2 && !stopWords.includes(w))

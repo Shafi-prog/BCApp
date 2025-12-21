@@ -35,6 +35,16 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
+ * Validate MOE email (Ministry of Education Saudi Arabia)
+ * Only accepts @moe.gov.sa, @mb.moe.gov.sa, @mg.moe.gov.sa domains
+ */
+export function isValidMOEEmail(email: string): boolean {
+  if (!email) return false;
+  const moeEmailRegex = /^[a-zA-Z0-9._%+-]+@(moe\.gov\.sa|mb\.moe\.gov\.sa|mg\.moe\.gov\.sa)$/;
+  return moeEmailRegex.test(email.toLowerCase()) && email.length <= 100;
+}
+
+/**
  * Validate Saudi phone number
  * Accepts formats: 05XXXXXXXX, 5XXXXXXXX, +9665XXXXXXXX
  */

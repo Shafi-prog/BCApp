@@ -54,7 +54,6 @@ export interface Incident {
     ActivationTime?: string;
     ClosureTime?: string;
     CoordinatedEntities?: string;
-    ActionTaken?: string;
     AltLocation?: string;
     CommunicationDone?: boolean;
     Challenges?: string;
@@ -95,7 +94,6 @@ export declare const SharePointService: {
     getAlertModelTypeOptions: () => ChoiceOption[];
     getActivatedAlternativeOptions: () => ChoiceOption[];
     getCoordinatedEntitiesOptions: () => ChoiceOption[];
-    getActionTakenOptions: () => ChoiceOption[];
     getAltLocationOptions: () => ChoiceOption[];
     getDrillHypothesisOptions: () => ChoiceOption[];
     getTargetGroupOptions: () => ChoiceOption[];
