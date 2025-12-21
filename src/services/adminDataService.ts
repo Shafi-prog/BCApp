@@ -13,7 +13,8 @@ import {
   BC_Plan_ReviewService,
   BC_Plan_ScenariosService,
   BC_Mutual_OperationService,
-  SBC_Drills_LogService
+  SBC_Drills_LogService,
+  SchoolInfoService
 } from '../generated';
 
 // ============ INTERFACES ============
@@ -661,6 +662,10 @@ export const AdminDataService = {
   async recordDrillExecution(drillId: number, executionData: {
     executionDate: string;
     schoolName?: string;
+    title?: string;
+    hypothesis?: string;
+    specificEvent?: string;
+    targetGroup?: string;
   }): Promise<any> {
     try {
       console.log('[AdminData] Recording drill execution to SBC_Drills_Log...');
@@ -668,12 +673,55 @@ export const AdminDataService = {
       // Record the school's execution of the drill in SBC_Drills_Log
       // Using exact SharePoint column names from the list schema
       const data: any = {
-        Title: `تنفيذ - التمرين الفرضي`,
-        ExecutionDate: executionData.executionDate,      // Date field
+        Title: executionData.title || 'تنفيذ - التمرين الفرضي',
+        ExecutionDate: executionData.executionDate,
+        SpecificEvent: executionData.specificEvent || '',
       };
       
+      // Add choice fields (DrillHypothesis and TargetGroup)
+      if (executionData.hypothesis) {
+        data['DrillHypothesis'] = {
+          '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+          Value: executionData.hypothesis
+        };
+      }
+      
+      if (executionData.targetGroup) {
+        data['TargetGroup'] = {
+          '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+          Value: executionData.targetGroup
+        };
+      }
+      
+      // If schoolName is provided, lookup the SchoolInfo ID
       if (executionData.schoolName) {
-        data['SchoolName'] = executionData.schoolName;    // School name reference
+        try {
+          // Get all schools to find the matching ID
+          const schoolsResult = await SchoolInfoService.getAll();
+          if (schoolsResult.success && schoolsResult.data) {
+            const matchingSchool = schoolsResult.data.find((s: any) => 
+              s.field_1 === executionData.schoolName || s.Title === executionData.schoolName
+            );
+            
+            if (matchingSchool && matchingSchool.ID) {
+              // Use the correct format for lookup field
+              data['SchoolName_Ref'] = {
+                '@odata.type': 'SP.Data.SchoolInfoItem',
+                Id: matchingSchool.ID,
+                Value: executionData.schoolName
+              };
+              console.log('[AdminData] Found school ID:', matchingSchool.ID);
+            } else {
+              console.warn('[AdminData] School not found in SchoolInfo list:', executionData.schoolName);
+              // Fallback: try using just the value without ID
+              data['SchoolName_Ref'] = { Value: executionData.schoolName };
+            }
+          }
+        } catch (lookupError) {
+          console.error('[AdminData] Error looking up school ID:', lookupError);
+          // Fallback: use the school name directly
+          data['SchoolName_Ref'] = { Value: executionData.schoolName };
+        }
       }
       
       console.log('[AdminData] Sending execution data to SharePoint:', data);
@@ -688,10 +736,13 @@ export const AdminDataService = {
         };
       }
       
-      throw new Error(String(result.error) || 'Failed to record drill execution');
+      const errorMsg = result.error ? JSON.stringify(result.error) : 'Failed to record drill execution';
+      console.error('[AdminData] Error response from SharePoint:', errorMsg);
+      throw new Error(errorMsg);
     } catch (e: any) {
       console.error('[AdminData] Error recording drill execution:', e);
-      throw e;
+      const errorMessage = e.message || e.toString() || 'حدث خطأ غير معروف';
+      throw new Error(errorMessage);
     }
   },
 

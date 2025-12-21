@@ -13,6 +13,8 @@ import { AnnouncementService, Announcement } from '../services/announcementServi
 import { mutualOperationPlan, SchoolAlternatives } from '../data/mutualOperation'
 import BCTasksDashboard from './BCTasksDashboard'
 import DrilsManagement from './DrilsManagement'
+import SupportingDocsSidebar from './SupportingDocsSidebar'
+import BCDRChecklistComponent from './BCDRChecklist'
 import { getColumnConfig, ColumnType, renderDate } from '../config/tableConfig'
 import { sanitizeString, sanitizeHTML, isValidEmail, isValidSaudiPhone, isValidDate, formatSaudiPhone } from '../utils/security'
 
@@ -183,6 +185,8 @@ const AdminPanel: React.FC = () => {
   // Scenario editing state
   const [scenarioPanelOpen, setScenarioPanelOpen] = useState(false)
   const [editingScenario, setEditingScenario] = useState<{ id: number; title: string; description: string; actions: string[] } | null>(null)
+  // Supporting docs sidebar state
+  const [supportingDocsSidebarOpen, setSupportingDocsSidebarOpen] = useState(false)
 
   // Load data on mount
   useEffect(() => {
@@ -853,6 +857,23 @@ const AdminPanel: React.FC = () => {
                   المهمة 1: خطة استمرارية العملية التعليمية
                 </h3>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <PrimaryButton
+                    text="📄 عرض خطة الاستمرارية (كما تراها المدارس)"
+                    iconProps={{ iconName: 'DocumentSet' }}
+                    onClick={() => setSupportingDocsSidebarOpen(true)}
+                    styles={{ 
+                      root: { 
+                        fontSize: 14,
+                        backgroundColor: '#0078d4',
+                        borderColor: '#0078d4',
+                        fontWeight: 600
+                      },
+                      rootHovered: {
+                        backgroundColor: '#106ebe',
+                        borderColor: '#106ebe'
+                      }
+                    }}
+                  />
                   <span style={{ 
                     padding: '4px 12px', 
                     borderRadius: 16, 
@@ -1671,47 +1692,7 @@ const AdminPanel: React.FC = () => {
 
         {/* Tab 5: DR Checklist */}
         <PivotItem headerText="جاهزية DR" itemKey="dr" itemIcon="CloudUpload">
-          <div style={{ padding: '20px 0' }}>
-            <h3 style={{ marginBottom: 16 }}>قائمة التحقق من جاهزية مركز البيانات الاحتياطي</h3>
-            <div className="card" style={{ padding: 20 }}>
-              {['البيانات', 'الأنظمة', 'الاتصالات', 'المواقع البديلة', 'الفرق'].map(category => (
-                <div key={category} style={{ marginBottom: 20 }}>
-                  <h4 style={{ color: '#008752', marginBottom: 12 }}>{category}</h4>
-                  {drChecklist.filter(d => d.category === category).map(item => (
-                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', backgroundColor: '#f9f9f9', borderRadius: 4, marginBottom: 8 }}>
-                      <Dropdown
-                        selectedKey={item.status}
-                        options={[
-                          { key: 'ready', text: '✅ جاهز' },
-                          { key: 'partial', text: '⚠️ جزئي' },
-                          { key: 'not_ready', text: '❌ غير جاهز' }
-                        ]}
-                        onChange={(_, opt) => {
-                          const newStatus = opt?.key as any
-                          const today = new Date().toISOString().split('T')[0]
-                          const updated = drChecklist.map(d => d.id === item.id ? { ...d, status: newStatus, lastChecked: today } : d)
-                          saveDRChecklist(updated)
-                          AdminDataService.updateDRCheckItem(item.id, { status: newStatus, lastChecked: today }).catch(e => {
-                            console.error('Error updating DR checklist item status in SharePoint:', e)
-                          })
-                        }}
-                        styles={{ root: { width: 120 } }}
-                      />
-                      <span style={{ flex: 1 }}>{item.Title}</span>
-                      <TextField placeholder="ملاحظات" value={item.notes} onChange={(_, v) => {
-                        const newNotes = v || ''
-                        const updated = drChecklist.map(d => d.id === item.id ? { ...d, notes: newNotes } : d)
-                        saveDRChecklist(updated)
-                        AdminDataService.updateDRCheckItem(item.id, { notes: newNotes }).catch(e => {
-                          console.error('Error updating DR checklist item notes in SharePoint:', e)
-                        })
-                      }} styles={{ root: { width: 200 } }} />
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
+          <BCDRChecklistComponent />
         </PivotItem>
 
         {/* Tab 6: Lessons Learned - from SharePoint Incidents */}
@@ -2059,6 +2040,12 @@ const AdminPanel: React.FC = () => {
       <Panel isOpen={evaluationPanelOpen} onDismiss={() => setEvaluationPanelOpen(false)} headerText={editingEvaluation ? 'تعديل تقييم' : 'إضافة تقييم حادث'} type={PanelType.medium}>
         <IncidentEvaluationForm evaluation={editingEvaluation} incidents={incidents} onSave={async (e) => { await saveIncidentEvaluation(e, !!editingEvaluation); setEvaluationPanelOpen(false); setEditingEvaluation(null) }} />
       </Panel>
+
+      {/* Supporting Docs Sidebar - View as schools see it */}
+      <SupportingDocsSidebar
+        isOpen={supportingDocsSidebarOpen}
+        onClose={() => setSupportingDocsSidebarOpen(false)}
+      />
     </div>
   )
 }

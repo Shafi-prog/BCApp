@@ -185,6 +185,18 @@ export interface ChoiceOption {
   text: string;
 }
 
+// ============ BC_DR_CHECKLIST ============
+export interface BCDRChecklist {
+  Id?: number;
+  Title: string;  // Item name
+  Category: string;  // Category (e.g., Hardware, Software, Network, etc.)
+  Status: string;  // Status (e.g., جاهز, يحتاج صيانة, غير جاهز)
+  LastChecked?: string;  // Last check date
+  CheckedBy?: string;  // Person who checked
+  Notes?: string;  // Additional notes
+  SortOrder?: number;  // For custom ordering
+}
+
 // ============ INCIDENT EVALUATION CALCULATOR ============
 // Calculates evaluation ratings automatically based on incident data
 
@@ -1678,6 +1690,105 @@ export const SharePointService = {
   
   async getLists(): Promise<string[]> {
     return Object.values(LISTS);
+  },
+
+  // ============ BC_DR_CHECKLIST CRUD Operations ============
+  async getBCDRChecklist(): Promise<BCDRChecklist[]> {
+    if (isPowerAppsEnvironment()) {
+      try {
+        const response = await fetch(`${SHAREPOINT_SITE}/_api/web/lists/getbytitle('BC_DR_Checklist')/items?$select=Id,Title,Category,Status,LastChecked,CheckedBy,Notes,SortOrder&$orderby=SortOrder,Id`);
+        if (!response.ok) throw new Error('Failed to fetch checklist');
+        const data = await response.json();
+        return data.value.map((item: any) => ({
+          Id: item.Id,
+          Title: item.Title || '',
+          Category: extractChoiceValue(item.Category),
+          Status: extractChoiceValue(item.Status),
+          LastChecked: item.LastChecked || '',
+          CheckedBy: extractChoiceValue(item.CheckedBy),
+          Notes: item.Notes || '',
+          SortOrder: item.SortOrder || 0,
+        }));
+      } catch (error) {
+        console.error('Error fetching BC DR Checklist:', error);
+        return [];
+      }
+    }
+    // Mock data for local development
+    return [];
+  },
+
+  async createBCDRChecklistItem(item: Partial<BCDRChecklist>): Promise<BCDRChecklist> {
+    if (isPowerAppsEnvironment()) {
+      const response = await fetch(`${SHAREPOINT_SITE}/_api/web/lists/getbytitle('BC_DR_Checklist')/items`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json;odata=verbose',
+          'Accept': 'application/json;odata=verbose',
+        },
+        body: JSON.stringify({
+          __metadata: { type: 'SP.Data.BC_DR_ChecklistListItem' },
+          Title: item.Title,
+          Category: item.Category,
+          Status: item.Status,
+          LastChecked: item.LastChecked,
+          CheckedBy: item.CheckedBy,
+          Notes: item.Notes,
+          SortOrder: item.SortOrder || 0,
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to create item');
+      const data = await response.json();
+      return {
+        Id: data.d.Id,
+        Title: data.d.Title,
+        Category: data.d.Category,
+        Status: data.d.Status,
+        LastChecked: data.d.LastChecked,
+        CheckedBy: data.d.CheckedBy,
+        Notes: data.d.Notes,
+        SortOrder: data.d.SortOrder,
+      };
+    }
+    return item as BCDRChecklist;
+  },
+
+  async updateBCDRChecklistItem(id: number, item: Partial<BCDRChecklist>): Promise<void> {
+    if (isPowerAppsEnvironment()) {
+      const response = await fetch(`${SHAREPOINT_SITE}/_api/web/lists/getbytitle('BC_DR_Checklist')/items(${id})`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json;odata=verbose',
+          'Accept': 'application/json;odata=verbose',
+          'IF-MATCH': '*',
+          'X-HTTP-Method': 'MERGE',
+        },
+        body: JSON.stringify({
+          __metadata: { type: 'SP.Data.BC_DR_ChecklistListItem' },
+          Title: item.Title,
+          Category: item.Category,
+          Status: item.Status,
+          LastChecked: item.LastChecked,
+          CheckedBy: item.CheckedBy,
+          Notes: item.Notes,
+          SortOrder: item.SortOrder,
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to update item');
+    }
+  },
+
+  async deleteBCDRChecklistItem(id: number): Promise<void> {
+    if (isPowerAppsEnvironment()) {
+      const response = await fetch(`${SHAREPOINT_SITE}/_api/web/lists/getbytitle('BC_DR_Checklist')/items(${id})`, {
+        method: 'POST',
+        headers: {
+          'IF-MATCH': '*',
+          'X-HTTP-Method': 'DELETE',
+        },
+      });
+      if (!response.ok) throw new Error('Failed to delete item');
+    }
   },
   
   getSharePointItemLink,

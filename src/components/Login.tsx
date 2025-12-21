@@ -218,6 +218,9 @@ const Login: React.FC = () => {
           <Text variant="medium" style={{ marginTop: '12px', color: '#666', textAlign: 'center' }}>
             الإدارة العامة للتعليم بمنطقة المدينة المنورة
           </Text>
+          <Text variant="small" style={{ marginTop: '8px', color: '#999', textAlign: 'center', fontSize: '12px' }}>
+            powered by smutiry9983@moe.gov.sa
+          </Text>
         </div>
 
         {/* Right side - Login Form */}
@@ -317,6 +320,37 @@ const Login: React.FC = () => {
                     placeholder="أدخل رقم الهوية (10 أرقام)"
                     required
                     canRevealPassword
+                    revealPasswordAriaLabel="إظهار كلمة المرور"
+                    styles={{
+                      revealButton: { 
+                        color: '#008752 !important',
+                        backgroundColor: 'transparent !important',
+                        display: 'flex !important',
+                        opacity: '1 !important',
+                        visibility: 'visible !important',
+                        zIndex: 10,
+                        minWidth: '32px',
+                        height: '32px',
+                        padding: '0 8px',
+                        selectors: {
+                          ':hover': { 
+                            color: '#006d42 !important', 
+                            backgroundColor: '#f0f0f0 !important' 
+                          },
+                          'i': { 
+                            fontSize: '18px !important',
+                            fontWeight: 'bold !important',
+                            display: 'block !important'
+                          },
+                          ':focus': {
+                            outline: '2px solid #008752'
+                          }
+                        }
+                      },
+                      field: {
+                        paddingRight: '40px'
+                      }
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && selectedSchool && principalId) {
                         handleSchoolLogin()
@@ -384,6 +418,37 @@ const Login: React.FC = () => {
                   placeholder="أدخل كلمة المرور"
                   required
                   canRevealPassword
+                  revealPasswordAriaLabel="إظهار كلمة المرور"
+                  styles={{
+                    revealButton: { 
+                      color: '#008752 !important',
+                      backgroundColor: 'transparent !important',
+                      display: 'flex !important',
+                      opacity: '1 !important',
+                      visibility: 'visible !important',
+                      zIndex: 10,
+                      minWidth: '32px',
+                      height: '32px',
+                      padding: '0 8px',
+                      selectors: {
+                        ':hover': { 
+                          color: '#006d42 !important', 
+                          backgroundColor: '#f0f0f0 !important' 
+                        },
+                        'i': { 
+                          fontSize: '18px !important',
+                          fontWeight: 'bold !important',
+                          display: 'block !important'
+                        },
+                        ':focus': {
+                          outline: '2px solid #008752'
+                        }
+                      }
+                    },
+                    field: {
+                      paddingRight: '40px'
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && adminPassword) {
                       handleAdminLogin()

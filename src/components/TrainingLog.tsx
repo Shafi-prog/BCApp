@@ -42,10 +42,13 @@ const getRegistrationType = (date?: string): string => {
 const TrainingLog: React.FC = () => {
   const { user } = useAuth()
   const [items, setItems] = useState<TrainingLogType[]>([])
+  const [filteredItems, setFilteredItems] = useState<TrainingLogType[]>([])
   const [loading, setLoading] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [message, setMessage] = useState<{ type: MessageBarType; text: string } | null>(null)
+  const [selectedLetter, setSelectedLetter] = useState<string>('')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | 'none'>('none')
   
   // Programs and team members for dropdown selection
   const [programs, setPrograms] = useState<TrainingProgram[]>([])
@@ -66,53 +69,78 @@ const TrainingLog: React.FC = () => {
     return `https://saudimoe.sharepoint.com/sites/em/Lists/School_Training_Log/DispForm.aspx?ID=${item.Id}`
   }
 
-  const columns: IColumn[] = [
-    { 
-      ...getColumnConfig(ColumnType.MEDIUM_TEXT),
-      key: 'Program_Ref', 
-      name: 'البرنامج', 
-      fieldName: 'Program_Ref', 
-      onRender: (item: TrainingLogType) => renderChoice(item.Program_Ref)
-    },
-    { 
-      ...getColumnConfig(ColumnType.SHORT_TEXT),
-      key: 'RegistrationType', 
-      name: 'نوع التسجيل', 
-      fieldName: 'RegistrationType', 
-      onRender: (item: TrainingLogType) => renderChoice(item.RegistrationType)
-    },
-    { 
-      ...getColumnConfig(ColumnType.MULTI_VALUE),
-      key: 'AttendeesNames', 
-      name: 'أسماء الحضور', 
-      fieldName: 'AttendeesNames', 
-      onRender: (item: TrainingLogType) => renderMultiValue(item.AttendeesNames)
-    },
-    { 
-      ...getColumnConfig(ColumnType.DATE),
-      key: 'TrainingDate', 
-      name: 'تاريخ التدريب', 
-      fieldName: 'TrainingDate', 
-      onRender: (item: TrainingLogType) => renderDate(item.TrainingDate)
-    },
-    { 
-      ...getColumnConfig(ColumnType.MEDIUM_TEXT),
-      key: 'GeneralNotes', 
-      name: 'ملاحظات عامة', 
-      fieldName: 'GeneralNotes', 
-      onRender: (item: TrainingLogType) => {
-        // Display GeneralNotes (Program Name + Registration Date)
-        // Fallback to computed value if GeneralNotes is empty
-        const displayText = item.GeneralNotes || (item.Program_Ref && item.Created
-          ? `${item.Program_Ref} - ${new Date(item.Created).toLocaleDateString('ar-SA')}`
-          : '-');
-        return (
-          <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
-            {displayText}
+  // Build columns array based on user type
+  const getColumns = (): IColumn[] => {
+    const cols: IColumn[] = []
+    
+    // Admin sees school name column first
+    if (user?.type === 'admin') {
+      cols.push({
+        ...getColumnConfig(ColumnType.SHORT_TEXT),
+        key: 'SchoolName_Ref',
+        name: 'المدرسة',
+        fieldName: 'SchoolName_Ref',
+        onRender: (item: TrainingLogType) => (
+          <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {item.SchoolName_Ref || '-'}
           </div>
-        );
-      }
-    },
+        ),
+      })
+    }
+    
+    cols.push(
+      { 
+        ...getColumnConfig(ColumnType.MEDIUM_TEXT),
+        key: 'Program_Ref', 
+        name: 'البرنامج', 
+        fieldName: 'Program_Ref', 
+        onRender: (item: TrainingLogType) => renderChoice(item.Program_Ref)
+      },
+      { 
+        ...getColumnConfig(ColumnType.SHORT_TEXT),
+        key: 'RegistrationType', 
+        name: 'نوع التسجيل', 
+        fieldName: 'RegistrationType', 
+        onRender: (item: TrainingLogType) => renderChoice(item.RegistrationType)
+      },
+      { 
+        ...getColumnConfig(ColumnType.MULTI_VALUE),
+        key: 'AttendeesNames', 
+        name: 'أسماء الحضور', 
+        fieldName: 'AttendeesNames', 
+        onRender: (item: TrainingLogType) => renderMultiValue(item.AttendeesNames)
+      },
+      { 
+        ...getColumnConfig(ColumnType.DATE),
+        key: 'TrainingDate', 
+        name: 'تاريخ التدريب', 
+        fieldName: 'TrainingDate', 
+        onRender: (item: TrainingLogType) => renderDate(item.TrainingDate)
+      },
+      { 
+        ...getColumnConfig(ColumnType.MEDIUM_TEXT),
+        key: 'GeneralNotes', 
+        name: 'ملاحظات عامة', 
+        fieldName: 'GeneralNotes', 
+        onRender: (item: TrainingLogType) => {
+          // Display GeneralNotes (Program Name + Registration Date)
+          // Fallback to computed value if GeneralNotes is empty
+          const displayText = item.GeneralNotes || (item.Program_Ref && item.Created
+            ? `${item.Program_Ref} - ${new Date(item.Created).toLocaleDateString('ar-SA')}`
+            : '-');
+          return (
+            <div style={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+              {displayText}
+            </div>
+          );
+        }
+      },
+    )
+    return cols
+  }
+
+  const columns: IColumn[] = [
+    ...getColumns(),
     {
       ...getColumnConfig(ColumnType.ATTACHMENT),
       key: 'attachment',
@@ -187,11 +215,35 @@ const TrainingLog: React.FC = () => {
       const schoolName = user?.type === 'admin' ? undefined : user?.schoolName
       const data = await SharePointService.getTrainingLog(schoolName)
       setItems(data)
+      setFilteredItems(data)
     } catch (e) {
       setMessage({ type: MessageBarType.error, text: `فشل تحميل سجل التدريب: ${e}` })
     } finally {
       setLoading(false)
     }
+  }
+
+  // Filter by school name alphabet
+  const filterByLetter = (letter: string) => {
+    setSelectedLetter(letter)
+    let filtered = letter ? items.filter(item => item.SchoolName_Ref?.startsWith(letter)) : items
+    filtered = applySorting(filtered)
+    setFilteredItems(filtered)
+  }
+
+  const applySorting = (data: TrainingLogType[]) => {
+    if (sortOrder === 'none') return data
+    return [...data].sort((a, b) => {
+      const nameA = a.SchoolName_Ref || ''
+      const nameB = b.SchoolName_Ref || ''
+      return sortOrder === 'asc' ? nameA.localeCompare(nameB, 'ar') : nameB.localeCompare(nameA, 'ar')
+    })
+  }
+
+  const sortBySchoolName = (order: 'asc' | 'desc' | 'none') => {
+    setSortOrder(order)
+    const sorted = applySorting(selectedLetter ? filteredItems : items)
+    setFilteredItems(sorted)
   }
 
   const loadPrograms = async () => {
@@ -356,6 +408,92 @@ const TrainingLog: React.FC = () => {
         </div>
       ) : (
         <>
+          {/* Alphabet Filter and Sorting for Admin */}
+          {user?.type === 'admin' && items.length > 0 && (
+            <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 8 }}>
+              <Stack horizontal horizontalAlign="space-between" style={{ marginBottom: 12 }}>
+                <Text variant="small" style={{ fontWeight: 600, color: '#323130' }}>ترتيب:</Text>
+                <Stack horizontal tokens={{ childrenGap: 8 }}>
+                  <DefaultButton
+                    text="تصاعدي (أ-ي)"
+                    iconProps={{ iconName: 'SortUp' }}
+                    onClick={() => sortBySchoolName('asc')}
+                    styles={{
+                      root: {
+                        backgroundColor: sortOrder === 'asc' ? '#008752' : 'white',
+                        color: sortOrder === 'asc' ? 'white' : '#333',
+                        border: '1px solid #008752',
+                        minWidth: 100,
+                      }
+                    }}
+                  />
+                  <DefaultButton
+                    text="تنازلي (ي-أ)"
+                    iconProps={{ iconName: 'SortDown' }}
+                    onClick={() => sortBySchoolName('desc')}
+                    styles={{
+                      root: {
+                        backgroundColor: sortOrder === 'desc' ? '#008752' : 'white',
+                        color: sortOrder === 'desc' ? 'white' : '#333',
+                        border: '1px solid #008752',
+                        minWidth: 100,
+                      }
+                    }}
+                  />
+                  <DefaultButton
+                    text="بدون ترتيب"
+                    onClick={() => sortBySchoolName('none')}
+                    styles={{
+                      root: {
+                        backgroundColor: sortOrder === 'none' ? '#008752' : 'white',
+                        color: sortOrder === 'none' ? 'white' : '#333',
+                        border: '1px solid #008752',
+                        minWidth: 100,
+                      }
+                    }}
+                  />
+                </Stack>
+              </Stack>
+              <Text variant="small" style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#323130' }}>تصفية حسب اسم المدرسة:</Text>
+              <Stack horizontal tokens={{ childrenGap: 4 }} wrap>
+                <DefaultButton
+                  text="الكل"
+                  onClick={() => filterByLetter('')}
+                  styles={{
+                    root: {
+                      minWidth: 35,
+                      padding: '4px 8px',
+                      backgroundColor: !selectedLetter ? '#008752' : '#fff',
+                      color: !selectedLetter ? '#fff' : '#323130',
+                      border: '1px solid #e1e1e1'
+                    }
+                  }}
+                />
+                {['ا', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي'].map(letter => (
+                  <DefaultButton
+                    key={letter}
+                    text={letter}
+                    onClick={() => filterByLetter(letter)}
+                    styles={{
+                      root: {
+                        minWidth: 35,
+                        padding: '4px 8px',
+                        backgroundColor: selectedLetter === letter ? '#008752' : '#fff',
+                        color: selectedLetter === letter ? '#fff' : '#323130',
+                        border: '1px solid #e1e1e1'
+                      }
+                    }}
+                  />
+                ))}
+              </Stack>
+              {selectedLetter && (
+                <Text variant="small" style={{ display: 'block', marginTop: 8, color: '#666' }}>
+                  عرض {filteredItems.length} سجل يبدأ بحرف "{selectedLetter}"
+                </Text>
+              )}
+            </div>
+          )}
+
           <Stack horizontal horizontalAlign="start" style={{ marginBottom: 16 }}>
             <PrimaryButton 
               text="تسجيل تدريب جديد" 
@@ -367,9 +505,9 @@ const TrainingLog: React.FC = () => {
           </Stack>
 
           <div className="card">
-            {items.length > 0 ? (
+            {filteredItems.length > 0 ? (
               <DetailsList
-                items={items}
+                items={filteredItems}
                 columns={columns}
                 layoutMode={DetailsListLayoutMode.justified}
                 selectionMode={SelectionMode.none}

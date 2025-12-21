@@ -51,6 +51,9 @@ const membershipTypeOptions = [
 const Team: React.FC = () => {
   const { user } = useAuth()
   const [items, setItems] = useState<TeamMember[]>([])
+  const [filteredItems, setFilteredItems] = useState<TeamMember[]>([])
+  const [selectedLetter, setSelectedLetter] = useState<string>('')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | 'none'>('none')
   const [panelOpen, setPanelOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
@@ -260,9 +263,32 @@ const Team: React.FC = () => {
       const schoolName = user?.type === 'admin' ? undefined : user?.schoolName
       const data = await SharePointService.getTeamMembers(schoolName)
       setItems(data)
+      setFilteredItems(data)
     } catch (e) {
       setMessage({ type: MessageBarType.error, text: `فشل تحميل أعضاء الفريق: ${e}` })
     } finally {
+
+  const applySorting = (data: TeamMember[]) => {
+    if (sortOrder === 'none') return data
+    return [...data].sort((a, b) => {
+      const nameA = a.SchoolName_Ref || ''
+      const nameB = b.SchoolName_Ref || ''
+      return sortOrder === 'asc' ? nameA.localeCompare(nameB, 'ar') : nameB.localeCompare(nameA, 'ar')
+    })
+  }
+
+  const sortBySchoolName = (order: 'asc' | 'desc' | 'none') => {
+    setSortOrder(order)
+    const sorted = applySorting(selectedLetter ? filteredItems : items)
+    setFilteredItems(sorted)
+  }
+
+  const filterByLetter = (letter: string) => {
+    setSelectedLetter(letter)
+    let filtered = letter ? items.filter(item => item.SchoolName_Ref?.startsWith(letter)) : items
+    filtered = applySorting(filtered)
+    setFilteredItems(filtered)
+  }
       setLoading(false)
     }
   }
@@ -389,14 +415,102 @@ const Team: React.FC = () => {
         <PrimaryButton text="إضافة عضو جديد" iconProps={{ iconName: 'AddFriend' }} onClick={onOpen} disabled={loading} />
       </Stack>
 
+      {user?.type === 'admin' && items.length > 0 && (
+        <div style={{ marginBottom: 16, padding: 16, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
+          <Stack horizontal horizontalAlign="space-between" style={{ marginBottom: 12 }}>
+            <Text variant="medium" style={{ fontWeight: 600 }}>ترتيب:</Text>
+            <Stack horizontal tokens={{ childrenGap: 8 }}>
+              <DefaultButton
+                text="تصاعدي (أ-ي)"
+                iconProps={{ iconName: 'SortUp' }}
+                onClick={() => sortBySchoolName('asc')}
+                styles={{
+                  root: {
+                    backgroundColor: sortOrder === 'asc' ? '#008752' : 'white',
+                    color: sortOrder === 'asc' ? 'white' : '#333',
+                    border: '1px solid #008752',
+                  }
+                }}
+              />
+              <DefaultButton
+                text="تنازلي (ي-أ)"
+                iconProps={{ iconName: 'SortDown' }}
+                onClick={() => sortBySchoolName('desc')}
+                styles={{
+                  root: {
+                    backgroundColor: sortOrder === 'desc' ? '#008752' : 'white',
+                    color: sortOrder === 'desc' ? 'white' : '#333',
+                    border: '1px solid #008752',
+                  }
+                }}
+              />
+              <DefaultButton
+                text="بدون ترتيب"
+                onClick={() => sortBySchoolName('none')}
+                styles={{
+                  root: {
+                    backgroundColor: sortOrder === 'none' ? '#008752' : 'white',
+                    color: sortOrder === 'none' ? 'white' : '#333',
+                    border: '1px solid #008752',
+                  }
+                }}
+              />
+            </Stack>
+          </Stack>
+          <Text variant="medium" style={{ display: 'block', marginBottom: 12, fontWeight: 600 }}>
+            تصفية حسب الحرف الأول لاسم المدرسة:
+          </Text>
+          <Stack horizontal wrap tokens={{ childrenGap: 8 }}>
+            <DefaultButton 
+              text="الكل"
+              onClick={() => filterByLetter('')}
+              styles={{
+                root: {
+                  backgroundColor: selectedLetter === '' ? '#008752' : 'white',
+                  color: selectedLetter === '' ? 'white' : '#333',
+                  border: '1px solid #008752',
+                  minWidth: 40,
+                },
+                rootHovered: {
+                  backgroundColor: selectedLetter === '' ? '#006d42' : '#f0f0f0',
+                }
+              }}
+            />
+            {['ا', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي'].map(letter => (
+              <DefaultButton 
+                key={letter}
+                text={letter}
+                onClick={() => filterByLetter(letter)}
+                styles={{
+                  root: {
+                    backgroundColor: selectedLetter === letter ? '#008752' : 'white',
+                    color: selectedLetter === letter ? 'white' : '#333',
+                    border: '1px solid #008752',
+                    minWidth: 40,
+                  },
+                  rootHovered: {
+                    backgroundColor: selectedLetter === letter ? '#006d42' : '#f0f0f0',
+                  }
+                }}
+              />
+            ))}
+          </Stack>
+          {selectedLetter && (
+            <Text variant="small" style={{ display: 'block', marginTop: 8, color: '#666' }}>
+              عرض {filteredItems.length} عضو يبدأ اسم مدرسته بحرف "{selectedLetter}"
+            </Text>
+          )}
+        </div>
+      )}
+
       <div className="card">
         <DetailsList 
-          items={items} 
+          items={filteredItems} 
           columns={getColumns()}
           layoutMode={DetailsListLayoutMode.justified}
           selectionMode={SelectionMode.none}
         />
-        {items.length === 0 && !loading && (
+        {filteredItems.length === 0 && !loading && (
           <div style={{ padding: 20, textAlign: 'center', color: '#666' }}>
             لا يوجد أعضاء في الفريق حالياً
           </div>
