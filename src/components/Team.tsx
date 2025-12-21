@@ -284,8 +284,15 @@ const Team: React.FC = () => {
   }
 
   const filterByLetter = (letter: string) => {
+    console.log('[Team Filter] Filtering by letter:', letter)
     setSelectedLetter(letter)
-    let filtered = letter ? items.filter(item => item.SchoolName_Ref?.startsWith(letter)) : items
+    let filtered = letter ? items.filter(item => {
+      const schoolName = item.SchoolName_Ref || ''
+      const matches = schoolName.startsWith(letter)
+      console.log(`[Team Filter] School: "${schoolName}", Starts with "${letter}": ${matches}`)
+      return matches
+    }) : items
+    console.log('[Team Filter] Filtered result count:', filtered.length)
     filtered = applySorting(filtered)
     setFilteredItems(filtered)
   }
