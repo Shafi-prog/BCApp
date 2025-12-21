@@ -20,7 +20,9 @@ import {
   Toggle,
   ComboBox,
   IComboBoxOption,
+  Text,
 } from '@fluentui/react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, Incident } from '../services/sharepointService'
 import { AdminDataService } from '../services/adminDataService'
@@ -47,6 +49,8 @@ import { allRiskLevels, categoryToRiskLevelMapping, getAlertTypeForRiskLevel } f
 
 const Incidents: React.FC = () => {
   const { user } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [filteredItems, setFilteredItems] = useState<Incident[]>([])
   const [incidentGroups, setIncidentGroups] = useState<IGroup[]>([])
@@ -56,6 +60,7 @@ const Incidents: React.FC = () => {
   const [panelOpen, setPanelOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [message, setMessage] = useState<{ type: MessageBarType; text: string } | null>(null)
+  const [pendingEditId, setPendingEditId] = useState<number | null>(null)
   
   // Dynamic dropdown options state
   const [incidentCategoryOptions, setIncidentCategoryOptions] = useState<IDropdownOption[]>([])
@@ -67,7 +72,7 @@ const Incidents: React.FC = () => {
 
   const [altLocationOptions, setAltLocationOptions] = useState<IComboBoxOption[]>([])
   const [mutualSchools, setMutualSchools] = useState<string[]>([])
-  
+
   // Multi-select state for CoordinatedEntities
   const [selectedEntities, setSelectedEntities] = useState<string[]>([])
   
@@ -191,7 +196,7 @@ const Incidents: React.FC = () => {
     // Admin sees school name column first
     if (user?.type === 'admin') {
       cols.push({
-        ...getColumnConfig(ColumnType.SHORT_TEXT),
+        ...getColumnConfig(ColumnType.MEDIUM_TEXT, { minWidth: 220, flexGrow: 2 }),
         key: 'SchoolName_Ref',
         name: 'المدرسة',
         fieldName: 'SchoolName_Ref',
@@ -287,6 +292,58 @@ const Incidents: React.FC = () => {
       name: 'التاريخ', 
       fieldName: 'Created', 
       onRender: (item: Incident) => renderDate(item.Created)
+    },
+    {
+      ...getColumnConfig(ColumnType.ATTACHMENT),
+      key: 'attachment',
+      name: 'المرفقات',
+      onRender: (item: Incident) => {
+        const itemLink = item.SharePointLink || (item.Id
+          ? `https://saudimoe.sharepoint.com/sites/em/Lists/SBC_Incidents_Log/DispForm.aspx?ID=${item.Id}`
+          : undefined)
+
+        if (!itemLink) return <div style={{ textAlign: 'center', width: '100%' }}>-</div>
+
+        if (item.HasAttachments) {
+          return (
+            <div style={{ textAlign: 'center', width: '100%' }}>
+              <a
+                href={itemLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: '#0078d4',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                📎 عرض
+              </a>
+            </div>
+          )
+        }
+
+        return (
+          <div style={{ textAlign: 'center', width: '100%' }}>
+            <a
+              href={itemLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: '#008752',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              ➕ أضف مرفق
+            </a>
+          </div>
+        )
+      },
     },
     {
       ...getColumnConfig(ColumnType.ACTIONS),
@@ -388,10 +445,12 @@ const Incidents: React.FC = () => {
       const schoolItems = schoolMap.get(schoolName)!
       groups.push({
         key: schoolName,
-        name: `${schoolName} (${schoolItems.length})`,
+        // Fluent UI group header already displays the item count.
+        name: schoolName,
         startIndex,
         count: schoolItems.length,
-        isCollapsed: true,
+        // Default expanded so rows are visible immediately.
+        isCollapsed: false,
       })
       groupedItems.push(...schoolItems)
       startIndex += schoolItems.length
@@ -411,15 +470,34 @@ const Incidents: React.FC = () => {
 
   const sortBySchoolName = (order: 'asc' | 'desc' | 'none') => {
     setSortOrder(order)
-    const sorted = applySorting(selectedLetter ? filteredItems : incidents)
-    setFilteredItems(sorted)
+    // Always derive from the source list so groups/items stay consistent.
+    const base = selectedLetter
+      ? incidents.filter(item => item.SchoolName_Ref?.startsWith(selectedLetter))
+      : incidents
+
+    const sorted = applySorting(base)
+
+    if (user?.type === 'admin') {
+      const result = createIncidentGroups(sorted)
+      setFilteredItems(result.items)
+      setIncidentGroups(result.groups)
+    } else {
+      setFilteredItems(sorted)
+    }
   }
 
   const filterByLetter = (letter: string) => {
     setSelectedLetter(letter)
     let filtered = letter ? incidents.filter(item => item.SchoolName_Ref?.startsWith(letter)) : incidents
     filtered = applySorting(filtered)
-    setFilteredItems(filtered)
+
+    if (user?.type === 'admin') {
+      const result = createIncidentGroups(filtered)
+      setFilteredItems(result.items)
+      setIncidentGroups(result.groups)
+    } else {
+      setFilteredItems(filtered)
+    }
   }
 
   const onOpen = () => {
@@ -459,9 +537,10 @@ const Incidents: React.FC = () => {
       AltLocation: item.AltLocation || '',
       CoordinatedEntities: item.CoordinatedEntities || '',
     })
+
     // Set selected entities for multi-select
     if (item.CoordinatedEntities) {
-      setSelectedEntities(item.CoordinatedEntities.split(',').map(e => e.trim()))
+      setSelectedEntities(item.CoordinatedEntities.split(/[,،]/).map(e => e.trim()).filter(Boolean))
     } else {
       setSelectedEntities([])
     }
@@ -484,6 +563,28 @@ const Incidents: React.FC = () => {
     }
     setPanelOpen(true)
   }
+
+  // Allow AdminPanel to deep-link into editing an incident via /incidents?editId=123
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const editId = params.get('editId')
+    if (!editId) return
+    const parsed = Number(editId)
+    if (!Number.isFinite(parsed)) return
+    setPendingEditId(parsed)
+  }, [location.search])
+
+  useEffect(() => {
+    if (!pendingEditId) return
+    if (incidents.length === 0) return
+    const item = incidents.find(i => i.Id === pendingEditId)
+    if (!item) return
+
+    onEdit(item)
+    setPendingEditId(null)
+    // Clean up the URL so refresh doesn't keep reopening the panel
+    navigate('/incidents', { replace: true })
+  }, [pendingEditId, incidents])
 
   const onClose = () => {
     setPanelOpen(false)
@@ -546,7 +647,7 @@ const Incidents: React.FC = () => {
         ...form,
         Title: form.Title!,
         SchoolName_Ref: user?.schoolName,
-        CoordinatedEntities: selectedEntities.join(', '), // Convert array to comma-separated string
+        CoordinatedEntities: selectedEntities.join('، '),
       }
 
       console.log('[Incidents] Saving incident data:', {
@@ -556,13 +657,20 @@ const Incidents: React.FC = () => {
         userType: user?.type
       });
 
+      let savedId = editingId || undefined
+
       if (editingId) {
         await SharePointService.updateIncident(editingId, incidentData)
-        setMessage({ type: MessageBarType.success, text: 'تم تحديث الحادث بنجاح' })
+        savedId = editingId
       } else {
-        await SharePointService.createIncident(incidentData, user?.schoolId)
-        setMessage({ type: MessageBarType.success, text: 'تم تسجيل الحادث بنجاح' })
+        const created = await SharePointService.createIncident(incidentData, user?.schoolId)
+        savedId = created?.Id
       }
+
+      setMessage({
+        type: MessageBarType.success,
+        text: editingId ? 'تم تحديث الحادث بنجاح' : 'تم تسجيل الحادث بنجاح',
+      })
       await loadIncidents()
       onClose()
     } catch (e: any) {
@@ -616,7 +724,7 @@ const Incidents: React.FC = () => {
         title: form.Title,
         category: form.IncidentCategory,
         schoolName: user?.schoolName,
-        unifiedSupportTicketNumber: form.UnifiedSupportTicketNumber,
+          incidentNumber: form.IncidentNumber,
         errorMessage
       })
       
@@ -1105,6 +1213,12 @@ const Incidents: React.FC = () => {
               rows={2}
               styles={{ root: { marginTop: 12 } }}
             />
+          </div>
+
+          <div style={{ padding: '12px', backgroundColor: '#f0f9ff', border: '1px solid #0078d4', borderRadius: '4px', marginTop: 16 }}>
+            <Text variant="small" style={{ color: '#004578' }}>
+              📎 <strong>لإضافة ملف القرار/الاستعادة:</strong> بعد الحفظ، يمكنك إضافة الملفات من خلال عمود "المرفقات" في الجدول
+            </Text>
           </div>
         </div>
       </Panel>

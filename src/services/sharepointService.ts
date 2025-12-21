@@ -9,9 +9,11 @@ import {
   SBC_Drills_LogService,
   SBC_Incidents_LogService,
   School_Training_LogService,
-  Coordination_Programs_CatalogService
+  Coordination_Programs_CatalogService,
+  SharePointService as SharePointOnlineService
 } from '../generated';
 import { isPowerAppsEnvironment, getSharePointItemLink } from './powerSDKClient';
+import { dataSourcesInfo } from '../../.power/schemas/appschemas/dataSourcesInfo';
 
 // SharePoint Site and List Configuration
 const SHAREPOINT_SITE = 'https://saudimoe.sharepoint.com/sites/em';
@@ -25,6 +27,23 @@ const LISTS = {
   TRAINING_LOG: "School_Training_Log",
   TRAINING_CATALOG: "Coordination_Programs_Catalog",
 };
+
+const getSharePointTableId = (dataSourceName: string): string | undefined => {
+  try {
+    const ds = (dataSourcesInfo as any)?.[dataSourceName];
+    const apis = ds?.apis;
+    if (!apis) return undefined;
+    const firstApi: any = Object.values(apis)[0];
+    const path: string | undefined = firstApi?.path;
+    if (!path) return undefined;
+    const match = path.match(/tables\/([0-9a-f]{32})/i);
+    return match?.[1];
+  } catch {
+    return undefined;
+  }
+};
+
+const INCIDENTS_TABLE_ID = getSharePointTableId('sbc_incidents_log');
 
 // Helper function to extract value from SharePoint choice fields
 // SharePoint can return choice fields as: {Value: "..."}, {@odata.type: "...", Id: ..., Value: "..."}, or plain string
@@ -47,6 +66,24 @@ const extractMultiChoiceValues = (field: any): string => {
     return field.map(item => extractChoiceValue(item)).filter(v => v).join('، ');
   }
   return extractChoiceValue(field);
+};
+
+const readFileAsBase64 = async (file: File): Promise<string> => {
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== 'string') {
+        reject(new Error('Unexpected FileReader result type'));
+        return;
+      }
+      const base64Marker = 'base64,';
+      const idx = result.indexOf(base64Marker);
+      resolve(idx >= 0 ? result.slice(idx + base64Marker.length) : result);
+    };
+    reader.readAsDataURL(file);
+  });
 };
 
 // ============ INTERFACES ============
@@ -134,7 +171,10 @@ export interface Incident {
   LessonsLearned?: string;
   Suggestions?: string;
   UnifiedSupportTicketNumber?: number; // رقم بلاغ الدعم الموحد
+  // Backward compatibility with older/generated schemas
+  IncidentNumber?: number;
   SharePointLink?: string;
+  HasAttachments?: boolean;
   Created?: string;
   // Dynamic Evaluation Fields (calculated automatically)
   ResponseTimeMinutes?: number;    // Time from Created to ActivationTime
@@ -383,7 +423,9 @@ const transformIncident = (raw: any): Incident => {
       if (typeof raw.CoordinatedEntities === 'object' && raw.CoordinatedEntities?.Value) return raw.CoordinatedEntities.Value;
       return '';
     })(),
-    UnifiedSupportTicketNumber: raw.UnifiedSupportTicketNumber ? Number(raw.UnifiedSupportTicketNumber) : undefined,
+    UnifiedSupportTicketNumber: (raw.UnifiedSupportTicketNumber ?? raw.IncidentNumber) !== undefined
+      ? Number(raw.UnifiedSupportTicketNumber ?? raw.IncidentNumber)
+      : undefined,
     AltLocation: typeof raw.AltLocation === 'object' ? raw.AltLocation.Value : (raw.AltLocation || ''),
     CommunicationDone: raw.CommunicationDone || false,
     ClosureTime: raw.ClosureTime || '',
@@ -391,6 +433,7 @@ const transformIncident = (raw: any): Incident => {
     LessonsLearned: raw.LessonsLearned || '',
     Suggestions: raw.Suggestions || '',
     SharePointLink: raw['{Link}'] || getSharePointItemLink('SBC_Incidents_Log', id),
+    HasAttachments: raw['{HasAttachments}'] || false,
     Created: raw.Created || '',
   };
 };
@@ -731,6 +774,11 @@ export const SharePointService = {
     if (isPowerAppsEnvironment()) {
       try {
         console.log('[SharePoint] Creating team member:', member);
+        const toChoice = (value: string) => ({
+          '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+          Value: value,
+        });
+
         const item: any = {
           Title: member.Title,
         };
@@ -744,15 +792,9 @@ export const SharePointService = {
           };
         }
         
-        // JobRole is a choice field - send as plain string
-        if (member.JobRole) {
-          item.JobRole = member.JobRole;
-        }
-        
-        // MembershipType is a choice field - send as plain string
-        if (member.MembershipType) {
-          item.MembershipType = member.MembershipType;
-        }
+        // Choice fields - SharePoint connector expects { Value: string }
+        if (member.JobRole) item.JobRole = toChoice(member.JobRole);
+        if (member.MembershipType) item.MembershipType = toChoice(member.MembershipType);
         
         if (member.MemberMobile) {
           item.Mobile = parseInt(member.MemberMobile.replace(/\D/g, ''), 10) || 0;
@@ -788,19 +830,18 @@ export const SharePointService = {
   async updateTeamMember(id: number, member: TeamMember): Promise<TeamMember> {
     if (isPowerAppsEnvironment()) {
       try {
+        const toChoice = (value: string) => ({
+          '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+          Value: value,
+        });
+
         const data: any = { Title: member.Title };
         
         if (member.MemberEmail) data.MemberEmail = member.MemberEmail;
         
-        // JobRole is a choice field - send as plain string
-        if (member.JobRole) {
-          data.JobRole = member.JobRole;
-        }
-        
-        // MembershipType is a choice field - send as plain string
-        if (member.MembershipType) {
-          data.MembershipType = member.MembershipType;
-        }
+        // Choice fields - SharePoint connector expects { Value: string }
+        if (member.JobRole) data.JobRole = toChoice(member.JobRole);
+        if (member.MembershipType) data.MembershipType = toChoice(member.MembershipType);
         
         if (member.MemberMobile) {
           data.Mobile = parseInt(member.MemberMobile.replace(/\D/g, ''), 10) || 0;
@@ -1100,6 +1141,17 @@ export const SharePointService = {
     if (isPowerAppsEnvironment()) {
       console.log('[SharePoint] ✓ Running in PowerApps environment');
       try {
+        const toChoice = (value: string) => ({
+          '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+          Value: value,
+        });
+
+        const parseMultiChoice = (value: string): string[] =>
+          value
+            .split(/[,،]/)
+            .map(v => v.trim())
+            .filter(Boolean);
+
         const data: any = {
           Title: incident.Title,
           CommunicationDone: incident.CommunicationDone || false,
@@ -1121,8 +1173,11 @@ export const SharePointService = {
         if (incident.Suggestions) data.Suggestions = incident.Suggestions;
         
         // Add UnifiedSupportTicketNumber if provided (number field - رقم بلاغ الدعم الموحد)
-        if (incident.UnifiedSupportTicketNumber) {
+        if (incident.UnifiedSupportTicketNumber !== undefined && incident.UnifiedSupportTicketNumber !== null) {
           data.UnifiedSupportTicketNumber = incident.UnifiedSupportTicketNumber;
+        } else if (incident.IncidentNumber !== undefined && incident.IncidentNumber !== null) {
+          // Backward compatibility if some caller still uses IncidentNumber
+          data.UnifiedSupportTicketNumber = Number(incident.IncidentNumber);
         }
         
         // Add school reference - Use schoolId if provided, otherwise lookup by name
@@ -1160,17 +1215,24 @@ export const SharePointService = {
           console.warn('[SharePoint] ⚠️ No schoolId or SchoolName_Ref provided - incident will be created without school reference');
         }
         
-        // Choice fields - use plain strings for SharePoint
+        // Choice fields - SharePoint connector expects { Value: string }
         const singleChoiceFields = ['IncidentCategory', 'RiskLevel', 'AlertModelType', 'ActivatedAlternative', 'AltLocation'];
         for (const field of singleChoiceFields) {
           if ((incident as any)[field]) {
-            data[field] = (incident as any)[field];
+            data[field] = toChoice((incident as any)[field]);
           }
         }
         
-        // CoordinatedEntities is a multi-choice field - send as string but SharePoint will handle it
+        // CoordinatedEntities is a multi-select choice field
         if (incident.CoordinatedEntities) {
-          data.CoordinatedEntities = incident.CoordinatedEntities;
+          const entities = parseMultiChoice(incident.CoordinatedEntities);
+          if (entities.length > 1) {
+            data['CoordinatedEntities@odata.type'] = '#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference)';
+            data.CoordinatedEntities = entities.map(v => toChoice(v));
+          } else if (entities.length === 1) {
+            // Some lists are configured as single-choice; this keeps compatibility
+            data.CoordinatedEntities = toChoice(entities[0]);
+          }
         }
         
         // Validate required fields before sending
@@ -1255,6 +1317,17 @@ export const SharePointService = {
   async updateIncident(id: number, incident: Incident): Promise<Incident> {
     if (isPowerAppsEnvironment()) {
       try {
+        const toChoice = (value: string) => ({
+          '@odata.type': '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+          Value: value,
+        });
+
+        const parseMultiChoice = (value: string): string[] =>
+          value
+            .split(/[,،]/)
+            .map(v => v.trim())
+            .filter(Boolean);
+
         const data: any = {
           Title: incident.Title,
           HazardDescription: incident.HazardDescription || '',
@@ -1265,8 +1338,10 @@ export const SharePointService = {
         };
         
         // Add UnifiedSupportTicketNumber if provided (number field - رقم بلاغ الدعم الموحد)
-        if (incident.UnifiedSupportTicketNumber) {
+        if (incident.UnifiedSupportTicketNumber !== undefined && incident.UnifiedSupportTicketNumber !== null) {
           data.UnifiedSupportTicketNumber = incident.UnifiedSupportTicketNumber;
+        } else if (incident.IncidentNumber !== undefined && incident.IncidentNumber !== null) {
+          data.UnifiedSupportTicketNumber = Number(incident.IncidentNumber);
         }
         
         // Add date fields
@@ -1280,12 +1355,18 @@ export const SharePointService = {
         const singleChoiceFields = ['IncidentCategory', 'RiskLevel', 'AlertModelType', 'ActivatedAlternative', 'AltLocation'];
         for (const field of singleChoiceFields) {
           if ((incident as any)[field]) {
-            data[field] = (incident as any)[field];
+            data[field] = toChoice((incident as any)[field]);
           }
         }
         
         if (incident.CoordinatedEntities) {
-          data.CoordinatedEntities = incident.CoordinatedEntities;
+          const entities = parseMultiChoice(incident.CoordinatedEntities);
+          if (entities.length > 1) {
+            data['CoordinatedEntities@odata.type'] = '#Collection(Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference)';
+            data.CoordinatedEntities = entities.map(v => toChoice(v));
+          } else if (entities.length === 1) {
+            data.CoordinatedEntities = toChoice(entities[0]);
+          }
         }
         
         console.log('[SharePoint] Updating incident:', id, data);
@@ -1305,6 +1386,53 @@ export const SharePointService = {
       mockIncidents[idx] = { ...incident, Id: id };
     }
     return { ...incident, Id: id };
+  },
+
+  async uploadIncidentFile(itemId: number, fieldName: 'DecisionFile' | 'RecoveryFile', file: File): Promise<void> {
+    if (!isPowerAppsEnvironment()) {
+      // Local/dev mode: no-op
+      return;
+    }
+
+    if (!INCIDENTS_TABLE_ID) {
+      throw new Error('Cannot resolve SharePoint table id for incidents list');
+    }
+
+    const body = await readFileAsBase64(file);
+
+    // Prefer SharePoint Image column update (matches Thumbnail/Image columns).
+    try {
+      const result = await SharePointOnlineService.UpdateItemImageFieldValue(
+        SHAREPOINT_SITE,
+        INCIDENTS_TABLE_ID,
+        itemId,
+        fieldName,
+        body
+      );
+
+      if (!result.success) {
+        const msg = (result as any)?.error?.message || (result as any)?.error || 'Failed to update image field';
+        throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      }
+      return;
+    } catch (e) {
+      console.warn('[SharePoint] UpdateItemImageFieldValue failed; falling back to CreateAttachment', e);
+    }
+
+    // Fallback: add as list item attachment with a clear prefix.
+    const displayName = `${fieldName}_${file.name}`;
+    const attachResult = await SharePointOnlineService.CreateAttachment(
+      SHAREPOINT_SITE,
+      INCIDENTS_TABLE_ID,
+      itemId,
+      displayName,
+      body
+    );
+
+    if (!attachResult.success) {
+      const msg = (attachResult as any)?.error?.message || (attachResult as any)?.error || 'Failed to create attachment';
+      throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    }
   },
 
   async deleteIncident(id: number): Promise<void> {

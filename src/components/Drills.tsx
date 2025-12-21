@@ -64,6 +64,9 @@ const Drills: React.FC = () => {
   const [loadingExecutions, setLoadingExecutions] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [selectedDrill, setSelectedDrill] = useState<TestPlan | null>(null)
+  const [editPanelOpen, setEditPanelOpen] = useState(false)
+  const [editingExecutedDrill, setEditingExecutedDrill] = useState<Drill | null>(null)
+  const [editExecutionDate, setEditExecutionDate] = useState<string>('')
   const [message, setMessage] = useState<{ type: MessageBarType; text: string } | null>(null)
   const [selectedLetter, setSelectedLetter] = useState<string>('')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | 'none'>('none')
@@ -346,12 +349,45 @@ const Drills: React.FC = () => {
 
   // Edit executed drill
   const onEditExecutedDrill = (drill: Drill) => {
-    // For now, just show a message - full edit functionality would require a panel
-    setMessage({
-      type: MessageBarType.info,
-      text: 'وظيفة التعديل قيد التطوير'
-    })
-    // TODO: Add edit panel with form for execution date and other fields
+    setEditingExecutedDrill(drill)
+    setEditExecutionDate(drill.ExecutionDate ? drill.ExecutionDate.split('T')[0] : '')
+    setEditPanelOpen(true)
+  }
+
+  const saveExecutedDrillEdit = async () => {
+    if (!editingExecutedDrill?.Id) return
+    if (!editExecutionDate) {
+      setMessage({ type: MessageBarType.warning, text: 'يرجى اختيار تاريخ التنفيذ' })
+      return
+    }
+
+    // Validate execution date is not in the future
+    const executionDate = new Date(editExecutionDate)
+    const today = new Date()
+    if (executionDate > today) {
+      setMessage({
+        type: MessageBarType.error,
+        text: '⚠️ لا يمكن اختيار تاريخ مستقبلي'
+      })
+      return
+    }
+
+    try {
+      await SharePointService.updateDrill(editingExecutedDrill.Id, {
+        ...editingExecutedDrill,
+        ExecutionDate: editExecutionDate,
+      })
+
+      setMessage({ type: MessageBarType.success, text: 'تم تحديث التمرين بنجاح' })
+      setEditPanelOpen(false)
+      setEditingExecutedDrill(null)
+      await loadExecutedDrills()
+    } catch (error: any) {
+      setMessage({
+        type: MessageBarType.error,
+        text: `خطأ في تحديث التمرين: ${error?.message || error}`
+      })
+    }
   }
 
   // Build columns array for executed drills table
@@ -912,6 +948,88 @@ const Drills: React.FC = () => {
               onClick={() => {
                 setPanelOpen(false)
                 setSelectedDrill(null)
+              }}
+            />
+          </Stack>
+        </Stack>
+      </Panel>
+
+      {/* Edit Executed Drill Panel */}
+      <Panel
+        isOpen={editPanelOpen}
+        onDismiss={() => {
+          setEditPanelOpen(false)
+          setEditingExecutedDrill(null)
+        }}
+        headerText={editingExecutedDrill ? `تعديل: ${editingExecutedDrill.Title || ''}` : 'تعديل التمرين'}
+        closeButtonAriaLabel="إغلاق"
+      >
+        <Stack tokens={{ childrenGap: 16 }} style={{ paddingTop: 16 }}>
+          {editingExecutedDrill && (
+            <div style={{
+              backgroundColor: '#f3f2f1',
+              padding: 16,
+              borderRadius: 8,
+              borderRight: '4px solid #0078d4'
+            }}>
+              <div style={{ marginBottom: 12 }}>
+                <strong style={{ color: '#333', fontSize: 14 }}>الفرضية:</strong>
+                <p style={{
+                  margin: '6px 0 0 0',
+                  color: '#555',
+                  whiteSpace: 'pre-wrap',
+                  wordWrap: 'break-word',
+                  fontSize: 14,
+                  lineHeight: 1.6
+                }}>
+                  {editingExecutedDrill.DrillHypothesis || '-'}
+                </p>
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <strong style={{ color: '#333', fontSize: 14 }}>الفئة المستهدفة:</strong>
+                <p style={{ margin: '6px 0 0 0', color: '#555', fontSize: 14 }}>
+                  {editingExecutedDrill.TargetGroup || '-'}
+                </p>
+              </div>
+              <div>
+                <strong style={{ color: '#333', fontSize: 14 }}>الحدث المحدد:</strong>
+                <p style={{ margin: '6px 0 0 0', color: '#555', fontSize: 14 }}>
+                  {editingExecutedDrill.SpecificEvent || '-'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label style={{
+              display: 'block',
+              fontWeight: 600,
+              marginBottom: 8,
+              color: '#333',
+              fontSize: 14
+            }}>
+              تاريخ التنفيذ الفعلي *
+            </label>
+            <TextField
+              type="date"
+              value={editExecutionDate}
+              onChange={(_, val) => setEditExecutionDate(val || '')}
+              required
+              max={new Date().toISOString().split('T')[0]}
+            />
+          </div>
+
+          <Stack horizontal tokens={{ childrenGap: 12 }} style={{ marginTop: 16 }}>
+            <PrimaryButton
+              text="حفظ التعديل"
+              onClick={saveExecutedDrillEdit}
+              iconProps={{ iconName: 'Save' }}
+            />
+            <DefaultButton
+              text="إلغاء"
+              onClick={() => {
+                setEditPanelOpen(false)
+                setEditingExecutedDrill(null)
               }}
             />
           </Stack>

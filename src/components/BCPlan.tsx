@@ -1057,14 +1057,9 @@ const BCPlan: React.FC = () => {
       )
     }
 
-    // Emergency Contacts that should be displayed prominently
-    const emergencyContacts = [
-      { name: 'رئيس وحدة عمليات الطوارئ', role: 'مسؤول العمليات', phone: '+966590006072' },
-      { name: 'رئيس فريق السلامة', role: 'مسؤول السلامة', phone: '+966542079282' },
-      { name: 'رئيس فريق الأمن', role: 'مسؤول الأمن', phone: '+966508633600' },
-      { name: 'رئيس وحدة استمرارية الأعمال', role: 'مسؤول الاستمرارية', phone: '+966500076356' },
-      { name: 'ضابط اتصال الطوارئ', role: 'ضابط اتصال', phone: '+966920033988' }
-    ]
+    // Emergency Contacts are managed via SharePoint (Quick Reference Contacts).
+    // Avoid hardcoding phone numbers in the app.
+    const emergencyContacts: Array<{ name: string; role: string; phone: string }> = []
 
     const internalContacts = quickRefContacts.filter(c => c.category === 'internal')
     const externalContacts = quickRefContacts.filter(c => c.category === 'external')
@@ -1072,53 +1067,55 @@ const BCPlan: React.FC = () => {
     return (
       <Stack tokens={{ childrenGap: 24 }}>
         {/* Emergency Contacts - Prominent Display */}
-        <div className="card" style={{ padding: 20, backgroundColor: '#ffebee', border: '2px solid #d32f2f' }}>
-          <h3 style={{ color: '#d32f2f', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Icon iconName="AlertSolid" />
-            جهات الاتصال للطوارئ - اتصل فوراً عند الحاجة
-          </h3>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-            gap: 16 
-          }}>
-            {emergencyContacts.map((contact, idx) => (
-              <div key={idx} style={{ 
-                backgroundColor: '#fff', 
-                borderRadius: 12, 
-                padding: 16,
-                border: '2px solid #ffcdd2',
-                boxShadow: '0 2px 8px rgba(211, 47, 47, 0.2)'
-              }}>
-                <div style={{ fontWeight: 700, color: '#c62828', marginBottom: 4, fontSize: '1rem' }}>
-                  {contact.name}
+        {emergencyContacts.length > 0 && (
+          <div className="card" style={{ padding: 20, backgroundColor: '#ffebee', border: '2px solid #d32f2f' }}>
+            <h3 style={{ color: '#d32f2f', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon iconName="AlertSolid" />
+              جهات الاتصال للطوارئ - اتصل فوراً عند الحاجة
+            </h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: 16
+            }}>
+              {emergencyContacts.map((contact, idx) => (
+                <div key={idx} style={{
+                  backgroundColor: '#fff',
+                  borderRadius: 12,
+                  padding: 16,
+                  border: '2px solid #ffcdd2',
+                  boxShadow: '0 2px 8px rgba(211, 47, 47, 0.2)'
+                }}>
+                  <div style={{ fontWeight: 700, color: '#c62828', marginBottom: 4, fontSize: '1rem' }}>
+                    {contact.name}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 12 }}>{contact.role}</div>
+                  <a
+                    href={`tel:${contact.phone}`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      backgroundColor: '#d32f2f',
+                      color: '#fff',
+                      padding: '10px 12px',
+                      borderRadius: 6,
+                      textDecoration: 'none',
+                      fontWeight: 600,
+                      fontSize: '1rem',
+                      direction: 'ltr',
+                      textAlign: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Icon iconName="Phone" />
+                    {contact.phone}
+                  </a>
                 </div>
-                <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: 12 }}>{contact.role}</div>
-                <a 
-                  href={`tel:${contact.phone}`}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    backgroundColor: '#d32f2f',
-                    color: '#fff',
-                    padding: '10px 12px',
-                    borderRadius: 6,
-                    textDecoration: 'none',
-                    fontWeight: 600,
-                    fontSize: '1rem',
-                    direction: 'ltr',
-                    textAlign: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <Icon iconName="Phone" />
-                  {contact.phone}
-                </a>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Internal Contacts */}
         {internalContacts.length > 0 && (

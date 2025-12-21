@@ -5,6 +5,7 @@ import {
   MessageBar, MessageBarType, Spinner, Pivot, PivotItem, Toggle, DatePicker,
   IDropdownOption, Checkbox, ProgressIndicator, SearchBox, IconButton
 } from '@fluentui/react'
+import type { IGroup } from '@fluentui/react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { SharePointService, SchoolInfo, TeamMember, Drill, Incident, TrainingLog } from '../services/sharepointService'
@@ -15,7 +16,7 @@ import BCTasksDashboard from './BCTasksDashboard'
 import DrilsManagement from './DrilsManagement'
 import SupportingDocsSidebar from './SupportingDocsSidebar'
 import BCDRChecklistComponent from './BCDRChecklist'
-import { getColumnConfig, ColumnType, renderDate } from '../config/tableConfig'
+import { getColumnConfig, ColumnType, renderDate, renderWrappedText } from '../config/tableConfig'
 import { sanitizeString, sanitizeHTML, isValidEmail, isValidSaudiPhone, isValidDate, formatSaudiPhone } from '../utils/security'
 
 // Interfaces
@@ -219,6 +220,25 @@ const AdminPanel: React.FC = () => {
       setTrainingLogs(trainingData)
     } catch (e) {
       setMessage({ type: MessageBarType.error, text: 'فشل تحميل البيانات' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const editIncident = (id: number) => {
+    navigate(`/incidents?editId=${id}`)
+  }
+
+  const deleteIncident = async (id: number) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا الحادث؟')) return
+    setLoading(true)
+    try {
+      await SharePointService.deleteIncident(id)
+      setMessage({ type: MessageBarType.success, text: 'تم حذف الحادث بنجاح' })
+      await loadAllData()
+    } catch (e) {
+      console.error('Error deleting incident:', e)
+      setMessage({ type: MessageBarType.error, text: 'فشل حذف الحادث' })
     } finally {
       setLoading(false)
     }
@@ -2940,15 +2960,150 @@ const SchoolLessonsAnalysis: React.FC<{ incidents: Incident[]; drills: Drill[] }
     )
   }
 
-  // Filter by search
+  // Filter by search (all incidents)
   const filteredIncidents = searchQuery 
-    ? incidentsWithLessons.filter(i => 
+    ? incidents.filter(i => 
         (i.SchoolName_Ref || '').includes(searchQuery) ||
         (i.LessonsLearned || '').includes(searchQuery) ||
         (i.Challenges || '').includes(searchQuery) ||
         (i.Title || '').includes(searchQuery)
       )
-    : incidentsWithLessons
+    : incidents
+
+  const incidentColumns: IColumn[] = [
+    {
+      ...getColumnConfig(ColumnType.MEDIUM_TEXT, { minWidth: 220, flexGrow: 2 }),
+      key: 'SchoolName_Ref',
+      name: 'المدرسة',
+      fieldName: 'SchoolName_Ref',
+      onRender: (item: Incident) => (
+        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+          {item.SchoolName_Ref || '-'}
+        </div>
+      ),
+    },
+    {
+      ...getColumnConfig(ColumnType.MEDIUM_TEXT, { minWidth: 180, flexGrow: 2 }),
+      key: 'Title',
+      name: 'الحادث',
+      fieldName: 'Title',
+      onRender: (item: Incident) => (
+        <div style={{ textAlign: 'center', width: '100%', whiteSpace: 'normal', wordWrap: 'break-word' }}>
+          <div>{item.Title || '-'}</div>
+          <div style={{ fontSize: '0.8rem', color: '#666' }}>{item.IncidentCategory || ''}</div>
+        </div>
+      ),
+    },
+    {
+      ...getColumnConfig(ColumnType.LONG_TEXT, { minWidth: 220, flexGrow: 3 }),
+      key: 'Challenges',
+      name: 'التحديات',
+      fieldName: 'Challenges',
+      onRender: (item: Incident) => renderWrappedText(item.Challenges),
+    },
+    {
+      ...getColumnConfig(ColumnType.LONG_TEXT, { minWidth: 240, flexGrow: 3 }),
+      key: 'LessonsLearned',
+      name: 'الدروس المستفادة',
+      fieldName: 'LessonsLearned',
+      onRender: (item: Incident) => renderWrappedText(item.LessonsLearned),
+    },
+    {
+      ...getColumnConfig(ColumnType.LONG_TEXT, { minWidth: 220, flexGrow: 3 }),
+      key: 'Suggestions',
+      name: 'المقترحات',
+      fieldName: 'Suggestions',
+      onRender: (item: Incident) => renderWrappedText(item.Suggestions),
+    },
+    {
+      ...getColumnConfig(ColumnType.ATTACHMENT),
+      key: 'attachment',
+      name: 'المرفقات',
+      onRender: (item: Incident) => {
+        const link = item.SharePointLink || (item.Id
+          ? `https://saudimoe.sharepoint.com/sites/em/Lists/SBC_Incidents_Log/DispForm.aspx?ID=${item.Id}`
+          : undefined)
+
+        if (!link) return <div style={{ textAlign: 'center', width: '100%' }}>-</div>
+
+        return (
+          <div style={{ textAlign: 'center', width: '100%' }}>
+            <a
+              href={link}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: item.HasAttachments ? '#0078d4' : '#008752',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              {item.HasAttachments ? '📎 عرض' : '➕ أضف مرفق'}
+            </a>
+          </div>
+        )
+      },
+    },
+    {
+      ...getColumnConfig(ColumnType.ACTIONS),
+      key: 'actions',
+      name: 'الإجراءات',
+      fieldName: 'actions',
+      onRender: (item: Incident) => (
+        <Stack horizontal horizontalAlign="center" tokens={{ childrenGap: 6 }}>
+          <IconButton
+            iconProps={{ iconName: 'Edit' }}
+            title="تعديل"
+            ariaLabel="تعديل"
+            onClick={() => item.Id && editIncident(item.Id)}
+            styles={{ root: { color: '#0078d4' } }}
+          />
+          <IconButton
+            iconProps={{ iconName: 'Delete' }}
+            title="حذف"
+            ariaLabel="حذف"
+            onClick={() => item.Id && deleteIncident(item.Id)}
+            styles={{ root: { color: '#d83b01' } }}
+          />
+        </Stack>
+      ),
+    },
+  ]
+
+  const createIncidentGroupsBySchool = (data: Incident[]): { items: Incident[]; groups: IGroup[] } => {
+    const schoolMap = new Map<string, Incident[]>()
+    data.forEach(item => {
+      const schoolName = item.SchoolName_Ref || 'غير محدد'
+      if (!schoolMap.has(schoolName)) schoolMap.set(schoolName, [])
+      schoolMap.get(schoolName)!.push(item)
+    })
+
+    const groupedItems: Incident[] = []
+    const groups: IGroup[] = []
+    let startIndex = 0
+
+    const sortedSchools = Array.from(schoolMap.keys()).sort((a, b) => a.localeCompare(b, 'ar'))
+    sortedSchools.forEach(schoolName => {
+      const schoolItems = schoolMap.get(schoolName) || []
+      groups.push({
+        key: schoolName,
+        // Fluent UI group header already displays the item count, so don't duplicate it.
+        name: schoolName,
+        startIndex,
+        count: schoolItems.length,
+        // Default to expanded so users can immediately see incident rows.
+        isCollapsed: false,
+      })
+      groupedItems.push(...schoolItems)
+      startIndex += schoolItems.length
+    })
+
+    return { items: groupedItems, groups }
+  }
+
+  const groupedIncidents = createIncidentGroupsBySchool(filteredIncidents)
 
   return (
     <div>
@@ -2986,7 +3141,7 @@ const SchoolLessonsAnalysis: React.FC<{ incidents: Incident[]; drills: Drill[] }
           onClick={() => setViewMode('summary')}
         />
         <DefaultButton 
-          text={`الحوادث (${incidentsWithLessons.length})`}
+          text={`الحوادث (${incidents.length})`}
           iconProps={{ iconName: 'Warning' }}
           primary={viewMode === 'incidents'}
           onClick={() => setViewMode('incidents')}
@@ -3084,57 +3239,25 @@ const SchoolLessonsAnalysis: React.FC<{ incidents: Incident[]; drills: Drill[] }
       {viewMode === 'incidents' && (
         <div className="card" style={{ padding: 20 }}>
           <SearchBox 
-            placeholder="بحث في الدروس المستفادة..." 
+            placeholder="بحث في الحوادث..." 
             value={searchQuery}
             onChange={(_, v) => setSearchQuery(v || '')}
             styles={{ root: { marginBottom: 16, maxWidth: 400 } }}
           />
           
           {filteredIncidents.length > 0 ? (
-            <div style={{ maxHeight: 400, overflow: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', tableLayout: 'fixed' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#008752', color: 'white', position: 'sticky', top: 0 }}>
-                    <th style={{ padding: '10px 8px', textAlign: 'center', width: '15%' }}>المدرسة</th>
-                    <th style={{ padding: '10px 8px', textAlign: 'center', width: '20%' }}>الحادث</th>
-                    <th style={{ padding: '10px 8px', textAlign: 'center', width: '20%' }}>التحديات</th>
-                    <th style={{ padding: '10px 8px', textAlign: 'center', width: '25%' }}>الدروس المستفادة</th>
-                    <th style={{ padding: '10px 8px', textAlign: 'center', width: '20%' }}>المقترحات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredIncidents.slice(0, 50).map((incident, idx) => (
-                    <tr key={incident.Id || idx} style={{ backgroundColor: idx % 2 === 0 ? '#f9f9f9' : 'white' }}>
-                      <td style={{ padding: '8px', borderBottom: '1px solid #eee', fontWeight: 500, textAlign: 'center' }}>
-                        {incident.SchoolName_Ref || '-'}
-                      </td>
-                      <td style={{ padding: '8px', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-                        <div>{incident.Title}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#666' }}>{incident.IncidentCategory}</div>
-                      </td>
-                      <td style={{ padding: '8px', borderBottom: '1px solid #eee', fontSize: '0.85rem', color: '#d32f2f', textAlign: 'center' }}>
-                        {incident.Challenges || '-'}
-                      </td>
-                      <td style={{ padding: '8px', borderBottom: '1px solid #eee', fontSize: '0.85rem', color: '#2e7d32', textAlign: 'center' }}>
-                        {incident.LessonsLearned || '-'}
-                      </td>
-                      <td style={{ padding: '8px', borderBottom: '1px solid #eee', fontSize: '0.85rem', color: '#1565c0', textAlign: 'center' }}>
-                        {incident.Suggestions || '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {filteredIncidents.length > 50 && (
-                <div style={{ padding: 12, textAlign: 'center', color: '#666', backgroundColor: '#f5f5f5' }}>
-                  عرض 50 من {filteredIncidents.length} - استخدم البحث لتصفية النتائج
-                </div>
-              )}
-            </div>
+            <DetailsList
+              items={groupedIncidents.items}
+              columns={incidentColumns}
+              layoutMode={DetailsListLayoutMode.justified}
+              selectionMode={SelectionMode.none}
+              groups={groupedIncidents.groups}
+              groupProps={{ showEmptyGroups: false }}
+            />
           ) : (
             <div style={{ padding: 40, textAlign: 'center', color: '#666' }}>
               <Icon iconName="SearchIssue" style={{ fontSize: 48, marginBottom: 12, color: '#ccc' }} />
-              <div>لا توجد حوادث موثقة بدروس مستفادة</div>
+              <div>لا توجد حوادث</div>
             </div>
           )}
         </div>

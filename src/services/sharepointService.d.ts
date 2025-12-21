@@ -16,7 +16,8 @@ export interface SchoolInfo {
     PrincipalPhone: string;
     SchoolEmail: string;
     Latitude: string;
-    Longitude: string;
+    UnifiedSupportTicketNumber?: number;
+    IncidentNumber?: number;
 }
 export interface TeamMember {
     Id?: number;
@@ -59,6 +60,10 @@ export interface Incident {
     Challenges?: string;
     LessonsLearned?: string;
     Suggestions?: string;
+    UnifiedSupportTicketNumber?: number;
+    IncidentNumber?: number;
+    SharePointLink?: string;
+    HasAttachments?: boolean;
     Status?: string;
     Created?: string;
 }
@@ -109,6 +114,7 @@ export declare const SharePointService: {
     getIncidents(schoolName?: string): Promise<Incident[]>;
     createIncident(incident: Incident, schoolId?: number): Promise<any>;
     updateIncident(id: number, incident: Incident, schoolId?: number): Promise<any>;
+    uploadIncidentFile(itemId: number, fieldName: 'DecisionFile' | 'RecoveryFile', file: File): Promise<void>;
     deleteIncident(id: number): Promise<void>;
     getTrainingPrograms(availableOnly?: boolean): Promise<TrainingProgram[]>;
     getTrainingLog(schoolName?: string): Promise<TrainingLog[]>;

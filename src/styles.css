@@ -119,6 +119,16 @@ i[data-icon-name="Play"]::before { content: "▶"; }
 i[data-icon-name="NavigateForward"]::before { content: "➡"; }
 i[data-icon-name="PageAdd"]::before { content: "➕"; }
 
+/* Frequently used UI affordances */
+i[data-icon-name="ChevronUp"]::before { content: "▴"; }
+i[data-icon-name="ChevronDown"]::before { content: "▾"; }
+i[data-icon-name="SortUp"]::before { content: "▴"; }
+i[data-icon-name="SortDown"]::before { content: "▾"; }
+
+/* Password reveal (TextField canRevealPassword) */
+i[data-icon-name="RedEye"]::before { content: "👁"; }
+i[data-icon-name="Hide"]::before { content: "🙈"; }
+
 
 .app-layout,
 .app-shell {
